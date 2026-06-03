@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import axios from 'axios';
 import { useAuth } from '../auth/AuthContext';
+import { validateNickname } from '../domain/validation';
 import { pl } from '../i18n/pl';
 
 type Mode = 'login' | 'register';
@@ -34,10 +35,22 @@ export function AuthScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [nickname, setNickname] = useState('');
+  const [nicknameError, setNicknameError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isRegister = mode === 'register';
+  // In register mode the nickname must pass the front-side rules before we let
+  // the user submit. Empty input shows no error yet, but still blocks submit.
+  const nicknameOk = !isRegister || validateNickname(nickname).valid;
+
+  const onNicknameChange = (value: string) => {
+    setNickname(value);
+    const result = validateNickname(value);
+    setNicknameError(
+      value.length > 0 && !result.valid ? result.error ?? null : null,
+    );
+  };
 
   const onSubmit = async () => {
     setError(null);
@@ -61,6 +74,7 @@ export function AuthScreen() {
   const toggleMode = () => {
     setMode(isRegister ? 'login' : 'register');
     setError(null);
+    setNicknameError(null);
   };
 
   return (
@@ -89,23 +103,34 @@ export function AuthScreen() {
         onChangeText={setPassword}
       />
       {isRegister && (
-        <TextInput
-          style={styles.input}
-          placeholder={pl.auth.nickname}
-          autoCapitalize="none"
-          autoCorrect={false}
-          value={nickname}
-          onChangeText={setNickname}
-        />
+        <>
+          <TextInput
+            testID="auth-nickname"
+            style={styles.input}
+            placeholder={pl.auth.nickname}
+            autoCapitalize="none"
+            autoCorrect={false}
+            value={nickname}
+            onChangeText={onNicknameChange}
+          />
+          {nicknameError && (
+            <Text testID="auth-nickname-error" style={styles.error}>
+              {nicknameError}
+            </Text>
+          )}
+        </>
       )}
 
       {error && <Text style={styles.error}>{error}</Text>}
 
       <TouchableOpacity
         testID="auth-submit"
-        style={[styles.button, submitting && styles.buttonDisabled]}
+        style={[
+          styles.button,
+          (submitting || !nicknameOk) && styles.buttonDisabled,
+        ]}
         onPress={onSubmit}
-        disabled={submitting}>
+        disabled={submitting || !nicknameOk}>
         {submitting ? (
           <ActivityIndicator color="#fff" />
         ) : (
