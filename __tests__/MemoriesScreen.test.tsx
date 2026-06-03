@@ -47,7 +47,9 @@ describe('MemoriesScreen', () => {
   });
 
   test('renders a card for each memory from the API', async () => {
-    jest.mocked(listMemories).mockResolvedValue([memory]);
+    jest
+      .mocked(listMemories)
+      .mockResolvedValue({memories: [memory], nextCursor: null, prevCursor: null});
 
     render(<MemoriesScreen {...makeProps()} />);
 
@@ -56,7 +58,9 @@ describe('MemoriesScreen', () => {
   });
 
   test('shows the empty state when there are no memories', async () => {
-    jest.mocked(listMemories).mockResolvedValue([]);
+    jest
+      .mocked(listMemories)
+      .mockResolvedValue({memories: [], nextCursor: null, prevCursor: null});
 
     render(<MemoriesScreen {...makeProps()} />);
 
@@ -64,7 +68,9 @@ describe('MemoriesScreen', () => {
   });
 
   test('pull-to-refresh refetches the list', async () => {
-    jest.mocked(listMemories).mockResolvedValue([memory]);
+    jest
+      .mocked(listMemories)
+      .mockResolvedValue({memories: [memory], nextCursor: null, prevCursor: null});
 
     render(<MemoriesScreen {...makeProps()} />);
     await screen.findByText(memory.answer);

@@ -35,13 +35,18 @@ function formatDate(iso: string): string {
 export function MemoriesScreen({ navigation }: Props) {
   const { logout } = useAuth();
   const [memories, setMemories] = useState<Memory[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const load = useCallback(async () => {
+  // Loads the first page, replacing the list and cursor. Used on mount and on
+  // pull-to-refresh.
+  const loadInitial = useCallback(async () => {
     try {
-      const items = await listMemories();
-      setMemories(items);
+      const page = await listMemories();
+      setMemories(page.memories);
+      setNextCursor(page.nextCursor);
     } catch {
       Alert.alert(pl.appTitle, pl.memories.loadError);
     }
@@ -49,16 +54,34 @@ export function MemoriesScreen({ navigation }: Props) {
 
   useEffect(() => {
     (async () => {
-      await load();
+      await loadInitial();
       setLoading(false);
     })();
-  }, [load]);
+  }, [loadInitial]);
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await load();
+    await loadInitial();
     setRefreshing(false);
-  }, [load]);
+  }, [loadInitial]);
+
+  // Appends the next page when the user scrolls near the end. No-op while a
+  // page is already loading or there is no further cursor.
+  const onEndReached = useCallback(async () => {
+    if (loadingMore || nextCursor === null) {
+      return;
+    }
+    setLoadingMore(true);
+    try {
+      const page = await listMemories(nextCursor);
+      setMemories(prev => [...prev, ...page.memories]);
+      setNextCursor(page.nextCursor);
+    } catch {
+      Alert.alert(pl.appTitle, pl.memories.loadError);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [loadingMore, nextCursor]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -90,6 +113,13 @@ export function MemoriesScreen({ navigation }: Props) {
       }
       refreshing={refreshing}
       onRefresh={onRefresh}
+      onEndReached={onEndReached}
+      onEndReachedThreshold={0.5}
+      ListFooterComponent={
+        loadingMore ? (
+          <ActivityIndicator style={styles.footer} />
+        ) : null
+      }
       ListEmptyComponent={
         <Text style={styles.emptyText}>{pl.memories.empty}</Text>
       }
@@ -149,5 +179,8 @@ const styles = StyleSheet.create({
   headerButton: {
     color: '#0a84ff',
     fontSize: 16,
+  },
+  footer: {
+    paddingVertical: 16,
   },
 });
