@@ -2116,6 +2116,20 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@react-native-google-signin/google-signin@npm:^16.1.2":
+  version: 16.1.2
+  resolution: "@react-native-google-signin/google-signin@npm:16.1.2"
+  peerDependencies:
+    expo: ">=52.0.40"
+    react: "*"
+    react-native: "*"
+  peerDependenciesMeta:
+    expo:
+      optional: true
+  checksum: 10c0/91f8f8c4ed5311e7cd7c2977696624d857abb18b7bedfec0a126d8cca38cd56d48d8e0976ba01cf75db385bdd0a054e51148b5a3c64476305ccfdd79370f57af
+  languageName: node
+  linkType: hard
+
 "@react-native/assets-registry@npm:0.85.3":
   version: 0.85.3
   resolution: "@react-native/assets-registry@npm:0.85.3"
@@ -2852,6 +2866,7 @@ __metadata:
     "@react-native-community/cli": "npm:20.1.0"
     "@react-native-community/cli-platform-android": "npm:20.1.0"
     "@react-native-community/cli-platform-ios": "npm:20.1.0"
+    "@react-native-google-signin/google-signin": "npm:^16.1.2"
     "@react-native/babel-preset": "npm:0.85.3"
     "@react-native/eslint-config": "npm:0.85.3"
     "@react-native/jest-preset": "npm:0.85.3"
