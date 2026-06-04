@@ -48,6 +48,17 @@ export const pl = {
     error: 'Nie udało się wysłać linku. Spróbuj ponownie.',
   },
 
+  resetPassword: {
+    title: 'Ustaw nowe hasło',
+    password: 'Nowe hasło',
+    passwordConfirm: 'Powtórz nowe hasło',
+    submit: 'Zresetuj hasło',
+    passwordsDontMatch: 'Hasła nie są takie same.',
+    passwordTooShort: 'Hasło musi mieć co najmniej 8 znaków.',
+    successAlert: 'Hasło zostało zresetowane, zaloguj się nowym.',
+    errorAlert: 'Nie udało się zresetować hasła. Link mógł wygasnąć.',
+  },
+
   question: {
     headerTitle: 'Pytanie',
     memoriesButton: 'Wspomnienia',
