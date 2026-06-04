@@ -10,11 +10,16 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import axios from 'axios';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../auth/AuthContext';
 import { validateNickname } from '../domain/validation';
+import { RootStackParamList } from '../navigation/types';
 import { pl } from '../i18n/pl';
 
 type Mode = 'login' | 'register';
+
+type AuthNav = NativeStackNavigationProp<RootStackParamList, 'Auth'>;
 
 // Maps an API/network failure to a Polish message for the user.
 function messageForError(error: unknown): string {
@@ -31,6 +36,7 @@ function messageForError(error: unknown): string {
 
 export function AuthScreen() {
   const { login, register } = useAuth();
+  const navigation = useNavigation<AuthNav>();
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -121,6 +127,15 @@ export function AuthScreen() {
         </>
       )}
 
+      {!isRegister && (
+        <TouchableOpacity
+          testID="auth-forgot-password"
+          onPress={() => navigation.navigate('ForgotPassword')}
+          style={styles.forgot}>
+          <Text style={styles.forgotText}>{pl.auth.forgotPassword}</Text>
+        </TouchableOpacity>
+      )}
+
       {error && <Text style={styles.error}>{error}</Text>}
 
       <TouchableOpacity
@@ -173,6 +188,14 @@ const styles = StyleSheet.create({
   error: {
     color: '#b00020',
     marginBottom: 12,
+  },
+  forgot: {
+    alignSelf: 'flex-end',
+    marginBottom: 12,
+  },
+  forgotText: {
+    color: '#555',
+    fontSize: 14,
   },
   button: {
     backgroundColor: '#333',

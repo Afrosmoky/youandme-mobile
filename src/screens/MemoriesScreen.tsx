@@ -17,7 +17,6 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { listMemories } from '../api/memories';
 import { Memory } from '../domain/types';
-import { useAuth } from '../auth/AuthContext';
 import { pl } from '../i18n/pl';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Memories'>;
@@ -33,7 +32,6 @@ function formatDate(iso: string): string {
 }
 
 export function MemoriesScreen({ navigation }: Props) {
-  const { logout } = useAuth();
   const [memories, setMemories] = useState<Memory[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -88,12 +86,12 @@ export function MemoriesScreen({ navigation }: Props) {
       // headerRight is a navigation render prop, not a remounted subtree.
       // eslint-disable-next-line react/no-unstable-nested-components
       headerRight: () => (
-        <TouchableOpacity onPress={logout}>
-          <Text style={styles.headerButton}>{pl.memories.logout}</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
+          <Text style={styles.headerButton}>{pl.profile.headerButton}</Text>
         </TouchableOpacity>
       ),
     });
-  }, [navigation, logout]);
+  }, [navigation]);
 
   if (loading) {
     return (
