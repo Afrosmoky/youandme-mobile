@@ -7,6 +7,7 @@ import React, {
 } from 'react';
 import { setAuthToken } from '../api/client';
 import * as authApi from '../api/auth';
+import { fetchMe } from '../api/profile';
 import { clearToken, loadToken, saveToken } from './storage';
 import { AuthResponse, User } from '../domain/types';
 
@@ -17,6 +18,10 @@ type AuthContextValue = {
   login: (input: authApi.LoginInput) => Promise<void>;
   register: (input: authApi.RegisterInput) => Promise<void>;
   logout: () => Promise<void>;
+  // Refetches the current user from /me into the cache.
+  refreshUser: () => Promise<void>;
+  // Replaces the cached user directly (e.g. with the result of PATCH /me).
+  setUser: (user: User) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -77,6 +82,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setAuthToken(null);
         setUser(null);
         setToken(null);
+      },
+      refreshUser: async () => {
+        setUser(await fetchMe());
+      },
+      setUser: nextUser => {
+        setUser(nextUser);
       },
     };
   }, [user, token, loading]);

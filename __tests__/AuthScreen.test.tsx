@@ -28,6 +28,8 @@ describe('AuthScreen', () => {
       login,
       register,
       logout: jest.fn(),
+      refreshUser: jest.fn(),
+      setUser: jest.fn(),
     });
     jest.mocked(axios.isAxiosError).mockReturnValue(false);
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});

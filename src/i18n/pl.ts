@@ -19,6 +19,33 @@ export const pl = {
     nicknameInvalid:
       'Nick może zawierać tylko małe litery, cyfry i podkreślenia (3-30 znaków)',
     nicknameReserved: 'Ta nazwa jest zarezerwowana',
+    forgotPassword: 'Zapomniałem hasła',
+  },
+
+  profile: {
+    title: 'Profil',
+    headerButton: 'Profil',
+    email: 'E-mail',
+    nickname: 'Nick',
+    timezone: 'Strefa czasowa',
+    locale: 'Język',
+    save: 'Zapisz zmiany',
+    logout: 'Wyloguj',
+    verifyBadge: 'Email niezweryfikowany',
+    resendVerification: 'Wyślij ponownie weryfikację',
+    savedToast: 'Zmiany zostały zapisane.',
+    verificationSentToast: 'Wysłaliśmy nową wiadomość weryfikacyjną.',
+    loadError: 'Nie udało się pobrać profilu.',
+    saveError: 'Nie udało się zapisać zmian.',
+  },
+
+  forgotPassword: {
+    title: 'Reset hasła',
+    email: 'E-mail',
+    submit: 'Wyślij link resetu hasła',
+    sentToast: 'Link został wysłany na podany adres email.',
+    invalidEmail: 'Podaj poprawny adres e-mail.',
+    error: 'Nie udało się wysłać linku. Spróbuj ponownie.',
   },
 
   question: {
