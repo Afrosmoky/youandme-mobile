@@ -1,16 +1,29 @@
 import React from 'react';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
+import { LinkingOptions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from './types';
 import { useAuth } from '../auth/AuthContext';
 import { AuthScreen } from '../screens/AuthScreen';
 import { ForgotPasswordScreen } from '../screens/ForgotPasswordScreen';
+import { ResetPasswordScreen } from '../screens/ResetPasswordScreen';
 import { QuestionScreen } from '../screens/QuestionScreen';
 import { MemoriesScreen } from '../screens/MemoriesScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { pl } from '../i18n/pl';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+// Custom-scheme deep linking. jaity://reset-password?token=&email= → the
+// ResetPassword screen, with the query string parsed into route params.
+export const linking: LinkingOptions<RootStackParamList> = {
+  prefixes: ['jaity://'],
+  config: {
+    screens: {
+      ResetPassword: 'reset-password',
+    },
+  },
+};
 
 export function RootNavigator() {
   const { token, loading } = useAuth();
@@ -36,6 +49,11 @@ export function RootNavigator() {
             name="ForgotPassword"
             component={ForgotPasswordScreen}
             options={{ title: pl.forgotPassword.title }}
+          />
+          <Stack.Screen
+            name="ResetPassword"
+            component={ResetPasswordScreen}
+            options={{ title: pl.resetPassword.title }}
           />
         </>
       ) : (
