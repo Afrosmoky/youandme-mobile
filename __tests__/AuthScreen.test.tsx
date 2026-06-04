@@ -16,17 +16,20 @@ jest.mock('../src/auth/AuthContext', () => ({useAuth: jest.fn()}));
 describe('AuthScreen', () => {
   const login = jest.fn();
   const register = jest.fn();
+  const signInWithGoogle = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
     login.mockResolvedValue(undefined);
     register.mockResolvedValue(undefined);
+    signInWithGoogle.mockResolvedValue(undefined);
     jest.mocked(useAuth).mockReturnValue({
       user: null,
       token: null,
       loading: false,
       login,
       register,
+      signInWithGoogle,
       logout: jest.fn(),
       refreshUser: jest.fn(),
       setUser: jest.fn(),
@@ -121,5 +124,18 @@ describe('AuthScreen', () => {
       pl.appTitle,
       pl.auth.invalidCredentials,
     );
+  });
+
+  test('Google sign-in exchanges the idToken via AuthContext', async () => {
+    render(<AuthScreen />);
+
+    fireEvent.press(screen.getByTestId('auth-google'));
+
+    // The mocked GoogleSignin.signIn returns a fake idToken; on success the
+    // token gate (not manual navigation) swaps to the authenticated stack.
+    await waitFor(() =>
+      expect(signInWithGoogle).toHaveBeenCalledWith('mock-id-token'),
+    );
+    expect(login).not.toHaveBeenCalled();
   });
 });

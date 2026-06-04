@@ -13,6 +13,24 @@ jest.mock('react-native-keychain', () => ({
   resetGenericPassword: jest.fn(() => Promise.resolve(true)),
 }));
 
+// @react-native-google-signin: native module. Default to a successful sign-in
+// returning a fake idToken; tests override per case.
+jest.mock('@react-native-google-signin/google-signin', () => ({
+  GoogleSignin: {
+    configure: jest.fn(),
+    hasPlayServices: jest.fn(() => Promise.resolve(true)),
+    signIn: jest.fn(() =>
+      Promise.resolve({ type: 'success', data: { idToken: 'mock-id-token' } }),
+    ),
+  },
+  statusCodes: {
+    SIGN_IN_CANCELLED: 'SIGN_IN_CANCELLED',
+    IN_PROGRESS: 'IN_PROGRESS',
+    PLAY_SERVICES_NOT_AVAILABLE: 'PLAY_SERVICES_NOT_AVAILABLE',
+  },
+  isErrorWithCode: jest.fn(() => false),
+}));
+
 // @react-navigation/native: screens under test receive `navigation` via props,
 // but mock the hooks too so anything reaching for them gets a no-op.
 jest.mock('@react-navigation/native', () => ({

@@ -62,6 +62,7 @@ describe('ProfileScreen', () => {
       loading: false,
       login: jest.fn(),
       register: jest.fn(),
+      signInWithGoogle: jest.fn(),
       logout,
       refreshUser: jest.fn(),
       setUser,
