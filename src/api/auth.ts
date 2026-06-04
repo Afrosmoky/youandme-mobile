@@ -35,6 +35,15 @@ export async function login(input: LoginInput): Promise<AuthResponse> {
   return mapAuthResponse(res.data);
 }
 
+// Exchanges a Google ID token for a Sanctum session. Same response shape as
+// login/register; a bad token answers 401 with { message }.
+export async function signInWithGoogle(
+  idToken: string,
+): Promise<AuthResponse> {
+  const res = await apiClient.post('/auth/google', { id_token: idToken });
+  return mapAuthResponse(res.data);
+}
+
 // Optional logout endpoint (first-slice.md 4.6); best-effort, callers ignore
 // failures and clear local state regardless.
 export async function logout(): Promise<void> {

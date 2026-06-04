@@ -17,6 +17,8 @@ type AuthContextValue = {
   loading: boolean;
   login: (input: authApi.LoginInput) => Promise<void>;
   register: (input: authApi.RegisterInput) => Promise<void>;
+  // Exchanges a Google ID token for a session and stores it like a login.
+  signInWithGoogle: (idToken: string) => Promise<void>;
   logout: () => Promise<void>;
   // Refetches the current user from /me into the cache.
   refreshUser: () => Promise<void>;
@@ -71,6 +73,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
       register: async input => {
         await applyAuth(await authApi.register(input));
+      },
+      signInWithGoogle: async idToken => {
+        await applyAuth(await authApi.signInWithGoogle(idToken));
       },
       logout: async () => {
         try {

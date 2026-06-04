@@ -20,6 +20,9 @@ export const pl = {
       'Nick może zawierać tylko małe litery, cyfry i podkreślenia (3-30 znaków)',
     nicknameReserved: 'Ta nazwa jest zarezerwowana',
     forgotPassword: 'Zapomniałem hasła',
+    googleSignIn: 'Zaloguj przez Google',
+    googleSignInError: 'Logowanie przez Google się nie powiodło.',
+    googleCancelled: 'Logowanie przez Google zostało anulowane.',
   },
 
   profile: {

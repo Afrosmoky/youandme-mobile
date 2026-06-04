@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -12,6 +12,11 @@ import {
 import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import {
+  GoogleSignin,
+  isErrorWithCode,
+  statusCodes,
+} from '@react-native-google-signin/google-signin';
 import { useAuth } from '../auth/AuthContext';
 import { validateNickname } from '../domain/validation';
 import { RootStackParamList } from '../navigation/types';
@@ -20,6 +25,13 @@ import { pl } from '../i18n/pl';
 type Mode = 'login' | 'register';
 
 type AuthNav = NativeStackNavigationProp<RootStackParamList, 'Auth'>;
+
+// OAuth client IDs. webClientId is the backend's audience; iosClientId comes
+// from GoogleService-Info.plist. Android is wired in a later round.
+const GOOGLE_WEB_CLIENT_ID =
+  '1050573934208-6s4a631jirskdjgpmlt5pbmu4sa9fnn5.apps.googleusercontent.com';
+const GOOGLE_IOS_CLIENT_ID =
+  '1050573934208-9bkc5dv1jedoin87p8l5k281e343i2o1.apps.googleusercontent.com';
 
 // Maps an API/network failure to a Polish message for the user.
 function messageForError(error: unknown): string {
@@ -35,7 +47,7 @@ function messageForError(error: unknown): string {
 }
 
 export function AuthScreen() {
-  const { login, register } = useAuth();
+  const { login, register, signInWithGoogle } = useAuth();
   const navigation = useNavigation<AuthNav>();
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
@@ -43,7 +55,16 @@ export function AuthScreen() {
   const [nickname, setNickname] = useState('');
   const [nicknameError, setNicknameError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [googleSubmitting, setGoogleSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    GoogleSignin.configure({
+      webClientId: GOOGLE_WEB_CLIENT_ID,
+      iosClientId: GOOGLE_IOS_CLIENT_ID,
+      offlineAccess: false,
+    });
+  }, []);
 
   const isRegister = mode === 'register';
   // In register mode the nickname must pass the front-side rules before we let
@@ -81,6 +102,35 @@ export function AuthScreen() {
     setMode(isRegister ? 'login' : 'register');
     setError(null);
     setNicknameError(null);
+  };
+
+  // Google is always a sign-in (the backend creates the account on first use),
+  // so the button behaves the same in login and register mode.
+  const onGoogleSignIn = async () => {
+    setError(null);
+    setGoogleSubmitting(true);
+    try {
+      await GoogleSignin.hasPlayServices();
+      const response = await GoogleSignin.signIn();
+      if (response.type !== 'success' || !response.data.idToken) {
+        // Cancelled, or no token returned — treat as a soft cancellation.
+        Alert.alert(pl.appTitle, pl.auth.googleCancelled);
+        return;
+      }
+      await signInWithGoogle(response.data.idToken);
+      // On success the token changes and RootNavigator swaps to QuestionScreen.
+    } catch (err) {
+      if (
+        isErrorWithCode(err) &&
+        err.code === statusCodes.SIGN_IN_CANCELLED
+      ) {
+        Alert.alert(pl.appTitle, pl.auth.googleCancelled);
+        return;
+      }
+      Alert.alert(pl.appTitle, pl.auth.googleSignInError);
+    } finally {
+      setGoogleSubmitting(false);
+    }
   };
 
   return (
@@ -155,6 +205,18 @@ export function AuthScreen() {
         )}
       </TouchableOpacity>
 
+      <TouchableOpacity
+        testID="auth-google"
+        style={[styles.googleButton, googleSubmitting && styles.buttonDisabled]}
+        onPress={onGoogleSignIn}
+        disabled={googleSubmitting}>
+        {googleSubmitting ? (
+          <ActivityIndicator color="#333" />
+        ) : (
+          <Text style={styles.googleButtonText}>{pl.auth.googleSignIn}</Text>
+        )}
+      </TouchableOpacity>
+
       <TouchableOpacity onPress={toggleMode} style={styles.switch}>
         <Text style={styles.switchText}>
           {isRegister ? pl.auth.switchToLogin : pl.auth.switchToRegister}
@@ -209,6 +271,20 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  googleButton: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#333',
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  googleButtonText: {
+    color: '#333',
     fontSize: 16,
     fontWeight: '600',
   },
