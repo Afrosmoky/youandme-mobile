@@ -9,32 +9,21 @@ import {
   TextInput,
   TouchableOpacity,
 } from 'react-native';
-import axios from 'axios';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { resetPassword } from '../api/passwordReset';
+import { parseApiError, FieldErrors } from '../api/errors';
 import { pl } from '../i18n/pl';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ResetPassword'>;
 
 const MIN_PASSWORD_LENGTH = 8;
 
-// Pulls the backend's validation message out of a 422, falling back to a
-// generic one (e.g. expired token, network error).
-function messageForError(error: unknown): string {
-  if (axios.isAxiosError(error)) {
-    const data = error.response?.data as { message?: string } | undefined;
-    if (data?.message) {
-      return data.message;
-    }
-  }
-  return pl.resetPassword.errorAlert;
-}
-
 export function ResetPasswordScreen({ navigation, route }: Props) {
   const { token, email } = route.params;
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
 
   const tooShort = password.length < MIN_PASSWORD_LENGTH;
@@ -52,11 +41,24 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
     return null;
   })();
 
+  const onPasswordChange = (value: string) => {
+    setPassword(value);
+    setFieldErrors(prev => {
+      if (!prev.password) {
+        return prev;
+      }
+      const next = { ...prev };
+      delete next.password;
+      return next;
+    });
+  };
+
   const onSubmit = async () => {
     if (!valid) {
       return;
     }
     setSubmitting(true);
+    setFieldErrors({});
     try {
       await resetPassword({
         token,
@@ -67,7 +69,12 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
       Alert.alert(pl.appTitle, pl.resetPassword.successAlert);
       navigation.navigate('Auth');
     } catch (err) {
-      Alert.alert(pl.appTitle, messageForError(err));
+      const parsed = parseApiError(err, pl.resetPassword.errorAlert);
+      setFieldErrors(parsed.fields);
+      // No field detail (expired token, network): fall back to the alert.
+      if (Object.keys(parsed.fields).length === 0) {
+        Alert.alert(pl.appTitle, parsed.topLevel);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -86,8 +93,13 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
         secureTextEntry
         autoCapitalize="none"
         value={password}
-        onChangeText={setPassword}
+        onChangeText={onPasswordChange}
       />
+      {fieldErrors.password && (
+        <Text testID="reset-password-password-error" style={styles.fieldError}>
+          {fieldErrors.password}
+        </Text>
+      )}
       <TextInput
         style={styles.input}
         placeholder={pl.resetPassword.passwordConfirm}
@@ -137,6 +149,12 @@ const styles = StyleSheet.create({
   },
   error: {
     color: '#b00020',
+    marginBottom: 12,
+  },
+  fieldError: {
+    color: '#b00020',
+    fontSize: 13,
+    marginTop: -6,
     marginBottom: 12,
   },
   button: {

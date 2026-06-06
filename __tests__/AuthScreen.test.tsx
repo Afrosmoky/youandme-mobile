@@ -126,6 +126,97 @@ describe('AuthScreen', () => {
     );
   });
 
+  test('shows the per-field backend error under the nickname in register mode on 422', async () => {
+    register.mockRejectedValueOnce({
+      response: {
+        status: 422,
+        data: {
+          message: 'Ten nick jest już zajęty.',
+          errors: {nickname: ['Ten nick jest już zajęty.']},
+        },
+      },
+    });
+    jest.mocked(axios.isAxiosError).mockReturnValue(true);
+
+    render(<AuthScreen />);
+    fireEvent.press(screen.getByText(pl.auth.switchToRegister));
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText(pl.auth.email),
+      'nowa@example.com',
+    );
+    fireEvent.changeText(
+      screen.getByPlaceholderText(pl.auth.password),
+      'tajne-haslo-123',
+    );
+    fireEvent.changeText(
+      screen.getByPlaceholderText(pl.auth.nickname),
+      'zajety_nick',
+    );
+    fireEvent.press(screen.getByTestId('auth-submit'));
+
+    expect(await screen.findByTestId('auth-nickname-error')).toHaveTextContent(
+      'Ten nick jest już zajęty.',
+    );
+    // The login generic alert must not fire for a register validation error.
+    expect(Alert.alert).not.toHaveBeenCalled();
+  });
+
+  test('keeps the login error generic regardless of the backend response', async () => {
+    // Even when the backend leaks a specific 422, login must stay generic.
+    login.mockRejectedValueOnce({
+      response: {
+        status: 422,
+        data: {
+          message: 'Brak konta dla tego adresu.',
+          errors: {email: ['Brak konta dla tego adresu.']},
+        },
+      },
+    });
+    jest.mocked(axios.isAxiosError).mockReturnValue(true);
+
+    render(<AuthScreen />);
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText(pl.auth.email),
+      'nieznany@example.com',
+    );
+    fireEvent.changeText(
+      screen.getByPlaceholderText(pl.auth.password),
+      'jakies-haslo',
+    );
+    fireEvent.press(screen.getByTestId('auth-submit'));
+
+    expect(
+      await screen.findByText(pl.auth.invalidCredentials),
+    ).toBeOnTheScreen();
+    expect(screen.queryByText('Brak konta dla tego adresu.')).toBeNull();
+  });
+
+  test('falls back to the generic message on a 500 in register mode', async () => {
+    register.mockRejectedValueOnce({response: {status: 500}});
+    jest.mocked(axios.isAxiosError).mockReturnValue(true);
+
+    render(<AuthScreen />);
+    fireEvent.press(screen.getByText(pl.auth.switchToRegister));
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText(pl.auth.email),
+      'nowa@example.com',
+    );
+    fireEvent.changeText(
+      screen.getByPlaceholderText(pl.auth.password),
+      'tajne-haslo-123',
+    );
+    fireEvent.changeText(
+      screen.getByPlaceholderText(pl.auth.nickname),
+      'ola_test',
+    );
+    fireEvent.press(screen.getByTestId('auth-submit'));
+
+    expect(await screen.findByText(pl.auth.genericError)).toBeOnTheScreen();
+  });
+
   test('Google sign-in exchanges the idToken via AuthContext', async () => {
     render(<AuthScreen />);
 

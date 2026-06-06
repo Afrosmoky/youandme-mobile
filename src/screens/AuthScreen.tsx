@@ -9,7 +9,6 @@ import {
   TextInput,
   TouchableOpacity,
 } from 'react-native';
-import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
@@ -18,6 +17,7 @@ import {
   statusCodes,
 } from '@react-native-google-signin/google-signin';
 import { useAuth } from '../auth/AuthContext';
+import { parseApiError, FieldErrors } from '../api/errors';
 import { validateNickname } from '../domain/validation';
 import { RootStackParamList } from '../navigation/types';
 import { pl } from '../i18n/pl';
@@ -31,20 +31,7 @@ type AuthNav = NativeStackNavigationProp<RootStackParamList, 'Auth'>;
 const GOOGLE_WEB_CLIENT_ID =
   '1050573934208-6s4a631jirskdjgpmlt5pbmu4sa9fnn5.apps.googleusercontent.com';
 const GOOGLE_IOS_CLIENT_ID =
-  '1050573934208-9bkc5dv1jedoin87p8l5k281e343i2o1.apps.googleusercontent.com';
-
-// Maps an API/network failure to a Polish message for the user.
-function messageForError(error: unknown): string {
-  if (axios.isAxiosError(error)) {
-    if (error.response?.status === 401) {
-      return pl.auth.invalidCredentials;
-    }
-    if (error.response?.status === 422) {
-      return pl.auth.validationError;
-    }
-  }
-  return pl.auth.genericError;
-}
+  '1050573934208-9op7d68meh7jov11j6tu7spjocjs3fss.apps.googleusercontent.com';
 
 export function AuthScreen() {
   const { login, register, signInWithGoogle } = useAuth();
@@ -54,6 +41,7 @@ export function AuthScreen() {
   const [password, setPassword] = useState('');
   const [nickname, setNickname] = useState('');
   const [nicknameError, setNicknameError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,8 +59,31 @@ export function AuthScreen() {
   // the user submit. Empty input shows no error yet, but still blocks submit.
   const nicknameOk = !isRegister || validateNickname(nickname).valid;
 
+  // Drops the backend error for one field once the user edits it.
+  const clearFieldError = (field: string) => {
+    setFieldErrors(prev => {
+      if (!prev[field]) {
+        return prev;
+      }
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const onEmailChange = (value: string) => {
+    setEmail(value);
+    clearFieldError('email');
+  };
+
+  const onPasswordChange = (value: string) => {
+    setPassword(value);
+    clearFieldError('password');
+  };
+
   const onNicknameChange = (value: string) => {
     setNickname(value);
+    clearFieldError('nickname');
     const result = validateNickname(value);
     setNicknameError(
       value.length > 0 && !result.valid ? result.error ?? null : null,
@@ -81,6 +92,7 @@ export function AuthScreen() {
 
   const onSubmit = async () => {
     setError(null);
+    setFieldErrors({});
     setSubmitting(true);
     try {
       if (isRegister) {
@@ -90,9 +102,17 @@ export function AuthScreen() {
       }
       // On success the token changes and RootNavigator swaps to QuestionScreen.
     } catch (err) {
-      const message = messageForError(err);
-      setError(message);
-      Alert.alert(pl.appTitle, message);
+      if (isRegister) {
+        // Register surfaces the real backend messages (e.g. "nick zajęty").
+        const parsed = parseApiError(err, pl.auth.genericError);
+        setFieldErrors(parsed.fields);
+        setError(parsed.topLevel);
+      } else {
+        // Login stays deliberately generic: never reveal whether the email
+        // exists or the password is wrong.
+        setError(pl.auth.invalidCredentials);
+        Alert.alert(pl.appTitle, pl.auth.invalidCredentials);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -102,6 +122,7 @@ export function AuthScreen() {
     setMode(isRegister ? 'login' : 'register');
     setError(null);
     setNicknameError(null);
+    setFieldErrors({});
   };
 
   // Google is always a sign-in (the backend creates the account on first use),
@@ -148,16 +169,26 @@ export function AuthScreen() {
         autoCorrect={false}
         keyboardType="email-address"
         value={email}
-        onChangeText={setEmail}
+        onChangeText={onEmailChange}
       />
+      {isRegister && fieldErrors.email && (
+        <Text testID="auth-email-error" style={styles.fieldError}>
+          {fieldErrors.email}
+        </Text>
+      )}
       <TextInput
         style={styles.input}
         placeholder={pl.auth.password}
         secureTextEntry
         autoCapitalize="none"
         value={password}
-        onChangeText={setPassword}
+        onChangeText={onPasswordChange}
       />
+      {isRegister && fieldErrors.password && (
+        <Text testID="auth-password-error" style={styles.fieldError}>
+          {fieldErrors.password}
+        </Text>
+      )}
       {isRegister && (
         <>
           <TextInput
@@ -169,9 +200,9 @@ export function AuthScreen() {
             value={nickname}
             onChangeText={onNicknameChange}
           />
-          {nicknameError && (
-            <Text testID="auth-nickname-error" style={styles.error}>
-              {nicknameError}
+          {(nicknameError ?? fieldErrors.nickname) && (
+            <Text testID="auth-nickname-error" style={styles.fieldError}>
+              {nicknameError ?? fieldErrors.nickname}
             </Text>
           )}
         </>
@@ -249,6 +280,12 @@ const styles = StyleSheet.create({
   },
   error: {
     color: '#b00020',
+    marginBottom: 12,
+  },
+  fieldError: {
+    color: '#b00020',
+    fontSize: 13,
+    marginTop: -6,
     marginBottom: 12,
   },
   forgot: {

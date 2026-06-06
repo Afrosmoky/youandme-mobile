@@ -1,5 +1,6 @@
 import React from 'react';
 import {Alert} from 'react-native';
+import axios from 'axios';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {
   fireEvent,
@@ -51,6 +52,54 @@ describe('ForgotPasswordScreen', () => {
     jest
       .mocked(requestPasswordReset)
       .mockRejectedValueOnce(new Error('network'));
+
+    render(<ForgotPasswordScreen {...makeProps()} />);
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText(pl.forgotPassword.email),
+      'ola@example.com',
+    );
+    fireEvent.press(screen.getByTestId('forgot-password-submit'));
+
+    await waitFor(() =>
+      expect(Alert.alert).toHaveBeenCalledWith(
+        pl.appTitle,
+        pl.forgotPassword.error,
+      ),
+    );
+  });
+
+  test('shows the per-field backend error under the email on 422', async () => {
+    jest.mocked(requestPasswordReset).mockRejectedValueOnce({
+      response: {
+        status: 422,
+        data: {
+          message: 'Nie znaleziono konta dla tego adresu.',
+          errors: {email: ['Nie znaleziono konta dla tego adresu.']},
+        },
+      },
+    });
+    jest.mocked(axios.isAxiosError).mockReturnValue(true);
+
+    render(<ForgotPasswordScreen {...makeProps()} />);
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText(pl.forgotPassword.email),
+      'nieznany@example.com',
+    );
+    fireEvent.press(screen.getByTestId('forgot-password-submit'));
+
+    expect(
+      await screen.findByTestId('forgot-password-email-error'),
+    ).toHaveTextContent('Nie znaleziono konta dla tego adresu.');
+    expect(Alert.alert).not.toHaveBeenCalled();
+  });
+
+  test('falls back to the generic error on a 500', async () => {
+    jest
+      .mocked(requestPasswordReset)
+      .mockRejectedValueOnce({response: {status: 500}});
+    jest.mocked(axios.isAxiosError).mockReturnValue(true);
 
     render(<ForgotPasswordScreen {...makeProps()} />);
 

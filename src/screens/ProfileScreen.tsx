@@ -20,6 +20,7 @@ import {
   VerificationStatus,
 } from '../api/profile';
 import { useAuth } from '../auth/AuthContext';
+import { parseApiError, FieldErrors } from '../api/errors';
 import { validateNickname } from '../domain/validation';
 import { User } from '../domain/types';
 import { pl } from '../i18n/pl';
@@ -37,6 +38,7 @@ export function ProfileScreen(_props: Props) {
   const [baseUser, setBaseUser] = useState<User | null>(null);
   const [nickname, setNickname] = useState('');
   const [nicknameError, setNicknameError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [timezone, setTimezone] = useState(DEFAULT_TIMEZONE);
   const [verification, setVerification] = useState<VerificationStatus | null>(
     null,
@@ -74,6 +76,14 @@ export function ProfileScreen(_props: Props) {
 
   const onNicknameChange = (value: string) => {
     setNickname(value);
+    setFieldErrors(prev => {
+      if (!prev.nickname) {
+        return prev;
+      }
+      const next = { ...prev };
+      delete next.nickname;
+      return next;
+    });
     const result = validateNickname(value);
     setNicknameError(result.valid ? null : result.error ?? null);
   };
@@ -97,6 +107,7 @@ export function ProfileScreen(_props: Props) {
       payload.timezone = timezone;
     }
     setSaving(true);
+    setFieldErrors({});
     try {
       const updated = await updateMe(payload);
       setBaseUser(updated);
@@ -104,8 +115,13 @@ export function ProfileScreen(_props: Props) {
       setTimezone(updated.timezone ?? DEFAULT_TIMEZONE);
       setUser(updated);
       Alert.alert(pl.appTitle, pl.profile.savedToast);
-    } catch {
-      Alert.alert(pl.appTitle, pl.profile.saveError);
+    } catch (err) {
+      const parsed = parseApiError(err, pl.profile.saveError);
+      setFieldErrors(parsed.fields);
+      // No field detail (network, 500): fall back to the banner alert.
+      if (Object.keys(parsed.fields).length === 0) {
+        Alert.alert(pl.appTitle, parsed.topLevel);
+      }
     } finally {
       setSaving(false);
     }
@@ -167,9 +183,9 @@ export function ProfileScreen(_props: Props) {
         value={nickname}
         onChangeText={onNicknameChange}
       />
-      {nicknameError && (
+      {(nicknameError ?? fieldErrors.nickname) && (
         <Text testID="profile-nickname-error" style={styles.error}>
-          {nicknameError}
+          {nicknameError ?? fieldErrors.nickname}
         </Text>
       )}
 

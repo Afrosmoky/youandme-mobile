@@ -16,6 +16,7 @@ export const pl = {
     genericError: 'Coś poszło nie tak. Spróbuj ponownie.',
     invalidCredentials: 'Nieprawidłowy e-mail lub hasło.',
     validationError: 'Sprawdź wprowadzone dane.',
+    tooManyAttempts: 'Zbyt wiele prób. Spróbuj ponownie za chwilę.',
     nicknameInvalid:
       'Nick może zawierać tylko małe litery, cyfry i podkreślenia (3-30 znaków)',
     nicknameReserved: 'Ta nazwa jest zarezerwowana',

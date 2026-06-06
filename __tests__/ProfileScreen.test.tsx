@@ -1,5 +1,6 @@
 import React from 'react';
 import {Alert} from 'react-native';
+import axios from 'axios';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {
   fireEvent,
@@ -91,6 +92,48 @@ describe('ProfileScreen', () => {
       expect(updateMe).toHaveBeenCalledWith({nickname: 'new_nick'}),
     );
     expect(setUser).toHaveBeenCalled();
+  });
+
+  test('shows the per-field backend error under the nickname on 422', async () => {
+    jest.mocked(updateMe).mockRejectedValueOnce({
+      response: {
+        status: 422,
+        data: {
+          message: 'Ten nick jest już zajęty.',
+          errors: {nickname: ['Ten nick jest już zajęty.']},
+        },
+      },
+    });
+    jest.mocked(axios.isAxiosError).mockReturnValue(true);
+
+    render(<ProfileScreen {...makeProps()} />);
+    await screen.findByDisplayValue('ola_test');
+
+    fireEvent.changeText(screen.getByTestId('profile-nickname'), 'taken_nick');
+    fireEvent.press(screen.getByTestId('profile-save'));
+
+    expect(
+      await screen.findByTestId('profile-nickname-error'),
+    ).toHaveTextContent('Ten nick jest już zajęty.');
+    expect(Alert.alert).not.toHaveBeenCalled();
+  });
+
+  test('falls back to the generic save error on a 500', async () => {
+    jest.mocked(updateMe).mockRejectedValueOnce({response: {status: 500}});
+    jest.mocked(axios.isAxiosError).mockReturnValue(true);
+
+    render(<ProfileScreen {...makeProps()} />);
+    await screen.findByDisplayValue('ola_test');
+
+    fireEvent.changeText(screen.getByTestId('profile-nickname'), 'taken_nick');
+    fireEvent.press(screen.getByTestId('profile-save'));
+
+    await waitFor(() =>
+      expect(Alert.alert).toHaveBeenCalledWith(
+        pl.appTitle,
+        pl.profile.saveError,
+      ),
+    );
   });
 
   test('tapping resend verification calls the API', async () => {
