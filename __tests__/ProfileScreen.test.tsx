@@ -17,7 +17,7 @@ import {
 } from '../src/api/profile';
 import {useAuth} from '../src/auth/AuthContext';
 import type {RootStackParamList} from '../src/navigation/types';
-import type {User} from '../src/domain/types';
+import type {Couple, User} from '../src/domain/types';
 import {pl} from '../src/i18n/pl';
 
 jest.mock('../src/api/profile', () => ({
@@ -40,6 +40,16 @@ const user: User = {
   createdAt: '2026-06-04T05:00:00.000Z',
 };
 
+const couple: Couple = {
+  ulid: 'c_01',
+  partnerNameLocal: 'Tomek',
+  streakCurrent: 0,
+  streakLongest: 0,
+  dailyPushHour: 20,
+  relationshipStartedOn: null,
+  createdAt: '2026-06-04T05:00:00.000Z',
+};
+
 function makeProps(): Props {
   return {
     navigation: {setOptions: jest.fn(), navigate: jest.fn(), goBack: jest.fn()},
@@ -53,7 +63,7 @@ const setUser = jest.fn();
 describe('ProfileScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.mocked(fetchMe).mockResolvedValue(user);
+    jest.mocked(fetchMe).mockResolvedValue({user, couple});
     jest
       .mocked(fetchVerificationStatus)
       .mockResolvedValue({verified: false, daysSinceRegistration: 0});
@@ -80,7 +90,9 @@ describe('ProfileScreen', () => {
   });
 
   test('editing the nickname and saving calls updateMe', async () => {
-    jest.mocked(updateMe).mockResolvedValue({...user, nickname: 'new_nick'});
+    jest
+      .mocked(updateMe)
+      .mockResolvedValue({user: {...user, nickname: 'new_nick'}, couple});
 
     render(<ProfileScreen {...makeProps()} />);
     await screen.findByDisplayValue('ola_test');

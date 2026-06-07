@@ -124,7 +124,7 @@ export function MemoriesScreen({ navigation }: Props) {
       renderItem={({ item }) => (
         <View style={styles.card}>
           <Text style={styles.question}>{item.question.body}</Text>
-          <Text style={styles.answer}>{item.answer}</Text>
+          <Text style={styles.answer}>{item.answerA}</Text>
           <Text style={styles.date}>{formatDate(item.answeredAt)}</Text>
         </View>
       )}

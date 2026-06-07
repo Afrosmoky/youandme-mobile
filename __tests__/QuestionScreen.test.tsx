@@ -22,6 +22,20 @@ const question = {
   ulid: 'q_01',
   body: 'Co Cię dziś rozśmieszyło?',
   type: 'session',
+  category: {slug: 'na_poznanie', name: 'Na poznanie'},
+  tags: ['niespodzianki'],
+};
+
+const session = {
+  ulid: 's_01',
+  mode: 'local',
+  category: {slug: 'na_poznanie', name: 'Na poznanie'},
+  startedAt: '2026-06-02T09:00:00.000Z',
+  endedAt: null,
+  currentIndex: 1,
+  remainingCount: 20,
+  cardsDrawnCount: 1,
+  cardsSavedCount: 1,
 };
 
 function makeProps(): Props {
@@ -34,7 +48,11 @@ function makeProps(): Props {
 describe('QuestionScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.mocked(fetchNextQuestion).mockResolvedValue(question);
+    jest.mocked(fetchNextQuestion).mockResolvedValue({
+      question,
+      session,
+      sessionComplete: false,
+    });
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   });
 
@@ -60,11 +78,17 @@ describe('QuestionScreen', () => {
 
   test('saves a memory and loads the next question', async () => {
     jest.mocked(createMemory).mockResolvedValue({
-      ulid: 'm_01',
-      question: {ulid: question.ulid, body: question.body},
-      answer: 'Świetny żart w pracy.',
-      answeredAt: '2026-06-02T10:00:00.000Z',
-      createdAt: undefined,
+      memory: {
+        ulid: 'm_01',
+        question,
+        answerA: 'Świetny żart w pracy.',
+        answerB: null,
+        playerAName: 'ola',
+        playerBName: null,
+        origin: 'session',
+        answeredAt: '2026-06-02T10:00:00.000Z',
+      },
+      session,
     });
 
     render(<QuestionScreen {...makeProps()} />);
@@ -79,7 +103,8 @@ describe('QuestionScreen', () => {
     await waitFor(() =>
       expect(createMemory).toHaveBeenCalledWith({
         questionUlid: question.ulid,
-        answer: 'Świetny żart w pracy.',
+        answerA: 'Świetny żart w pracy.',
+        answerB: null,
         answeredAt: expect.any(String),
       }),
     );

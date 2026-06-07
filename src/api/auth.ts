@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import { apiClient } from './client';
-import { AuthResponse, rawUserSchema, mapRawUser } from '../domain/types';
+import {
+  AuthResponse,
+  rawUserSchema,
+  mapRawUser,
+  rawCoupleSchema,
+  mapRawCouple,
+} from '../domain/types';
 
 export type RegisterInput = {
   email: string;
@@ -13,16 +19,21 @@ export type LoginInput = {
   password: string;
 };
 
-// Backend serves the user in snake_case; validate the raw shape, then map to
-// the camelCase User (shared raw schema lives in domain/types).
+// Backend serves user + couple in snake_case (P3 auto-creates the couple at
+// registration); validate the raw shape, then map both to camelCase.
 const rawAuthResponseSchema = z.object({
   user: rawUserSchema,
+  couple: rawCoupleSchema,
   token: z.string(),
 });
 
 function mapAuthResponse(data: unknown): AuthResponse {
   const raw = rawAuthResponseSchema.parse(data);
-  return { user: mapRawUser(raw.user), token: raw.token };
+  return {
+    user: mapRawUser(raw.user),
+    couple: mapRawCouple(raw.couple),
+    token: raw.token,
+  };
 }
 
 export async function register(input: RegisterInput): Promise<AuthResponse> {

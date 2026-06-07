@@ -57,9 +57,10 @@ export function ProfileScreen(_props: Props) {
         if (!active) {
           return;
         }
-        setBaseUser(me);
-        setNickname(me.nickname);
-        setTimezone(me.timezone ?? DEFAULT_TIMEZONE);
+        // P3: /me returns { user, couple }; couple wiring (partner name) is M3.
+        setBaseUser(me.user);
+        setNickname(me.user.nickname);
+        setTimezone(me.user.timezone ?? DEFAULT_TIMEZONE);
         setVerification(status);
       } catch {
         Alert.alert(pl.appTitle, pl.profile.loadError);
@@ -109,7 +110,7 @@ export function ProfileScreen(_props: Props) {
     setSaving(true);
     setFieldErrors({});
     try {
-      const updated = await updateMe(payload);
+      const { user: updated } = await updateMe(payload);
       setBaseUser(updated);
       setNickname(updated.nickname);
       setTimezone(updated.timezone ?? DEFAULT_TIMEZONE);

@@ -20,10 +20,19 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Memories'>;
 
 const memory: Memory = {
   ulid: 'm_01',
-  question: {ulid: 'q_01', body: 'Co Cię dziś rozśmieszyło?'},
-  answer: 'Świetny żart w pracy.',
+  question: {
+    ulid: 'q_01',
+    body: 'Co Cię dziś rozśmieszyło?',
+    type: 'session',
+    category: {slug: 'na_poznanie', name: 'Na poznanie'},
+    tags: [],
+  },
+  answerA: 'Świetny żart w pracy.',
+  answerB: null,
+  playerAName: 'ola',
+  playerBName: null,
+  origin: 'session',
   answeredAt: '2026-06-02T10:00:00.000Z',
-  createdAt: undefined,
 };
 
 function makeProps(): Props {
@@ -56,7 +65,7 @@ describe('MemoriesScreen', () => {
 
     render(<MemoriesScreen {...makeProps()} />);
 
-    expect(await screen.findByText(memory.answer)).toBeOnTheScreen();
+    expect(await screen.findByText(memory.answerA)).toBeOnTheScreen();
     expect(screen.getByText(memory.question.body)).toBeOnTheScreen();
   });
 
@@ -76,7 +85,7 @@ describe('MemoriesScreen', () => {
       .mockResolvedValue({memories: [memory], nextCursor: null, prevCursor: null});
 
     render(<MemoriesScreen {...makeProps()} />);
-    await screen.findByText(memory.answer);
+    await screen.findByText(memory.answerA);
     expect(listMemories).toHaveBeenCalledTimes(1);
 
     fireEvent(screen.getByTestId('memories-list'), 'refresh');

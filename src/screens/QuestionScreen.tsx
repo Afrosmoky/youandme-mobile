@@ -28,7 +28,10 @@ export function QuestionScreen({ navigation }: Props) {
     setLoading(true);
     setAnswer('');
     try {
-      const next = await fetchNextQuestion();
+      // P3: fetchNextQuestion now returns { question, session, sessionComplete }.
+      // Session handling (start/complete) is wired in M2; here we only show the
+      // question body so the screen keeps compiling.
+      const { question: next } = await fetchNextQuestion();
       setQuestion(next);
     } catch {
       Alert.alert(pl.appTitle, pl.question.loadError);
@@ -60,9 +63,12 @@ export function QuestionScreen({ navigation }: Props) {
     }
     setSaving(true);
     try {
+      // P3: payload split into answer_a/answer_b; mobile sends answer_b=null
+      // until the two-player mode (P10).
       await createMemory({
         questionUlid: question.ulid,
-        answer: answer.trim(),
+        answerA: answer.trim(),
+        answerB: null,
         answeredAt: new Date().toISOString(),
       });
       Alert.alert(pl.question.saved, pl.question.savedBody);

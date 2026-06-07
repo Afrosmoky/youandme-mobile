@@ -1,15 +1,24 @@
 import { z } from 'zod';
 import { apiClient } from './client';
-import { memorySchema, Memory } from '../domain/types';
+import {
+  rawMemorySchema,
+  mapRawMemory,
+  rawGameSessionSchema,
+  mapRawGameSession,
+  Memory,
+  GameSession,
+} from '../domain/types';
 
-const createMemoryResponseSchema = z.object({
-  memory: memorySchema,
+// P3: POST /memories returns the created memory plus the advanced session.
+const createResponseSchema = z.object({
+  memory: rawMemorySchema,
+  session: rawGameSessionSchema,
 });
 
 // P2 backend: GET /memories is cursor-paginated. The list lives under `data`,
 // paging under `meta`. We map the snake_case cursors to camelCase here.
 const listMemoriesResponseSchema = z.object({
-  data: z.array(memorySchema),
+  data: z.array(rawMemorySchema),
   meta: z.object({
     next_cursor: z.string().nullable(),
     prev_cursor: z.string().nullable(),
@@ -22,8 +31,15 @@ const DEFAULT_PER_PAGE = 20;
 
 export type CreateMemoryInput = {
   questionUlid: string;
-  answer: string;
+  answerA: string;
+  // P3 mobile always sends null; the second player's answer lands in P10.
+  answerB?: string | null;
   answeredAt: string;
+};
+
+export type CreateMemoryResult = {
+  memory: Memory;
+  session: GameSession;
 };
 
 export type MemoriesPage = {
@@ -32,13 +48,20 @@ export type MemoriesPage = {
   prevCursor: string | null;
 };
 
-export async function createMemory(input: CreateMemoryInput): Promise<Memory> {
+export async function createMemory(
+  input: CreateMemoryInput,
+): Promise<CreateMemoryResult> {
   const res = await apiClient.post('/memories', {
     question_ulid: input.questionUlid,
-    answer: input.answer,
+    answer_a: input.answerA,
+    answer_b: input.answerB ?? null,
     answered_at: input.answeredAt,
   });
-  return createMemoryResponseSchema.parse(res.data).memory;
+  const parsed = createResponseSchema.parse(res.data);
+  return {
+    memory: mapRawMemory(parsed.memory),
+    session: mapRawGameSession(parsed.session),
+  };
 }
 
 // Fetches one page of memories. Omit `cursor` for the first page; pass
@@ -49,7 +72,7 @@ export async function listMemories(cursor?: string): Promise<MemoriesPage> {
   });
   const parsed = listMemoriesResponseSchema.parse(res.data);
   return {
-    memories: parsed.data,
+    memories: parsed.data.map(mapRawMemory),
     nextCursor: parsed.meta.next_cursor,
     prevCursor: parsed.meta.prev_cursor,
   };

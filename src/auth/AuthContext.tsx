@@ -89,7 +89,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setToken(null);
       },
       refreshUser: async () => {
-        setUser(await fetchMe());
+        // P3: /me now returns { user, couple }. Couple lands in state in M2;
+        // for now keep caching just the user.
+        setUser((await fetchMe()).user);
       },
       setUser: nextUser => {
         setUser(nextUser);

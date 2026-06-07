@@ -1,9 +1,19 @@
 import { z } from 'zod';
 import { apiClient } from './client';
-import { rawUserSchema, mapRawUser, User } from '../domain/types';
+import {
+  rawUserSchema,
+  mapRawUser,
+  rawCoupleSchema,
+  mapRawCouple,
+  User,
+  Couple,
+} from '../domain/types';
 
-// Both /me and PATCH /me wrap the user under `user`, snake_case like /auth/*.
-const meResponseSchema = z.object({ user: rawUserSchema });
+// P3: both /me and PATCH /me wrap user + couple, snake_case like /auth/*.
+const meResponseSchema = z.object({
+  user: rawUserSchema,
+  couple: rawCoupleSchema,
+});
 
 const verificationStatusSchema = z.object({
   verified: z.boolean(),
@@ -19,16 +29,28 @@ export type UpdateMeInput = {
   nickname?: string;
   timezone?: string;
   locale?: string;
+  // P3: couple's local-only partner name, edited from the profile screen (M3).
+  partner_name_local?: string;
 };
 
-export async function fetchMe(): Promise<User> {
-  const res = await apiClient.get('/me');
-  return mapRawUser(meResponseSchema.parse(res.data).user);
+export type MeResult = {
+  user: User;
+  couple: Couple;
+};
+
+function mapMeResponse(data: unknown): MeResult {
+  const parsed = meResponseSchema.parse(data);
+  return { user: mapRawUser(parsed.user), couple: mapRawCouple(parsed.couple) };
 }
 
-export async function updateMe(input: UpdateMeInput): Promise<User> {
+export async function fetchMe(): Promise<MeResult> {
+  const res = await apiClient.get('/me');
+  return mapMeResponse(res.data);
+}
+
+export async function updateMe(input: UpdateMeInput): Promise<MeResult> {
   const res = await apiClient.patch('/me', input);
-  return mapRawUser(meResponseSchema.parse(res.data).user);
+  return mapMeResponse(res.data);
 }
 
 // Triggers a fresh verification email. Backend answers 202 with no body.

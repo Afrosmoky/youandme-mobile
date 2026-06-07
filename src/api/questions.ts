@@ -1,12 +1,35 @@
 import { z } from 'zod';
 import { apiClient } from './client';
-import { questionSchema, Question } from '../domain/types';
+import {
+  rawQuestionSchema,
+  mapRawQuestion,
+  rawGameSessionSchema,
+  mapRawGameSession,
+  Question,
+  GameSession,
+} from '../domain/types';
 
-const nextQuestionResponseSchema = z.object({
-  question: questionSchema,
+// P3: /questions/next requires an active session. `question` is null and
+// `session_complete` is true once the session's pool is exhausted; `session`
+// carries the up-to-date counters.
+const nextResponseSchema = z.object({
+  question: rawQuestionSchema.nullable(),
+  session: rawGameSessionSchema.optional(),
+  session_complete: z.boolean().optional(),
 });
 
-export async function fetchNextQuestion(): Promise<Question> {
+export type NextQuestionResult = {
+  question: Question | null;
+  session: GameSession | null;
+  sessionComplete: boolean;
+};
+
+export async function fetchNextQuestion(): Promise<NextQuestionResult> {
   const res = await apiClient.get('/questions/next');
-  return nextQuestionResponseSchema.parse(res.data).question;
+  const parsed = nextResponseSchema.parse(res.data);
+  return {
+    question: parsed.question ? mapRawQuestion(parsed.question) : null,
+    session: parsed.session ? mapRawGameSession(parsed.session) : null,
+    sessionComplete: parsed.session_complete ?? false,
+  };
 }
