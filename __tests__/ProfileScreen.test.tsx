@@ -10,7 +10,6 @@ import {
 } from '@testing-library/react-native';
 import {ProfileScreen} from '../src/screens/ProfileScreen';
 import {
-  fetchMe,
   fetchVerificationStatus,
   resendVerificationEmail,
   updateMe,
@@ -21,7 +20,6 @@ import type {Couple, User} from '../src/domain/types';
 import {pl} from '../src/i18n/pl';
 
 jest.mock('../src/api/profile', () => ({
-  fetchMe: jest.fn(),
   fetchVerificationStatus: jest.fn(),
   updateMe: jest.fn(),
   resendVerificationEmail: jest.fn(),
@@ -59,16 +57,17 @@ function makeProps(): Props {
 
 const logout = jest.fn();
 const setUser = jest.fn();
+const setCouple = jest.fn();
 
 describe('ProfileScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    jest.mocked(fetchMe).mockResolvedValue({user, couple});
     jest
       .mocked(fetchVerificationStatus)
       .mockResolvedValue({verified: false, daysSinceRegistration: 0});
     jest.mocked(useAuth).mockReturnValue({
       user,
+      couple,
       token: 'tok',
       loading: false,
       login: jest.fn(),
@@ -77,6 +76,7 @@ describe('ProfileScreen', () => {
       logout,
       refreshUser: jest.fn(),
       setUser,
+      setCouple,
     });
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   });
@@ -89,7 +89,15 @@ describe('ProfileScreen', () => {
     expect(screen.getByText(pl.profile.verifyBadge)).toBeOnTheScreen();
   });
 
-  test('editing the nickname and saving calls updateMe', async () => {
+  test('renders the partner name input seeded from the couple', async () => {
+    render(<ProfileScreen {...makeProps()} />);
+
+    expect(await screen.findByTestId('profile-partner-name')).toHaveDisplayValue(
+      'Tomek',
+    );
+  });
+
+  test('editing the nickname and saving calls updateMe and updates the context', async () => {
     jest
       .mocked(updateMe)
       .mockResolvedValue({user: {...user, nickname: 'new_nick'}, couple});
@@ -104,6 +112,49 @@ describe('ProfileScreen', () => {
       expect(updateMe).toHaveBeenCalledWith({nickname: 'new_nick'}),
     );
     expect(setUser).toHaveBeenCalled();
+    expect(setCouple).toHaveBeenCalled();
+  });
+
+  test('editing the partner name saves partner_name_local', async () => {
+    jest.mocked(updateMe).mockResolvedValue({
+      user,
+      couple: {...couple, partnerNameLocal: 'Tomasz'},
+    });
+
+    render(<ProfileScreen {...makeProps()} />);
+    await screen.findByDisplayValue('ola_test');
+
+    fireEvent.changeText(screen.getByTestId('profile-partner-name'), 'Tomasz');
+    fireEvent.press(screen.getByTestId('profile-save'));
+
+    await waitFor(() =>
+      expect(updateMe).toHaveBeenCalledWith({partner_name_local: 'Tomasz'}),
+    );
+    expect(setCouple).toHaveBeenCalled();
+  });
+
+  test('shows an inline error for partner_name_local on 422', async () => {
+    jest.mocked(updateMe).mockRejectedValueOnce({
+      response: {
+        status: 422,
+        data: {
+          message: 'To imię jest za długie.',
+          errors: {partner_name_local: ['To imię jest za długie.']},
+        },
+      },
+    });
+    jest.mocked(axios.isAxiosError).mockReturnValue(true);
+
+    render(<ProfileScreen {...makeProps()} />);
+    await screen.findByDisplayValue('ola_test');
+
+    fireEvent.changeText(screen.getByTestId('profile-partner-name'), 'Tomasz');
+    fireEvent.press(screen.getByTestId('profile-save'));
+
+    expect(
+      await screen.findByTestId('profile-partner-name-error'),
+    ).toHaveTextContent('To imię jest za długie.');
+    expect(Alert.alert).not.toHaveBeenCalled();
   });
 
   test('shows the per-field backend error under the nickname on 422', async () => {

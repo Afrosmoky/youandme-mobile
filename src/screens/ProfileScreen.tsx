@@ -12,7 +12,6 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import {
-  fetchMe,
   fetchVerificationStatus,
   resendVerificationEmail,
   updateMe,
@@ -22,7 +21,6 @@ import {
 import { useAuth } from '../auth/AuthContext';
 import { parseApiError, FieldErrors } from '../api/errors';
 import { validateNickname } from '../domain/validation';
-import { User } from '../domain/types';
 import { pl } from '../i18n/pl';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
@@ -33,35 +31,42 @@ const TIMEZONES = ['Europe/Warsaw', 'UTC'];
 const DEFAULT_TIMEZONE = 'Europe/Warsaw';
 
 export function ProfileScreen(_props: Props) {
-  const { logout, setUser } = useAuth();
+  // P3: user + couple come from the auth context (hydrated at startup by
+  // BootstrapScreen, refreshed after login). The screen only fetches the
+  // verification status itself.
+  const { user, couple, logout, setUser, setCouple } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [baseUser, setBaseUser] = useState<User | null>(null);
-  const [nickname, setNickname] = useState('');
+  const [nickname, setNickname] = useState(user?.nickname ?? '');
   const [nicknameError, setNicknameError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  const [timezone, setTimezone] = useState(DEFAULT_TIMEZONE);
+  const [timezone, setTimezone] = useState(user?.timezone ?? DEFAULT_TIMEZONE);
+  const [partnerName, setPartnerName] = useState(
+    couple?.partnerNameLocal ?? '',
+  );
   const [verification, setVerification] = useState<VerificationStatus | null>(
     null,
   );
   const [saving, setSaving] = useState(false);
   const [resending, setResending] = useState(false);
 
+  // Re-seed the editable fields whenever the cached user/couple change (initial
+  // hydration, or after a successful save pushes fresh values back).
+  useEffect(() => {
+    if (user) {
+      setNickname(user.nickname);
+      setTimezone(user.timezone ?? DEFAULT_TIMEZONE);
+    }
+    setPartnerName(couple?.partnerNameLocal ?? '');
+  }, [user, couple]);
+
   useEffect(() => {
     let active = true;
     (async () => {
       try {
-        const [me, status] = await Promise.all([
-          fetchMe(),
-          fetchVerificationStatus(),
-        ]);
-        if (!active) {
-          return;
+        const status = await fetchVerificationStatus();
+        if (active) {
+          setVerification(status);
         }
-        // P3: /me returns { user, couple }; couple wiring (partner name) is M3.
-        setBaseUser(me.user);
-        setNickname(me.user.nickname);
-        setTimezone(me.user.timezone ?? DEFAULT_TIMEZONE);
-        setVerification(status);
       } catch {
         Alert.alert(pl.appTitle, pl.profile.loadError);
       } finally {
@@ -75,46 +80,62 @@ export function ProfileScreen(_props: Props) {
     };
   }, []);
 
-  const onNicknameChange = (value: string) => {
-    setNickname(value);
+  const clearFieldError = (field: string) => {
     setFieldErrors(prev => {
-      if (!prev.nickname) {
+      if (!prev[field]) {
         return prev;
       }
       const next = { ...prev };
-      delete next.nickname;
+      delete next[field];
       return next;
     });
+  };
+
+  const onNicknameChange = (value: string) => {
+    setNickname(value);
+    clearFieldError('nickname');
     const result = validateNickname(value);
     setNicknameError(result.valid ? null : result.error ?? null);
   };
 
-  const baseTimezone = baseUser?.timezone ?? DEFAULT_TIMEZONE;
+  const onPartnerNameChange = (value: string) => {
+    setPartnerName(value);
+    clearFieldError('partner_name_local');
+  };
+
+  const baseTimezone = user?.timezone ?? DEFAULT_TIMEZONE;
+  const basePartnerName = couple?.partnerNameLocal ?? '';
   const dirty =
-    baseUser != null &&
-    (nickname !== baseUser.nickname || timezone !== baseTimezone);
+    user != null &&
+    (nickname !== user.nickname ||
+      timezone !== baseTimezone ||
+      partnerName !== basePartnerName);
   const nicknameValid = validateNickname(nickname).valid;
   const canSave = dirty && nicknameValid && !saving;
 
   const onSave = async () => {
-    if (!baseUser) {
+    if (!user) {
       return;
     }
     const payload: UpdateMeInput = {};
-    if (nickname !== baseUser.nickname) {
+    if (nickname !== user.nickname) {
       payload.nickname = nickname;
     }
     if (timezone !== baseTimezone) {
       payload.timezone = timezone;
     }
+    if (partnerName !== basePartnerName) {
+      // Empty input clears the partner name back to null.
+      payload.partner_name_local = partnerName.trim() || null;
+    }
     setSaving(true);
     setFieldErrors({});
     try {
-      const { user: updated } = await updateMe(payload);
-      setBaseUser(updated);
-      setNickname(updated.nickname);
-      setTimezone(updated.timezone ?? DEFAULT_TIMEZONE);
-      setUser(updated);
+      const { user: updatedUser, couple: updatedCouple } = await updateMe(
+        payload,
+      );
+      setUser(updatedUser);
+      setCouple(updatedCouple);
       Alert.alert(pl.appTitle, pl.profile.savedToast);
     } catch (err) {
       const parsed = parseApiError(err, pl.profile.saveError);
@@ -173,7 +194,7 @@ export function ProfileScreen(_props: Props) {
       )}
 
       <Text style={styles.label}>{pl.profile.email}</Text>
-      <Text style={styles.readonly}>{baseUser?.email}</Text>
+      <Text style={styles.readonly}>{user?.email}</Text>
 
       <Text style={styles.label}>{pl.profile.nickname}</Text>
       <TextInput
@@ -188,6 +209,22 @@ export function ProfileScreen(_props: Props) {
         <Text testID="profile-nickname-error" style={styles.error}>
           {nicknameError ?? fieldErrors.nickname}
         </Text>
+      )}
+
+      <Text style={styles.label}>{pl.profile.partnerName}</Text>
+      <TextInput
+        testID="profile-partner-name"
+        style={styles.input}
+        autoCorrect={false}
+        value={partnerName}
+        onChangeText={onPartnerNameChange}
+      />
+      {fieldErrors.partner_name_local ? (
+        <Text testID="profile-partner-name-error" style={styles.error}>
+          {fieldErrors.partner_name_local}
+        </Text>
+      ) : (
+        <Text style={styles.hint}>{pl.profile.partnerNameHint}</Text>
       )}
 
       <Text style={styles.label}>{pl.profile.timezone}</Text>
@@ -209,7 +246,7 @@ export function ProfileScreen(_props: Props) {
       </View>
 
       <Text style={styles.label}>{pl.profile.locale}</Text>
-      <Text style={styles.readonly}>{baseUser?.locale ?? 'pl'}</Text>
+      <Text style={styles.readonly}>{user?.locale ?? 'pl'}</Text>
 
       <TouchableOpacity
         testID="profile-save"
@@ -281,6 +318,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 16,
     marginBottom: 8,
+  },
+  hint: {
+    fontSize: 12,
+    color: '#aaa',
+    marginBottom: 20,
   },
   error: {
     color: '#b00020',

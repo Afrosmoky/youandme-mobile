@@ -9,10 +9,13 @@ import { setAuthToken } from '../api/client';
 import * as authApi from '../api/auth';
 import { fetchMe } from '../api/profile';
 import { clearToken, loadToken, saveToken } from './storage';
-import { AuthResponse, User } from '../domain/types';
+import { AuthResponse, Couple, User } from '../domain/types';
 
 type AuthContextValue = {
   user: User | null;
+  // The user's couple (P3: auto-created at registration). Null until the first
+  // authenticated response (login/register/google) or a /me refresh.
+  couple: Couple | null;
   token: string | null;
   loading: boolean;
   login: (input: authApi.LoginInput) => Promise<void>;
@@ -20,16 +23,19 @@ type AuthContextValue = {
   // Exchanges a Google ID token for a session and stores it like a login.
   signInWithGoogle: (idToken: string) => Promise<void>;
   logout: () => Promise<void>;
-  // Refetches the current user from /me into the cache.
+  // Refetches the current user + couple from /me into the cache.
   refreshUser: () => Promise<void>;
   // Replaces the cached user directly (e.g. with the result of PATCH /me).
   setUser: (user: User) => void;
+  // Replaces the cached couple directly (e.g. with the result of PATCH /me).
+  setCouple: (couple: Couple | null) => void;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
+  const [couple, setCouple] = useState<Couple | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -61,11 +67,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setAuthToken(data.token);
       await saveToken(data.token);
       setUser(data.user);
+      setCouple(data.couple);
       setToken(data.token);
     };
 
     return {
       user,
+      couple,
       token,
       loading,
       login: async input => {
@@ -86,18 +94,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await clearToken();
         setAuthToken(null);
         setUser(null);
+        setCouple(null);
         setToken(null);
       },
       refreshUser: async () => {
-        // P3: /me now returns { user, couple }. Couple lands in state in M2;
-        // for now keep caching just the user.
-        setUser((await fetchMe()).user);
+        const { user: freshUser, couple: freshCouple } = await fetchMe();
+        setUser(freshUser);
+        setCouple(freshCouple);
       },
       setUser: nextUser => {
         setUser(nextUser);
       },
+      setCouple: nextCouple => {
+        setCouple(nextCouple);
+      },
     };
-  }, [user, token, loading]);
+  }, [user, couple, token, loading]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

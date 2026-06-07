@@ -47,6 +47,7 @@ describe('MemoriesScreen', () => {
     jest.clearAllMocks();
     jest.mocked(useAuth).mockReturnValue({
       user: null,
+      couple: null,
       token: 'tok',
       loading: false,
       login: jest.fn(),
@@ -55,6 +56,7 @@ describe('MemoriesScreen', () => {
       logout: jest.fn(),
       refreshUser: jest.fn(),
       setUser: jest.fn(),
+      setCouple: jest.fn(),
     });
   });
 

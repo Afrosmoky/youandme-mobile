@@ -29,8 +29,9 @@ export type UpdateMeInput = {
   nickname?: string;
   timezone?: string;
   locale?: string;
-  // P3: couple's local-only partner name, edited from the profile screen (M3).
-  partner_name_local?: string;
+  // P3: couple's local-only partner name, edited from the profile screen.
+  // Null clears it back to "no partner name".
+  partner_name_local?: string | null;
 };
 
 export type MeResult = {

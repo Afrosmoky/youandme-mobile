@@ -7,6 +7,8 @@ import { useAuth } from '../auth/AuthContext';
 import { AuthScreen } from '../screens/AuthScreen';
 import { ForgotPasswordScreen } from '../screens/ForgotPasswordScreen';
 import { ResetPasswordScreen } from '../screens/ResetPasswordScreen';
+import { BootstrapScreen } from '../screens/BootstrapScreen';
+import { CategoryPickerScreen } from '../screens/CategoryPickerScreen';
 import { QuestionScreen } from '../screens/QuestionScreen';
 import { MemoriesScreen } from '../screens/MemoriesScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
@@ -58,6 +60,16 @@ export function RootNavigator() {
         </>
       ) : (
         <>
+          <Stack.Screen
+            name="Bootstrap"
+            component={BootstrapScreen}
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="CategoryPicker"
+            component={CategoryPickerScreen}
+            options={{ title: pl.categoryPicker.title }}
+          />
           <Stack.Screen
             name="Question"
             component={QuestionScreen}

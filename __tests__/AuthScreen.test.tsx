@@ -25,6 +25,7 @@ describe('AuthScreen', () => {
     signInWithGoogle.mockResolvedValue(undefined);
     jest.mocked(useAuth).mockReturnValue({
       user: null,
+      couple: null,
       token: null,
       loading: false,
       login,
@@ -33,6 +34,7 @@ describe('AuthScreen', () => {
       logout: jest.fn(),
       refreshUser: jest.fn(),
       setUser: jest.fn(),
+      setCouple: jest.fn(),
     });
     jest.mocked(axios.isAxiosError).mockReturnValue(false);
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});

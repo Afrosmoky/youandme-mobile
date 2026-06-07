@@ -35,6 +35,8 @@ export const pl = {
     locale: 'Język',
     save: 'Zapisz zmiany',
     logout: 'Wyloguj',
+    partnerName: 'Imię partnera',
+    partnerNameHint: 'Imię osoby z którą grasz (opcjonalne)',
     verifyBadge: 'Email niezweryfikowany',
     resendVerification: 'Wyślij ponownie weryfikację',
     savedToast: 'Zmiany zostały zapisane.',
@@ -61,6 +63,19 @@ export const pl = {
     passwordTooShort: 'Hasło musi mieć co najmniej 8 znaków.',
     successAlert: 'Hasło zostało zresetowane, zaloguj się nowym.',
     errorAlert: 'Nie udało się zresetować hasła. Link mógł wygasnąć.',
+  },
+
+  categoryPicker: {
+    title: 'Wybierz kategorię',
+    mixButton: 'Tryb mix (wszystkie kategorie)',
+    mixHint: 'Pytania z różnych kategorii wymieszane',
+    loading: 'Ładuję kategorie...',
+    error: 'Nie udało się załadować kategorii.',
+    startSessionError: 'Nie udało się rozpocząć sesji.',
+  },
+
+  bootstrap: {
+    loading: 'Ładuję...',
   },
 
   question: {
