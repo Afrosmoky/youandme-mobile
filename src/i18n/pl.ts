@@ -80,12 +80,16 @@ export const pl = {
 
   question: {
     headerTitle: 'Pytanie',
-    memoriesButton: 'Wspomnienia',
-    answerPlaceholder: 'Twoja odpowiedź...',
-    save: 'Zapisz wspomnienie',
-    next: 'Następne pytanie',
-    saved: 'Zapisano',
-    savedBody: 'Wspomnienie zostało zapisane.',
+    mixLabel: 'Mix',
+    // Header progress, e.g. "Na poznanie — 3 z 20".
+    progress: (label: string, current: number, total: number) =>
+      `${label} — ${current} z ${total}`,
+    placeholder: 'Wpisz odpowiedź...',
+    submitButton: 'Zapisz wspomnienie',
+    skipButton: 'Pomiń',
+    endButton: 'Zakończ',
+    sessionComplete: 'Skończyłeś tę talię. Wybierz kolejną kategorię.',
+    sessionNotFound: 'Sesja wygasła. Wybierz kategorię ponownie.',
     loadError: 'Nie udało się pobrać pytania.',
     saveError: 'Nie udało się zapisać wspomnienia.',
     emptyAnswer: 'Najpierw wpisz odpowiedź.',
@@ -96,5 +100,12 @@ export const pl = {
     logout: 'Wyloguj',
     empty: 'Nie masz jeszcze żadnych wspomnień.',
     loadError: 'Nie udało się pobrać wspomnień.',
+    // "Odpowiedź Ola"
+    player: (name: string) => `Odpowiedź ${name}`,
+    origin: {
+      session: 'Sesja',
+      daily: 'Karta dnia',
+      challenge: 'Wyzwanie',
+    },
   },
 } as const;

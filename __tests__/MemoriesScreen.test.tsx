@@ -81,6 +81,65 @@ describe('MemoriesScreen', () => {
     expect(await screen.findByText(pl.memories.empty)).toBeOnTheScreen();
   });
 
+  test('renders only player A when there is no answer B', async () => {
+    jest
+      .mocked(listMemories)
+      .mockResolvedValue({memories: [memory], nextCursor: null, prevCursor: null});
+
+    render(<MemoriesScreen {...makeProps()} />);
+
+    expect(await screen.findByTestId('memory-player-a-m_01')).toHaveTextContent(
+      'Świetny żart w pracy.',
+    );
+    expect(screen.getByText(pl.memories.player('ola'))).toBeOnTheScreen();
+    expect(screen.queryByTestId('memory-player-b-m_01')).toBeNull();
+  });
+
+  test('renders both players when answer B is present', async () => {
+    const both: Memory = {
+      ...memory,
+      ulid: 'm_02',
+      answerB: 'Druga odpowiedź.',
+      playerBName: 'Tomek',
+    };
+    jest
+      .mocked(listMemories)
+      .mockResolvedValue({memories: [both], nextCursor: null, prevCursor: null});
+
+    render(<MemoriesScreen {...makeProps()} />);
+
+    expect(await screen.findByTestId('memory-player-a-m_02')).toHaveTextContent(
+      'Świetny żart w pracy.',
+    );
+    expect(screen.getByTestId('memory-player-b-m_02')).toHaveTextContent(
+      'Druga odpowiedź.',
+    );
+    expect(screen.getByText(pl.memories.player('Tomek'))).toBeOnTheScreen();
+  });
+
+  test('renders the Polish label for each origin', async () => {
+    const memories: Memory[] = [
+      {...memory, ulid: 'm_s', origin: 'session'},
+      {...memory, ulid: 'm_d', origin: 'daily'},
+      {...memory, ulid: 'm_c', origin: 'challenge'},
+    ];
+    jest
+      .mocked(listMemories)
+      .mockResolvedValue({memories, nextCursor: null, prevCursor: null});
+
+    render(<MemoriesScreen {...makeProps()} />);
+
+    expect(await screen.findByTestId('memory-origin-m_s')).toHaveTextContent(
+      pl.memories.origin.session,
+    );
+    expect(screen.getByTestId('memory-origin-m_d')).toHaveTextContent(
+      pl.memories.origin.daily,
+    );
+    expect(screen.getByTestId('memory-origin-m_c')).toHaveTextContent(
+      pl.memories.origin.challenge,
+    );
+  });
+
   test('pull-to-refresh refetches the list', async () => {
     jest
       .mocked(listMemories)

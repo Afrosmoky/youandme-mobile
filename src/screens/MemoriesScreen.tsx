@@ -31,6 +31,21 @@ function formatDate(iso: string): string {
   return dateFormatter.format(new Date(iso));
 }
 
+// Maps the backend `origin` enum to a Polish label. Falls back to the raw value
+// for any origin added server-side before mobile knows about it.
+function originLabel(origin: string): string {
+  switch (origin) {
+    case 'session':
+      return pl.memories.origin.session;
+    case 'daily':
+      return pl.memories.origin.daily;
+    case 'challenge':
+      return pl.memories.origin.challenge;
+    default:
+      return origin;
+  }
+}
+
 export function MemoriesScreen({ navigation }: Props) {
   const [memories, setMemories] = useState<Memory[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -122,9 +137,38 @@ export function MemoriesScreen({ navigation }: Props) {
         <Text style={styles.emptyText}>{pl.memories.empty}</Text>
       }
       renderItem={({ item }) => (
-        <View style={styles.card}>
-          <Text style={styles.question}>{item.question.body}</Text>
-          <Text style={styles.answer}>{item.answerA}</Text>
+        <View testID={`memory-item-${item.ulid}`} style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.question}>{item.question.body}</Text>
+            {item.question.category && (
+              <Text style={styles.category}>{item.question.category.name}</Text>
+            )}
+          </View>
+
+          <Text testID={`memory-origin-${item.ulid}`} style={styles.origin}>
+            {originLabel(item.origin)}
+          </Text>
+
+          <Text style={styles.playerLabel}>
+            {pl.memories.player(item.playerAName)}
+          </Text>
+          <Text testID={`memory-player-a-${item.ulid}`} style={styles.answer}>
+            {item.answerA}
+          </Text>
+
+          {item.answerB !== null && item.playerBName && (
+            <>
+              <Text style={styles.playerLabel}>
+                {pl.memories.player(item.playerBName)}
+              </Text>
+              <Text
+                testID={`memory-player-b-${item.ulid}`}
+                style={styles.answer}>
+                {item.answerB}
+              </Text>
+            </>
+          )}
+
           <Text style={styles.date}>{formatDate(item.answeredAt)}</Text>
         </View>
       )}
@@ -160,10 +204,29 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
   },
+  cardHeader: {
+    marginBottom: 8,
+  },
   question: {
-    fontSize: 13,
+    fontSize: 15,
+    color: '#333',
+    fontWeight: '600',
+  },
+  category: {
+    fontSize: 12,
     color: '#888',
-    marginBottom: 6,
+    marginTop: 2,
+  },
+  origin: {
+    fontSize: 11,
+    color: '#aaa',
+    textTransform: 'uppercase',
+    marginBottom: 8,
+  },
+  playerLabel: {
+    fontSize: 12,
+    color: '#888',
+    marginBottom: 2,
   },
   answer: {
     fontSize: 17,
