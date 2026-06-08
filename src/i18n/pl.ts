@@ -67,6 +67,7 @@ export const pl = {
 
   categoryPicker: {
     title: 'Wybierz kategorię',
+    memoriesButton: 'Wspomnienia',
     mixButton: 'Tryb mix (wszystkie kategorie)',
     mixHint: 'Pytania z różnych kategorii wymieszane',
     loading: 'Ładuję kategorie...',

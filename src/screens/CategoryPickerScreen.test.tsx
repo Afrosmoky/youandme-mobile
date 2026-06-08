@@ -12,6 +12,15 @@ jest.mock('../api/categories', () => ({listCategories: jest.fn()}));
 jest.mock('../api/sessions', () => ({startSession: jest.fn()}));
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CategoryPicker'>;
+type RenderProp = (p: object) => React.ReactElement;
+
+// Pulls the latest navigation.setOptions payload and renders a header render
+// prop (the real navigator isn't mounted under Jest).
+function renderHeader(props: Props, key: 'headerRight') {
+  const calls = jest.mocked(props.navigation.setOptions).mock.calls;
+  const opts = calls[calls.length - 1][0];
+  return render((opts[key] as unknown as RenderProp)({}));
+}
 
 const categories = [
   {
@@ -81,6 +90,17 @@ describe('CategoryPickerScreen', () => {
     render(<CategoryPickerScreen {...makeProps()} />);
 
     expect(await screen.findByTestId('category-picker-mix')).toBeOnTheScreen();
+  });
+
+  test('the header memories button navigates to Memories', async () => {
+    const props = makeProps();
+    render(<CategoryPickerScreen {...props} />);
+    await screen.findByTestId('category-na_poznanie');
+
+    const header = renderHeader(props, 'headerRight');
+    fireEvent.press(header.getByTestId('category-picker-memories'));
+
+    expect(navigate).toHaveBeenCalledWith('Memories');
   });
 
   test('tapping a category starts a session and navigates to Question', async () => {

@@ -29,9 +29,18 @@ export function CategoryPickerScreen({ navigation }: Props) {
       // headerRight is a navigation render prop, not a remounted subtree.
       // eslint-disable-next-line react/no-unstable-nested-components
       headerRight: () => (
-        <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
-          <Text style={styles.headerButton}>{pl.profile.headerButton}</Text>
-        </TouchableOpacity>
+        <View style={styles.headerButtons}>
+          <TouchableOpacity
+            testID="category-picker-memories"
+            onPress={() => navigation.navigate('Memories')}>
+            <Text style={styles.headerButton}>
+              {pl.categoryPicker.memoriesButton}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
+            <Text style={styles.headerButton}>{pl.profile.headerButton}</Text>
+          </TouchableOpacity>
+        </View>
       ),
     });
   }, [navigation]);
@@ -186,6 +195,10 @@ const styles = StyleSheet.create({
   },
   startingSpinner: {
     paddingVertical: 16,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    gap: 16,
   },
   headerButton: {
     color: '#0a84ff',
