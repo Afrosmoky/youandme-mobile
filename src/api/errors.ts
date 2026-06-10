@@ -38,8 +38,14 @@ function extractFields(errors: unknown): FieldErrors {
 // errors. 401/429 map to fixed Polish strings; 422 reads the backend payload.
 export function parseApiError(err: unknown, fallback: string): ParsedApiError {
   if (axios.isAxiosError(err)) {
-    const status = err.response?.status;
-    const data = err.response?.data as
+    // No response at all = network failure (connection refused, timeout, DNS).
+    // Must be checked before status so it is not masked as a generic error.
+    if (!err.response) {
+      return { topLevel: pl.common.networkError, fields: {} };
+    }
+
+    const status = err.response.status;
+    const data = err.response.data as
       | { message?: unknown; errors?: unknown }
       | undefined;
 
@@ -56,6 +62,10 @@ export function parseApiError(err: unknown, fallback: string): ParsedApiError {
           ? data.message
           : Object.values(fields)[0] ?? fallback;
       return { topLevel: message, fields };
+    }
+    // Server-side failure: a concrete "try later", not the generic fallback.
+    if (status >= 500) {
+      return { topLevel: pl.common.serverError, fields: {} };
     }
   }
   return { topLevel: fallback, fields: {} };

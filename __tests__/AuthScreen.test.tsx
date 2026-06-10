@@ -109,7 +109,7 @@ describe('AuthScreen', () => {
     expect(login).not.toHaveBeenCalled();
   });
 
-  test('shows an alert and message when the API rejects with 401', async () => {
+  test('login masks a 401 as generic invalid credentials', async () => {
     login.mockRejectedValueOnce({response: {status: 401}});
     jest.mocked(axios.isAxiosError).mockReturnValue(true);
 
@@ -128,10 +128,6 @@ describe('AuthScreen', () => {
     expect(
       await screen.findByText(pl.auth.invalidCredentials),
     ).toBeOnTheScreen();
-    expect(Alert.alert).toHaveBeenCalledWith(
-      pl.appTitle,
-      pl.auth.invalidCredentials,
-    );
   });
 
   test('shows the per-field backend error under the nickname in register mode on 422', async () => {
@@ -170,38 +166,49 @@ describe('AuthScreen', () => {
     expect(Alert.alert).not.toHaveBeenCalled();
   });
 
-  test('keeps the login error generic regardless of the backend response', async () => {
-    // Even when the backend leaks a specific 422, login must stay generic.
-    login.mockRejectedValueOnce({
-      response: {
-        status: 422,
-        data: {
-          message: 'Brak konta dla tego adresu.',
-          errors: {email: ['Brak konta dla tego adresu.']},
-        },
-      },
-    });
+  test('login shows the network error when the backend is offline', async () => {
+    // No response = connection refused / timeout. Must NOT be masked as a
+    // credentials problem, or the user blames their password.
+    login.mockRejectedValueOnce({message: 'Network Error'});
     jest.mocked(axios.isAxiosError).mockReturnValue(true);
 
     render(<AuthScreen />);
 
     fireEvent.changeText(
       screen.getByPlaceholderText(pl.auth.email),
-      'nieznany@example.com',
+      'ola@example.com',
     );
     fireEvent.changeText(
       screen.getByPlaceholderText(pl.auth.password),
-      'jakies-haslo',
+      'tajne-haslo-123',
     );
     fireEvent.press(screen.getByTestId('auth-submit'));
 
-    expect(
-      await screen.findByText(pl.auth.invalidCredentials),
-    ).toBeOnTheScreen();
-    expect(screen.queryByText('Brak konta dla tego adresu.')).toBeNull();
+    expect(await screen.findByText(pl.common.networkError)).toBeOnTheScreen();
+    expect(screen.queryByText(pl.auth.invalidCredentials)).toBeNull();
   });
 
-  test('falls back to the generic message on a 500 in register mode', async () => {
+  test('login shows the server error for a 500', async () => {
+    login.mockRejectedValueOnce({response: {status: 500}});
+    jest.mocked(axios.isAxiosError).mockReturnValue(true);
+
+    render(<AuthScreen />);
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText(pl.auth.email),
+      'ola@example.com',
+    );
+    fireEvent.changeText(
+      screen.getByPlaceholderText(pl.auth.password),
+      'tajne-haslo-123',
+    );
+    fireEvent.press(screen.getByTestId('auth-submit'));
+
+    expect(await screen.findByText(pl.common.serverError)).toBeOnTheScreen();
+    expect(screen.queryByText(pl.auth.invalidCredentials)).toBeNull();
+  });
+
+  test('shows the server error message on a 500 in register mode', async () => {
     register.mockRejectedValueOnce({response: {status: 500}});
     jest.mocked(axios.isAxiosError).mockReturnValue(true);
 
@@ -222,7 +229,7 @@ describe('AuthScreen', () => {
     );
     fireEvent.press(screen.getByTestId('auth-submit'));
 
-    expect(await screen.findByText(pl.auth.genericError)).toBeOnTheScreen();
+    expect(await screen.findByText(pl.common.serverError)).toBeOnTheScreen();
   });
 
   test('Google sign-in exchanges the idToken via AuthContext', async () => {

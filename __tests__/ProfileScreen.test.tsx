@@ -183,7 +183,7 @@ describe('ProfileScreen', () => {
     expect(Alert.alert).not.toHaveBeenCalled();
   });
 
-  test('falls back to the generic save error on a 500', async () => {
+  test('shows the server error on a 500', async () => {
     jest.mocked(updateMe).mockRejectedValueOnce({response: {status: 500}});
     jest.mocked(axios.isAxiosError).mockReturnValue(true);
 
@@ -196,7 +196,7 @@ describe('ProfileScreen', () => {
     await waitFor(() =>
       expect(Alert.alert).toHaveBeenCalledWith(
         pl.appTitle,
-        pl.profile.saveError,
+        pl.common.serverError,
       ),
     );
   });

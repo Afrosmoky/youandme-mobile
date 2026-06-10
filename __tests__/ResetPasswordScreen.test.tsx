@@ -207,7 +207,7 @@ describe('ResetPasswordScreen', () => {
     );
   });
 
-  test('falls back to the generic banner message on a 500', async () => {
+  test('shows the server error in the banner on a 500', async () => {
     jest.mocked(axios.isAxiosError).mockReturnValue(true);
     jest
       .mocked(resetPassword)
@@ -226,7 +226,7 @@ describe('ResetPasswordScreen', () => {
     fireEvent.press(screen.getByTestId('reset-password-submit'));
 
     expect(await screen.findByTestId('reset-password-banner')).toHaveTextContent(
-      pl.resetPassword.errorAlert,
+      pl.common.serverError,
     );
   });
 });

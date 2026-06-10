@@ -95,7 +95,7 @@ describe('ForgotPasswordScreen', () => {
     expect(Alert.alert).not.toHaveBeenCalled();
   });
 
-  test('falls back to the generic error on a 500', async () => {
+  test('shows the server error on a 500', async () => {
     jest
       .mocked(requestPasswordReset)
       .mockRejectedValueOnce({response: {status: 500}});
@@ -112,7 +112,7 @@ describe('ForgotPasswordScreen', () => {
     await waitFor(() =>
       expect(Alert.alert).toHaveBeenCalledWith(
         pl.appTitle,
-        pl.forgotPassword.error,
+        pl.common.serverError,
       ),
     );
   });

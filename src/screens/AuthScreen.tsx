@@ -9,6 +9,7 @@ import {
   TextInput,
   TouchableOpacity,
 } from 'react-native';
+import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
@@ -103,16 +104,18 @@ export function AuthScreen() {
       }
       // On success the token changes and RootNavigator swaps to QuestionScreen.
     } catch (err) {
+      const parsed = parseApiError(err, pl.auth.genericError);
       if (isRegister) {
         // Register surfaces the real backend messages (e.g. "nick zajęty").
-        const parsed = parseApiError(err, pl.auth.genericError);
         setFieldErrors(parsed.fields);
         setError(parsed.topLevel);
       } else {
-        // Login stays deliberately generic: never reveal whether the email
-        // exists or the password is wrong.
-        setError(pl.auth.invalidCredentials);
-        Alert.alert(pl.appTitle, pl.auth.invalidCredentials);
+        // Login masks only true auth failures (401): never reveal whether the
+        // email exists or the password is wrong. Network/server errors are
+        // shown as-is so the user knows it is not their credentials.
+        const isAuthError =
+          axios.isAxiosError(err) && err.response?.status === 401;
+        setError(isAuthError ? pl.auth.invalidCredentials : parsed.topLevel);
       }
     } finally {
       setSubmitting(false);
