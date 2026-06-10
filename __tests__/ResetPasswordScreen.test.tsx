@@ -59,10 +59,15 @@ describe('ResetPasswordScreen', () => {
     );
   });
 
-  test('renders the password field with a show/hide toggle', () => {
+  test('renders both password fields with a show/hide toggle', () => {
     render(<ResetPasswordScreen {...makeProps()} />);
 
-    expect(screen.getByTestId('reset-password-password-toggle')).toBeOnTheScreen();
+    expect(
+      screen.getByTestId('reset-password-password-toggle'),
+    ).toBeOnTheScreen();
+    expect(
+      screen.getByTestId('reset-password-confirm-toggle'),
+    ).toBeOnTheScreen();
   });
 
   test('shows an inline error when the passwords do not match', () => {

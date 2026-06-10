@@ -6,7 +6,6 @@ import {
   Platform,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -96,13 +95,12 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
         error={fieldErrors.password}
         autoComplete="new-password"
       />
-      <TextInput
-        style={styles.input}
-        placeholder={pl.resetPassword.passwordConfirm}
-        secureTextEntry
-        autoCapitalize="none"
+      <PasswordInput
         value={confirm}
         onChangeText={setConfirm}
+        placeholder={pl.resetPassword.passwordConfirm}
+        testID="reset-password-confirm"
+        autoComplete="new-password"
       />
 
       {inlineError && <Text style={styles.error}>{inlineError}</Text>}
@@ -133,15 +131,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 24,
     textAlign: 'center',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    marginBottom: 12,
-    fontSize: 16,
   },
   error: {
     color: '#b00020',
