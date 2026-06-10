@@ -12,6 +12,7 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { resetPassword } from '../api/passwordReset';
+import { PasswordInput } from '../components/PasswordInput';
 import { parseApiError, FieldErrors } from '../api/errors';
 import { pl } from '../i18n/pl';
 
@@ -87,19 +88,14 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Text style={styles.title}>{pl.resetPassword.title}</Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder={pl.resetPassword.password}
-        secureTextEntry
-        autoCapitalize="none"
+      <PasswordInput
         value={password}
         onChangeText={onPasswordChange}
+        placeholder={pl.resetPassword.password}
+        testID="reset-password-password"
+        error={fieldErrors.password}
+        autoComplete="new-password"
       />
-      {fieldErrors.password && (
-        <Text testID="reset-password-password-error" style={styles.fieldError}>
-          {fieldErrors.password}
-        </Text>
-      )}
       <TextInput
         style={styles.input}
         placeholder={pl.resetPassword.passwordConfirm}
@@ -149,12 +145,6 @@ const styles = StyleSheet.create({
   },
   error: {
     color: '#b00020',
-    marginBottom: 12,
-  },
-  fieldError: {
-    color: '#b00020',
-    fontSize: 13,
-    marginTop: -6,
     marginBottom: 12,
   },
   button: {

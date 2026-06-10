@@ -64,6 +64,12 @@ describe('AuthScreen', () => {
     expect(register).not.toHaveBeenCalled();
   });
 
+  test('renders the password field with a show/hide toggle', () => {
+    render(<AuthScreen />);
+
+    expect(screen.getByTestId('auth-password-toggle')).toBeOnTheScreen();
+  });
+
   test('toggling to register reveals the nickname field', () => {
     render(<AuthScreen />);
 

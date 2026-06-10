@@ -17,6 +17,7 @@ import {
   statusCodes,
 } from '@react-native-google-signin/google-signin';
 import { useAuth } from '../auth/AuthContext';
+import { PasswordInput } from '../components/PasswordInput';
 import { parseApiError, FieldErrors } from '../api/errors';
 import { validateNickname } from '../domain/validation';
 import { RootStackParamList } from '../navigation/types';
@@ -176,19 +177,14 @@ export function AuthScreen() {
           {fieldErrors.email}
         </Text>
       )}
-      <TextInput
-        style={styles.input}
-        placeholder={pl.auth.password}
-        secureTextEntry
-        autoCapitalize="none"
+      <PasswordInput
         value={password}
         onChangeText={onPasswordChange}
+        placeholder={pl.auth.password}
+        testID="auth-password"
+        error={isRegister ? fieldErrors.password : undefined}
+        autoComplete={isRegister ? 'new-password' : 'password'}
       />
-      {isRegister && fieldErrors.password && (
-        <Text testID="auth-password-error" style={styles.fieldError}>
-          {fieldErrors.password}
-        </Text>
-      )}
       {isRegister && (
         <>
           <TextInput

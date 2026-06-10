@@ -3,6 +3,11 @@
 export const pl = {
   appTitle: 'Ja i Ty',
 
+  common: {
+    passwordShow: 'Pokaż',
+    passwordHide: 'Ukryj',
+  },
+
   auth: {
     loginTitle: 'Zaloguj się',
     registerTitle: 'Załóż konto',
