@@ -1,5 +1,5 @@
 import type { AxiosResponse } from 'axios';
-import { fetchMe, updateMe } from './profile';
+import { changePassword, fetchMe, updateMe } from './profile';
 import { apiClient } from './client';
 
 jest.mock('./client', () => ({
@@ -59,5 +59,21 @@ describe('profile API', () => {
       partner_name_local: 'Tomasz',
     });
     expect(result.couple.partnerNameLocal).toBe('Tomasz');
+  });
+
+  test('changePassword posts snake_case credentials', async () => {
+    jest
+      .mocked(apiClient.post)
+      .mockResolvedValue(res({ message: 'Password changed.' }));
+
+    await changePassword({
+      currentPassword: 'oldpass1',
+      newPassword: 'newpass12',
+    });
+
+    expect(apiClient.post).toHaveBeenCalledWith('/me/change-password', {
+      current_password: 'oldpass1',
+      new_password: 'newpass12',
+    });
   });
 });

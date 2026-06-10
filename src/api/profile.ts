@@ -67,3 +67,23 @@ export async function fetchVerificationStatus(): Promise<VerificationStatus> {
     daysSinceRegistration: parsed.days_since_registration,
   };
 }
+
+const changePasswordResponseSchema = z.object({ message: z.string() });
+
+export type ChangePasswordInput = {
+  currentPassword: string;
+  newPassword: string;
+};
+
+// P3: change the password without the email reset flow. Backend validates
+// current_password (Hash::check) and new_password (min 8, different); a bad
+// current password or too-weak new one answers 422 with per-field errors.
+export async function changePassword(
+  input: ChangePasswordInput,
+): Promise<void> {
+  const res = await apiClient.post('/me/change-password', {
+    current_password: input.currentPassword,
+    new_password: input.newPassword,
+  });
+  changePasswordResponseSchema.parse(res.data);
+}

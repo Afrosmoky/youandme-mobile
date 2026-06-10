@@ -10,6 +10,7 @@ import {
 } from '@testing-library/react-native';
 import {ProfileScreen} from '../src/screens/ProfileScreen';
 import {
+  changePassword,
   fetchVerificationStatus,
   resendVerificationEmail,
   updateMe,
@@ -23,6 +24,7 @@ jest.mock('../src/api/profile', () => ({
   fetchVerificationStatus: jest.fn(),
   updateMe: jest.fn(),
   resendVerificationEmail: jest.fn(),
+  changePassword: jest.fn(),
 }));
 jest.mock('../src/auth/AuthContext', () => ({useAuth: jest.fn()}));
 
@@ -217,5 +219,146 @@ describe('ProfileScreen', () => {
     fireEvent.press(screen.getByTestId('profile-logout'));
 
     expect(logout).toHaveBeenCalled();
+  });
+
+  // Fills the change-password form with valid, matching values.
+  const fillPasswordForm = () => {
+    fireEvent.changeText(
+      screen.getByTestId('profile-current-password'),
+      'oldpass1',
+    );
+    fireEvent.changeText(
+      screen.getByTestId('profile-new-password'),
+      'newpass12',
+    );
+    fireEvent.changeText(
+      screen.getByTestId('profile-confirm-password'),
+      'newpass12',
+    );
+  };
+
+  test('renders the change password section', async () => {
+    render(<ProfileScreen {...makeProps()} />);
+    await screen.findByDisplayValue('ola_test');
+
+    expect(screen.getByTestId('profile-current-password')).toBeOnTheScreen();
+    expect(screen.getByTestId('profile-new-password')).toBeOnTheScreen();
+    expect(screen.getByTestId('profile-confirm-password')).toBeOnTheScreen();
+    expect(
+      screen.getByTestId('profile-change-password-submit'),
+    ).toBeOnTheScreen();
+  });
+
+  test('disables submit when the new passwords do not match', async () => {
+    render(<ProfileScreen {...makeProps()} />);
+    await screen.findByDisplayValue('ola_test');
+
+    fireEvent.changeText(
+      screen.getByTestId('profile-current-password'),
+      'oldpass1',
+    );
+    fireEvent.changeText(
+      screen.getByTestId('profile-new-password'),
+      'newpass12',
+    );
+    fireEvent.changeText(
+      screen.getByTestId('profile-confirm-password'),
+      'different9',
+    );
+
+    expect(
+      screen.getByTestId('profile-change-password-submit'),
+    ).toBeDisabled();
+    expect(
+      screen.getByText(pl.profile.passwordsDoNotMatch),
+    ).toBeOnTheScreen();
+  });
+
+  test('changes the password and clears the form', async () => {
+    jest.mocked(changePassword).mockResolvedValue(undefined);
+
+    render(<ProfileScreen {...makeProps()} />);
+    await screen.findByDisplayValue('ola_test');
+
+    fillPasswordForm();
+    fireEvent.press(screen.getByTestId('profile-change-password-submit'));
+
+    await waitFor(() =>
+      expect(changePassword).toHaveBeenCalledWith({
+        currentPassword: 'oldpass1',
+        newPassword: 'newpass12',
+      }),
+    );
+    expect(Alert.alert).toHaveBeenCalledWith(
+      pl.appTitle,
+      pl.profile.passwordChanged,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('profile-current-password')).toHaveDisplayValue(
+        '',
+      ),
+    );
+  });
+
+  test('shows an inline error for a wrong current password', async () => {
+    jest.mocked(changePassword).mockRejectedValueOnce({
+      response: {
+        status: 422,
+        data: {
+          message: 'Obecne hasło jest nieprawidłowe.',
+          errors: {current_password: ['Obecne hasło jest nieprawidłowe.']},
+        },
+      },
+    });
+    jest.mocked(axios.isAxiosError).mockReturnValue(true);
+
+    render(<ProfileScreen {...makeProps()} />);
+    await screen.findByDisplayValue('ola_test');
+
+    fillPasswordForm();
+    fireEvent.press(screen.getByTestId('profile-change-password-submit'));
+
+    expect(
+      await screen.findByTestId('profile-current-password-error'),
+    ).toHaveTextContent('Obecne hasło jest nieprawidłowe.');
+  });
+
+  test('shows an inline error for a too short new password', async () => {
+    jest.mocked(changePassword).mockRejectedValueOnce({
+      response: {
+        status: 422,
+        data: {
+          message: 'Nowe hasło jest za krótkie.',
+          errors: {new_password: ['Nowe hasło jest za krótkie.']},
+        },
+      },
+    });
+    jest.mocked(axios.isAxiosError).mockReturnValue(true);
+
+    render(<ProfileScreen {...makeProps()} />);
+    await screen.findByDisplayValue('ola_test');
+
+    fillPasswordForm();
+    fireEvent.press(screen.getByTestId('profile-change-password-submit'));
+
+    expect(
+      await screen.findByTestId('profile-new-password-error'),
+    ).toHaveTextContent('Nowe hasło jest za krótkie.');
+  });
+
+  test('shows a spinner on the submit button while changing', async () => {
+    jest.mocked(changePassword).mockReturnValue(new Promise(() => {}));
+
+    render(<ProfileScreen {...makeProps()} />);
+    await screen.findByDisplayValue('ola_test');
+
+    fillPasswordForm();
+    fireEvent.press(screen.getByTestId('profile-change-password-submit'));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByText(pl.profile.changePasswordButton),
+      ).toBeNull(),
+    );
   });
 });

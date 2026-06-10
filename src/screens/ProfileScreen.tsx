@@ -12,6 +12,7 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import {
+  changePassword,
   fetchVerificationStatus,
   resendVerificationEmail,
   updateMe,
@@ -19,6 +20,7 @@ import {
   VerificationStatus,
 } from '../api/profile';
 import { useAuth } from '../auth/AuthContext';
+import { PasswordInput } from '../components/PasswordInput';
 import { parseApiError, FieldErrors } from '../api/errors';
 import { validateNickname } from '../domain/validation';
 import { pl } from '../i18n/pl';
@@ -48,6 +50,16 @@ export function ProfileScreen(_props: Props) {
   );
   const [saving, setSaving] = useState(false);
   const [resending, setResending] = useState(false);
+
+  // Change-password form is fully independent of the profile form above.
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordFieldErrors, setPasswordFieldErrors] = useState<FieldErrors>(
+    {},
+  );
 
   // Re-seed the editable fields whenever the cached user/couple change (initial
   // hydration, or after a successful save pushes fresh values back).
@@ -161,6 +173,38 @@ export function ProfileScreen(_props: Props) {
     }
   };
 
+  // Front-side mismatch check; only flagged once the user has typed a
+  // confirmation, so the field is not red while still empty.
+  const confirmError =
+    confirmPassword.length > 0 && newPassword !== confirmPassword
+      ? pl.profile.passwordsDoNotMatch
+      : null;
+  const canChangePassword =
+    currentPassword.length > 0 &&
+    newPassword.length > 0 &&
+    confirmPassword.length > 0 &&
+    newPassword === confirmPassword &&
+    !changingPassword;
+
+  const onChangePassword = async () => {
+    setChangingPassword(true);
+    setPasswordError(null);
+    setPasswordFieldErrors({});
+    try {
+      await changePassword({ currentPassword, newPassword });
+      Alert.alert(pl.appTitle, pl.profile.passwordChanged);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err) {
+      const parsed = parseApiError(err, pl.profile.passwordChangeError);
+      setPasswordError(parsed.topLevel);
+      setPasswordFieldErrors(parsed.fields);
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -260,6 +304,57 @@ export function ProfileScreen(_props: Props) {
         )}
       </TouchableOpacity>
 
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>
+          {pl.profile.changePasswordTitle}
+        </Text>
+
+        {passwordError && (
+          <Text testID="profile-password-error" style={styles.error}>
+            {passwordError}
+          </Text>
+        )}
+
+        <PasswordInput
+          value={currentPassword}
+          onChangeText={setCurrentPassword}
+          placeholder={pl.profile.currentPassword}
+          testID="profile-current-password"
+          error={passwordFieldErrors.current_password}
+          autoComplete="password"
+        />
+        <PasswordInput
+          value={newPassword}
+          onChangeText={setNewPassword}
+          placeholder={pl.profile.newPassword}
+          testID="profile-new-password"
+          error={passwordFieldErrors.new_password}
+          autoComplete="new-password"
+        />
+        <PasswordInput
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          placeholder={pl.profile.confirmPassword}
+          testID="profile-confirm-password"
+          error={confirmError ?? undefined}
+          autoComplete="new-password"
+        />
+
+        <TouchableOpacity
+          testID="profile-change-password-submit"
+          style={[styles.button, !canChangePassword && styles.buttonDisabled]}
+          onPress={onChangePassword}
+          disabled={!canChangePassword}>
+          {changingPassword ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.buttonText}>
+              {pl.profile.changePasswordButton}
+            </Text>
+          )}
+        </TouchableOpacity>
+      </View>
+
       <TouchableOpacity
         testID="profile-logout"
         style={[styles.button, styles.logoutButton]}
@@ -271,6 +366,18 @@ export function ProfileScreen(_props: Props) {
 }
 
 const styles = StyleSheet.create({
+  section: {
+    marginTop: 24,
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#222',
+    marginBottom: 16,
+  },
   container: {
     flex: 1,
   },
