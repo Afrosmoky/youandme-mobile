@@ -88,7 +88,7 @@ describe('ResetPasswordScreen', () => {
     expect(resetPassword).not.toHaveBeenCalled();
   });
 
-  test('surfaces the backend message when the token is rejected', async () => {
+  test('surfaces the backend message in the banner when the token is rejected', async () => {
     jest.mocked(axios.isAxiosError).mockReturnValue(true);
     jest.mocked(resetPassword).mockRejectedValueOnce({
       response: {
@@ -109,12 +109,69 @@ describe('ResetPasswordScreen', () => {
     );
     fireEvent.press(screen.getByTestId('reset-password-submit'));
 
-    await waitFor(() =>
-      expect(Alert.alert).toHaveBeenCalledWith(
-        pl.appTitle,
-        'This password reset token is invalid.',
-      ),
+    expect(await screen.findByTestId('reset-password-banner')).toHaveTextContent(
+      'This password reset token is invalid.',
     );
+  });
+
+  test('shows the top-level banner when the backend returns an email error', async () => {
+    jest.mocked(axios.isAxiosError).mockReturnValue(true);
+    jest.mocked(resetPassword).mockRejectedValueOnce({
+      response: {
+        status: 422,
+        data: {
+          message: 'Ten token jest nieprawidłowy.',
+          errors: {email: ['Ten token jest nieprawidłowy.']},
+        },
+      },
+    });
+
+    render(<ResetPasswordScreen {...makeProps()} />);
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText(pl.resetPassword.password),
+      'noweHaslo123',
+    );
+    fireEvent.changeText(
+      screen.getByPlaceholderText(pl.resetPassword.passwordConfirm),
+      'noweHaslo123',
+    );
+    fireEvent.press(screen.getByTestId('reset-password-submit'));
+
+    expect(await screen.findByTestId('reset-password-banner')).toHaveTextContent(
+      'Ten token jest nieprawidłowy.',
+    );
+  });
+
+  test('clears the banner when the password is edited', async () => {
+    jest.mocked(axios.isAxiosError).mockReturnValue(true);
+    jest.mocked(resetPassword).mockRejectedValueOnce({
+      response: {
+        status: 422,
+        data: {message: 'Ten token jest nieprawidłowy.'},
+      },
+    });
+
+    render(<ResetPasswordScreen {...makeProps()} />);
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText(pl.resetPassword.password),
+      'noweHaslo123',
+    );
+    fireEvent.changeText(
+      screen.getByPlaceholderText(pl.resetPassword.passwordConfirm),
+      'noweHaslo123',
+    );
+    fireEvent.press(screen.getByTestId('reset-password-submit'));
+
+    await screen.findByTestId('reset-password-banner');
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText(pl.resetPassword.password),
+      'noweHaslo1234',
+    );
+
+    expect(screen.queryByTestId('reset-password-banner')).toBeNull();
   });
 
   test('shows the per-field backend error under the password on 422', async () => {
@@ -144,10 +201,13 @@ describe('ResetPasswordScreen', () => {
     expect(
       await screen.findByTestId('reset-password-password-error'),
     ).toHaveTextContent('Hasło jest zbyt słabe.');
-    expect(Alert.alert).not.toHaveBeenCalled();
+    // The topLevel message also shows in the banner.
+    expect(screen.getByTestId('reset-password-banner')).toHaveTextContent(
+      'Hasło jest zbyt słabe.',
+    );
   });
 
-  test('falls back to the generic alert on a 500', async () => {
+  test('falls back to the generic banner message on a 500', async () => {
     jest.mocked(axios.isAxiosError).mockReturnValue(true);
     jest
       .mocked(resetPassword)
@@ -165,11 +225,8 @@ describe('ResetPasswordScreen', () => {
     );
     fireEvent.press(screen.getByTestId('reset-password-submit'));
 
-    await waitFor(() =>
-      expect(Alert.alert).toHaveBeenCalledWith(
-        pl.appTitle,
-        pl.resetPassword.errorAlert,
-      ),
+    expect(await screen.findByTestId('reset-password-banner')).toHaveTextContent(
+      pl.resetPassword.errorAlert,
     );
   });
 });

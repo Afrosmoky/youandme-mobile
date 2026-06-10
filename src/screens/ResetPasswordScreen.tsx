@@ -24,6 +24,10 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  // Backend errors keyed to fields not shown here (e.g. errors.email for an
+  // expired token) have nowhere to render inline, so we surface the topLevel
+  // message as a banner above the form.
+  const [topLevelError, setTopLevelError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const tooShort = password.length < MIN_PASSWORD_LENGTH;
@@ -43,6 +47,7 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
 
   const onPasswordChange = (value: string) => {
     setPassword(value);
+    setTopLevelError(null);
     setFieldErrors(prev => {
       if (!prev.password) {
         return prev;
@@ -53,12 +58,18 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
     });
   };
 
+  const onConfirmChange = (value: string) => {
+    setConfirm(value);
+    setTopLevelError(null);
+  };
+
   const onSubmit = async () => {
     if (!valid) {
       return;
     }
     setSubmitting(true);
     setFieldErrors({});
+    setTopLevelError(null);
     try {
       await resetPassword({
         token,
@@ -71,10 +82,9 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
     } catch (err) {
       const parsed = parseApiError(err, pl.resetPassword.errorAlert);
       setFieldErrors(parsed.fields);
-      // No field detail (expired token, network): fall back to the alert.
-      if (Object.keys(parsed.fields).length === 0) {
-        Alert.alert(pl.appTitle, parsed.topLevel);
-      }
+      // Always surface the banner — field errors keyed to email/token are
+      // invisible otherwise, leaving submit looking like a no-op.
+      setTopLevelError(parsed.topLevel);
     } finally {
       setSubmitting(false);
     }
@@ -87,6 +97,12 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Text style={styles.title}>{pl.resetPassword.title}</Text>
 
+      {topLevelError && (
+        <Text testID="reset-password-banner" style={styles.errorBanner}>
+          {topLevelError}
+        </Text>
+      )}
+
       <PasswordInput
         value={password}
         onChangeText={onPasswordChange}
@@ -97,7 +113,7 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
       />
       <PasswordInput
         value={confirm}
-        onChangeText={setConfirm}
+        onChangeText={onConfirmChange}
         placeholder={pl.resetPassword.passwordConfirm}
         testID="reset-password-confirm"
         autoComplete="new-password"
@@ -135,6 +151,14 @@ const styles = StyleSheet.create({
   error: {
     color: '#b00020',
     marginBottom: 12,
+  },
+  errorBanner: {
+    color: '#b00020',
+    fontSize: 15,
+    fontWeight: '600',
+    paddingVertical: 10,
+    marginBottom: 16,
+    textAlign: 'center',
   },
   button: {
     backgroundColor: '#333',

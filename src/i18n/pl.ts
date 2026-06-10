@@ -75,7 +75,8 @@ export const pl = {
     passwordsDontMatch: 'Hasła nie są takie same.',
     passwordTooShort: 'Hasło musi mieć co najmniej 8 znaków.',
     successAlert: 'Hasło zostało zresetowane, zaloguj się nowym.',
-    errorAlert: 'Nie udało się zresetować hasła. Link mógł wygasnąć.',
+    errorAlert:
+      'Nie udało się zresetować hasła. Sprawdź link albo poproś o nowy.',
   },
 
   categoryPicker: {
