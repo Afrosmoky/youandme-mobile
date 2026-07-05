@@ -7,6 +7,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 // A fresh QueryClient per call keeps tests isolated — no cache bleeds from one
 // test into the next. `retry: false` makes rejected queries fail fast instead
 // of retrying (which would slow tests and swallow the first error).
+//
+// The client is returned alongside the render result so a test can assert on it
+// (e.g. spy on invalidateQueries) — it is the same client the rendered hooks use
+// via useQueryClient().
 export function renderWithQueryClient(ui: ReactElement) {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -18,7 +22,10 @@ export function renderWithQueryClient(ui: ReactElement) {
       mutations: { retry: false, gcTime: Infinity },
     },
   });
-  return render(
-    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
-  );
+  return {
+    queryClient,
+    ...render(
+      <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
+    ),
+  };
 }

@@ -8,6 +8,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react-native';
+import {renderWithQueryClient} from '../src/test/renderWithQueryClient';
 import {QuestionScreen} from '../src/screens/QuestionScreen';
 import {fetchNextQuestion} from '../src/api/questions';
 import {createMemory} from '../src/api/memories';
@@ -16,6 +17,7 @@ import {
   getActiveSession,
   skipCurrentQuestion,
 } from '../src/api/sessions';
+import {queryKeys} from '../src/queries/queryKeys';
 import type {RootStackParamList} from '../src/navigation/types';
 import {pl} from '../src/i18n/pl';
 
@@ -92,7 +94,7 @@ describe('QuestionScreen', () => {
 
   test('renders the question from the active session with header progress', async () => {
     const props = makeProps();
-    render(<QuestionScreen {...props} />);
+    renderWithQueryClient(<QuestionScreen {...props} />);
 
     expect(await screen.findByText(question.body)).toBeOnTheScreen();
 
@@ -103,7 +105,7 @@ describe('QuestionScreen', () => {
   });
 
   test('submitting saves a memory and fetches the next question', async () => {
-    render(<QuestionScreen {...makeProps()} />);
+    renderWithQueryClient(<QuestionScreen {...makeProps()} />);
     await screen.findByText(question.body);
 
     fireEvent.changeText(screen.getByTestId('question-answer-input'), 'Mój żart');
@@ -122,7 +124,7 @@ describe('QuestionScreen', () => {
   });
 
   test('skipping calls the endpoint and fetches the next question', async () => {
-    render(<QuestionScreen {...makeProps()} />);
+    renderWithQueryClient(<QuestionScreen {...makeProps()} />);
     await screen.findByText(question.body);
 
     fireEvent.press(screen.getByTestId('question-skip'));
@@ -139,7 +141,7 @@ describe('QuestionScreen', () => {
       .mockResolvedValue({question: null, session, sessionComplete: true});
 
     const props = makeProps();
-    render(<QuestionScreen {...props} />);
+    renderWithQueryClient(<QuestionScreen {...props} />);
 
     await waitFor(() => expect(endSession).toHaveBeenCalledWith('s_01'));
     await waitFor(() =>
@@ -149,7 +151,7 @@ describe('QuestionScreen', () => {
 
   test('the end button closes the session and navigates back', async () => {
     const props = makeProps();
-    render(<QuestionScreen {...props} />);
+    renderWithQueryClient(<QuestionScreen {...props} />);
     await screen.findByText(question.body);
 
     const header = renderHeader(props, 'headerRight');
@@ -165,7 +167,7 @@ describe('QuestionScreen', () => {
     jest.mocked(getActiveSession).mockResolvedValue(null);
 
     const props = makeProps();
-    render(<QuestionScreen {...props} />);
+    renderWithQueryClient(<QuestionScreen {...props} />);
 
     await waitFor(() =>
       expect(props.navigation.replace).toHaveBeenCalledWith('CategoryPicker'),
@@ -178,7 +180,7 @@ describe('QuestionScreen', () => {
     jest.mocked(axios.isAxiosError).mockReturnValue(true);
 
     const props = makeProps();
-    render(<QuestionScreen {...props} />);
+    renderWithQueryClient(<QuestionScreen {...props} />);
     await screen.findByText(question.body);
 
     fireEvent.changeText(screen.getByTestId('question-answer-input'), 'Mój żart');
@@ -202,7 +204,7 @@ describe('QuestionScreen', () => {
     });
     jest.mocked(axios.isAxiosError).mockReturnValue(true);
 
-    render(<QuestionScreen {...makeProps()} />);
+    renderWithQueryClient(<QuestionScreen {...makeProps()} />);
     await screen.findByText(question.body);
 
     fireEvent.changeText(screen.getByTestId('question-answer-input'), 'cokolwiek');
@@ -210,6 +212,19 @@ describe('QuestionScreen', () => {
 
     expect(await screen.findByTestId('question-error')).toHaveTextContent(
       'Odpowiedź jest wymagana.',
+    );
+  });
+
+  test('saving a memory invalidates the cached memories list', async () => {
+    const {queryClient} = renderWithQueryClient(<QuestionScreen {...makeProps()} />);
+    const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+    await screen.findByText(question.body);
+
+    fireEvent.changeText(screen.getByTestId('question-answer-input'), 'Mój żart');
+    fireEvent.press(screen.getByTestId('question-submit'));
+
+    await waitFor(() =>
+      expect(invalidateSpy).toHaveBeenCalledWith({queryKey: queryKeys.memories}),
     );
   });
 });

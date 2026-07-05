@@ -13,13 +13,13 @@ import axios from 'axios';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { fetchNextQuestion } from '../api/questions';
-import { createMemory } from '../api/memories';
 import {
   endSession,
   getActiveSession,
   skipCurrentQuestion,
 } from '../api/sessions';
 import { parseApiError } from '../api/errors';
+import { useSaveMemory } from '../queries/useSaveMemory';
 import { GameSession, Question } from '../domain/types';
 import { pl } from '../i18n/pl';
 
@@ -32,6 +32,9 @@ export function QuestionScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Saving a memory also invalidates the memories list (see useSaveMemory). The
+  // local `submitting` flag still gates both save and skip identically.
+  const saveMemory = useSaveMemory();
 
   // Ends the current session and returns to the picker. Tolerant of a missing
   // session (e.g. it expired server-side) — the destination is the same.
@@ -154,7 +157,7 @@ export function QuestionScreen({ navigation }: Props) {
     setSubmitting(true);
     setError(null);
     try {
-      const res = await createMemory({
+      const res = await saveMemory.mutateAsync({
         questionUlid: question.ulid,
         answerA: answer.trim(),
         answerB: null,
