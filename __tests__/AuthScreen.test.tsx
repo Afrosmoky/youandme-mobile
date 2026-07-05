@@ -1,12 +1,8 @@
 import React from 'react';
 import {Alert} from 'react-native';
 import axios from 'axios';
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react-native';
+import {fireEvent, screen, waitFor} from '@testing-library/react-native';
+import {renderWithQueryClient} from '../src/test/renderWithQueryClient';
 import {AuthScreen} from '../src/screens/AuthScreen';
 import {useAuth} from '../src/auth/AuthContext';
 import {pl} from '../src/i18n/pl';
@@ -41,7 +37,7 @@ describe('AuthScreen', () => {
   });
 
   test('submits entered credentials in login mode', async () => {
-    render(<AuthScreen />);
+    renderWithQueryClient(<AuthScreen />);
 
     fireEvent.changeText(
       screen.getByPlaceholderText(pl.auth.email),
@@ -65,13 +61,13 @@ describe('AuthScreen', () => {
   });
 
   test('renders the password field with a show/hide toggle', () => {
-    render(<AuthScreen />);
+    renderWithQueryClient(<AuthScreen />);
 
     expect(screen.getByTestId('auth-password-toggle')).toBeOnTheScreen();
   });
 
   test('toggling to register reveals the nickname field', () => {
-    render(<AuthScreen />);
+    renderWithQueryClient(<AuthScreen />);
 
     expect(screen.queryByPlaceholderText(pl.auth.nickname)).not.toBeOnTheScreen();
 
@@ -81,7 +77,7 @@ describe('AuthScreen', () => {
   });
 
   test('submits entered credentials including nickname in register mode', async () => {
-    render(<AuthScreen />);
+    renderWithQueryClient(<AuthScreen />);
 
     fireEvent.press(screen.getByText(pl.auth.switchToRegister));
 
@@ -113,7 +109,7 @@ describe('AuthScreen', () => {
     login.mockRejectedValueOnce({response: {status: 401}});
     jest.mocked(axios.isAxiosError).mockReturnValue(true);
 
-    render(<AuthScreen />);
+    renderWithQueryClient(<AuthScreen />);
 
     fireEvent.changeText(
       screen.getByPlaceholderText(pl.auth.email),
@@ -142,7 +138,7 @@ describe('AuthScreen', () => {
     });
     jest.mocked(axios.isAxiosError).mockReturnValue(true);
 
-    render(<AuthScreen />);
+    renderWithQueryClient(<AuthScreen />);
     fireEvent.press(screen.getByText(pl.auth.switchToRegister));
 
     fireEvent.changeText(
@@ -172,7 +168,7 @@ describe('AuthScreen', () => {
     login.mockRejectedValueOnce({message: 'Network Error'});
     jest.mocked(axios.isAxiosError).mockReturnValue(true);
 
-    render(<AuthScreen />);
+    renderWithQueryClient(<AuthScreen />);
 
     fireEvent.changeText(
       screen.getByPlaceholderText(pl.auth.email),
@@ -192,7 +188,7 @@ describe('AuthScreen', () => {
     login.mockRejectedValueOnce({response: {status: 500}});
     jest.mocked(axios.isAxiosError).mockReturnValue(true);
 
-    render(<AuthScreen />);
+    renderWithQueryClient(<AuthScreen />);
 
     fireEvent.changeText(
       screen.getByPlaceholderText(pl.auth.email),
@@ -212,7 +208,7 @@ describe('AuthScreen', () => {
     register.mockRejectedValueOnce({response: {status: 500}});
     jest.mocked(axios.isAxiosError).mockReturnValue(true);
 
-    render(<AuthScreen />);
+    renderWithQueryClient(<AuthScreen />);
     fireEvent.press(screen.getByText(pl.auth.switchToRegister));
 
     fireEvent.changeText(
@@ -233,7 +229,7 @@ describe('AuthScreen', () => {
   });
 
   test('Google sign-in exchanges the idToken via AuthContext', async () => {
-    render(<AuthScreen />);
+    renderWithQueryClient(<AuthScreen />);
 
     fireEvent.press(screen.getByTestId('auth-google'));
 

@@ -18,6 +18,8 @@ import {
   statusCodes,
 } from '@react-native-google-signin/google-signin';
 import { useAuth } from '../auth/AuthContext';
+import { useLogin } from '../queries/useLogin';
+import { useRegister } from '../queries/useRegister';
 import { PasswordInput } from '../components/PasswordInput';
 import { parseApiError, FieldErrors } from '../api/errors';
 import { validateNickname } from '../domain/validation';
@@ -36,7 +38,9 @@ const GOOGLE_IOS_CLIENT_ID =
   '1050573934208-9op7d68meh7jov11j6tu7spjocjs3fss.apps.googleusercontent.com';
 
 export function AuthScreen() {
-  const { login, register, signInWithGoogle } = useAuth();
+  const { signInWithGoogle } = useAuth();
+  const loginMutation = useLogin();
+  const registerMutation = useRegister();
   const navigation = useNavigation<AuthNav>();
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
@@ -44,9 +48,12 @@ export function AuthScreen() {
   const [nickname, setNickname] = useState('');
   const [nicknameError, setNicknameError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  const [submitting, setSubmitting] = useState(false);
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Only one of the two fires per submit, so the OR keeps the button's
+  // disabled/spinner state identical to the old single `submitting` flag.
+  const submitting = loginMutation.isPending || registerMutation.isPending;
 
   useEffect(() => {
     GoogleSignin.configure({
@@ -92,33 +99,41 @@ export function AuthScreen() {
     );
   };
 
-  const onSubmit = async () => {
+  const onSubmit = () => {
     setError(null);
     setFieldErrors({});
-    setSubmitting(true);
-    try {
-      if (isRegister) {
-        await register({ email, password, nickname });
-      } else {
-        await login({ email, password });
-      }
-      // On success the token changes and RootNavigator swaps to QuestionScreen.
-    } catch (err) {
-      const parsed = parseApiError(err, pl.auth.genericError);
-      if (isRegister) {
-        // Register surfaces the real backend messages (e.g. "nick zajęty").
-        setFieldErrors(parsed.fields);
-        setError(parsed.topLevel);
-      } else {
-        // Login masks only true auth failures (401): never reveal whether the
-        // email exists or the password is wrong. Network/server errors are
-        // shown as-is so the user knows it is not their credentials.
-        const isAuthError =
-          axios.isAxiosError(err) && err.response?.status === 401;
-        setError(isAuthError ? pl.auth.invalidCredentials : parsed.topLevel);
-      }
-    } finally {
-      setSubmitting(false);
+    // On success the token changes and RootNavigator swaps to QuestionScreen,
+    // so neither mutation needs an onSuccess.
+    if (isRegister) {
+      registerMutation.mutate(
+        { email, password, nickname },
+        {
+          onError: err => {
+            // Register surfaces the real backend messages (e.g. "nick zajęty").
+            const parsed = parseApiError(err, pl.auth.genericError);
+            setFieldErrors(parsed.fields);
+            setError(parsed.topLevel);
+          },
+        },
+      );
+    } else {
+      loginMutation.mutate(
+        { email, password },
+        {
+          onError: err => {
+            // Login masks only true auth failures (401): never reveal whether
+            // the email exists or the password is wrong. Network/server errors
+            // are shown as-is so the user knows it is not their credentials.
+            const isAuthError =
+              axios.isAxiosError(err) && err.response?.status === 401;
+            setError(
+              isAuthError
+                ? pl.auth.invalidCredentials
+                : parseApiError(err, pl.auth.genericError).topLevel,
+            );
+          },
+        },
+      );
     }
   };
 
