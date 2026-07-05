@@ -2,12 +2,8 @@ import React from 'react';
 import {Alert} from 'react-native';
 import axios from 'axios';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react-native';
+import {fireEvent, screen, waitFor} from '@testing-library/react-native';
+import {renderWithQueryClient} from '../src/test/renderWithQueryClient';
 import {ProfileScreen} from '../src/screens/ProfileScreen';
 import {
   changePassword,
@@ -84,7 +80,7 @@ describe('ProfileScreen', () => {
   });
 
   test('loads the profile and shows the unverified badge', async () => {
-    render(<ProfileScreen {...makeProps()} />);
+    renderWithQueryClient(<ProfileScreen {...makeProps()} />);
 
     expect(await screen.findByDisplayValue('ola_test')).toBeOnTheScreen();
     expect(screen.getByText(user.email)).toBeOnTheScreen();
@@ -92,7 +88,7 @@ describe('ProfileScreen', () => {
   });
 
   test('renders the partner name input seeded from the couple', async () => {
-    render(<ProfileScreen {...makeProps()} />);
+    renderWithQueryClient(<ProfileScreen {...makeProps()} />);
 
     expect(await screen.findByTestId('profile-partner-name')).toHaveDisplayValue(
       'Tomek',
@@ -104,7 +100,7 @@ describe('ProfileScreen', () => {
       .mocked(updateMe)
       .mockResolvedValue({user: {...user, nickname: 'new_nick'}, couple});
 
-    render(<ProfileScreen {...makeProps()} />);
+    renderWithQueryClient(<ProfileScreen {...makeProps()} />);
     await screen.findByDisplayValue('ola_test');
 
     fireEvent.changeText(screen.getByTestId('profile-nickname'), 'new_nick');
@@ -123,7 +119,7 @@ describe('ProfileScreen', () => {
       couple: {...couple, partnerNameLocal: 'Tomasz'},
     });
 
-    render(<ProfileScreen {...makeProps()} />);
+    renderWithQueryClient(<ProfileScreen {...makeProps()} />);
     await screen.findByDisplayValue('ola_test');
 
     fireEvent.changeText(screen.getByTestId('profile-partner-name'), 'Tomasz');
@@ -147,7 +143,7 @@ describe('ProfileScreen', () => {
     });
     jest.mocked(axios.isAxiosError).mockReturnValue(true);
 
-    render(<ProfileScreen {...makeProps()} />);
+    renderWithQueryClient(<ProfileScreen {...makeProps()} />);
     await screen.findByDisplayValue('ola_test');
 
     fireEvent.changeText(screen.getByTestId('profile-partner-name'), 'Tomasz');
@@ -171,7 +167,7 @@ describe('ProfileScreen', () => {
     });
     jest.mocked(axios.isAxiosError).mockReturnValue(true);
 
-    render(<ProfileScreen {...makeProps()} />);
+    renderWithQueryClient(<ProfileScreen {...makeProps()} />);
     await screen.findByDisplayValue('ola_test');
 
     fireEvent.changeText(screen.getByTestId('profile-nickname'), 'taken_nick');
@@ -187,7 +183,7 @@ describe('ProfileScreen', () => {
     jest.mocked(updateMe).mockRejectedValueOnce({response: {status: 500}});
     jest.mocked(axios.isAxiosError).mockReturnValue(true);
 
-    render(<ProfileScreen {...makeProps()} />);
+    renderWithQueryClient(<ProfileScreen {...makeProps()} />);
     await screen.findByDisplayValue('ola_test');
 
     fireEvent.changeText(screen.getByTestId('profile-nickname'), 'taken_nick');
@@ -204,7 +200,7 @@ describe('ProfileScreen', () => {
   test('tapping resend verification calls the API', async () => {
     jest.mocked(resendVerificationEmail).mockResolvedValue(undefined);
 
-    render(<ProfileScreen {...makeProps()} />);
+    renderWithQueryClient(<ProfileScreen {...makeProps()} />);
     await screen.findByDisplayValue('ola_test');
 
     fireEvent.press(screen.getByTestId('profile-resend-verification'));
@@ -213,7 +209,7 @@ describe('ProfileScreen', () => {
   });
 
   test('tapping logout calls logout from AuthContext', async () => {
-    render(<ProfileScreen {...makeProps()} />);
+    renderWithQueryClient(<ProfileScreen {...makeProps()} />);
     await screen.findByDisplayValue('ola_test');
 
     fireEvent.press(screen.getByTestId('profile-logout'));
@@ -238,7 +234,7 @@ describe('ProfileScreen', () => {
   };
 
   test('renders the change password section', async () => {
-    render(<ProfileScreen {...makeProps()} />);
+    renderWithQueryClient(<ProfileScreen {...makeProps()} />);
     await screen.findByDisplayValue('ola_test');
 
     expect(screen.getByTestId('profile-current-password')).toBeOnTheScreen();
@@ -250,7 +246,7 @@ describe('ProfileScreen', () => {
   });
 
   test('disables submit when the new passwords do not match', async () => {
-    render(<ProfileScreen {...makeProps()} />);
+    renderWithQueryClient(<ProfileScreen {...makeProps()} />);
     await screen.findByDisplayValue('ola_test');
 
     fireEvent.changeText(
@@ -277,7 +273,7 @@ describe('ProfileScreen', () => {
   test('changes the password and clears the form', async () => {
     jest.mocked(changePassword).mockResolvedValue(undefined);
 
-    render(<ProfileScreen {...makeProps()} />);
+    renderWithQueryClient(<ProfileScreen {...makeProps()} />);
     await screen.findByDisplayValue('ola_test');
 
     fillPasswordForm();
@@ -312,7 +308,7 @@ describe('ProfileScreen', () => {
     });
     jest.mocked(axios.isAxiosError).mockReturnValue(true);
 
-    render(<ProfileScreen {...makeProps()} />);
+    renderWithQueryClient(<ProfileScreen {...makeProps()} />);
     await screen.findByDisplayValue('ola_test');
 
     fillPasswordForm();
@@ -335,7 +331,7 @@ describe('ProfileScreen', () => {
     });
     jest.mocked(axios.isAxiosError).mockReturnValue(true);
 
-    render(<ProfileScreen {...makeProps()} />);
+    renderWithQueryClient(<ProfileScreen {...makeProps()} />);
     await screen.findByDisplayValue('ola_test');
 
     fillPasswordForm();
@@ -349,7 +345,7 @@ describe('ProfileScreen', () => {
   test('shows a spinner on the submit button while changing', async () => {
     jest.mocked(changePassword).mockReturnValue(new Promise(() => {}));
 
-    render(<ProfileScreen {...makeProps()} />);
+    renderWithQueryClient(<ProfileScreen {...makeProps()} />);
     await screen.findByDisplayValue('ola_test');
 
     fillPasswordForm();

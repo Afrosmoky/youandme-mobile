@@ -11,15 +11,12 @@ import {
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import {
-  changePassword,
-  fetchVerificationStatus,
-  resendVerificationEmail,
-  updateMe,
-  UpdateMeInput,
-  VerificationStatus,
-} from '../api/profile';
+import { UpdateMeInput } from '../api/profile';
 import { useAuth } from '../auth/AuthContext';
+import { useVerificationStatus } from '../queries/useVerificationStatus';
+import { useUpdateMe } from '../queries/useUpdateMe';
+import { useChangePassword } from '../queries/useChangePassword';
+import { useResendVerification } from '../queries/useResendVerification';
 import { PasswordInput } from '../components/PasswordInput';
 import { parseApiError, FieldErrors } from '../api/errors';
 import { validateNickname } from '../domain/validation';
@@ -37,7 +34,6 @@ export function ProfileScreen(_props: Props) {
   // BootstrapScreen, refreshed after login). The screen only fetches the
   // verification status itself.
   const { user, couple, logout, setUser, setCouple } = useAuth();
-  const [loading, setLoading] = useState(true);
   const [nickname, setNickname] = useState(user?.nickname ?? '');
   const [nicknameError, setNicknameError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -45,17 +41,23 @@ export function ProfileScreen(_props: Props) {
   const [partnerName, setPartnerName] = useState(
     couple?.partnerNameLocal ?? '',
   );
-  const [verification, setVerification] = useState<VerificationStatus | null>(
-    null,
-  );
-  const [saving, setSaving] = useState(false);
-  const [resending, setResending] = useState(false);
+
+  // Server reads/writes go through TanStack; the form fields above stay local
+  // client state.
+  const {
+    data: verification,
+    isLoading,
+    isError,
+  } = useVerificationStatus();
+  const { mutate: save, isPending: saving } = useUpdateMe();
+  const { mutate: resend, isPending: resending } = useResendVerification();
+  const { mutate: changePasswordMutate, isPending: changingPassword } =
+    useChangePassword();
 
   // Change-password form is fully independent of the profile form above.
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [changingPassword, setChangingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordFieldErrors, setPasswordFieldErrors] = useState<FieldErrors>(
     {},
@@ -71,26 +73,14 @@ export function ProfileScreen(_props: Props) {
     setPartnerName(couple?.partnerNameLocal ?? '');
   }, [user, couple]);
 
+  // Mirror the pre-TanStack catch: a failed status load shows the same alert.
+  // Fires once per transition into the error state (temporary pattern for this
+  // slice; superseded when error UI lands in P11).
   useEffect(() => {
-    let active = true;
-    (async () => {
-      try {
-        const status = await fetchVerificationStatus();
-        if (active) {
-          setVerification(status);
-        }
-      } catch {
-        Alert.alert(pl.appTitle, pl.profile.loadError);
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, []);
+    if (isError) {
+      Alert.alert(pl.appTitle, pl.profile.loadError);
+    }
+  }, [isError]);
 
   const clearFieldError = (field: string) => {
     setFieldErrors(prev => {
@@ -125,7 +115,7 @@ export function ProfileScreen(_props: Props) {
   const nicknameValid = validateNickname(nickname).valid;
   const canSave = dirty && nicknameValid && !saving;
 
-  const onSave = async () => {
+  const onSave = () => {
     if (!user) {
       return;
     }
@@ -140,37 +130,33 @@ export function ProfileScreen(_props: Props) {
       // Empty input clears the partner name back to null.
       payload.partner_name_local = partnerName.trim() || null;
     }
-    setSaving(true);
     setFieldErrors({});
-    try {
-      const { user: updatedUser, couple: updatedCouple } = await updateMe(
-        payload,
-      );
-      setUser(updatedUser);
-      setCouple(updatedCouple);
-      Alert.alert(pl.appTitle, pl.profile.savedToast);
-    } catch (err) {
-      const parsed = parseApiError(err, pl.profile.saveError);
-      setFieldErrors(parsed.fields);
-      // No field detail (network, 500): fall back to the banner alert.
-      if (Object.keys(parsed.fields).length === 0) {
-        Alert.alert(pl.appTitle, parsed.topLevel);
-      }
-    } finally {
-      setSaving(false);
-    }
+    save(payload, {
+      onSuccess: ({ user: updatedUser, couple: updatedCouple }) => {
+        setUser(updatedUser);
+        setCouple(updatedCouple);
+        Alert.alert(pl.appTitle, pl.profile.savedToast);
+      },
+      onError: err => {
+        const parsed = parseApiError(err, pl.profile.saveError);
+        setFieldErrors(parsed.fields);
+        // No field detail (network, 500): fall back to the banner alert.
+        if (Object.keys(parsed.fields).length === 0) {
+          Alert.alert(pl.appTitle, parsed.topLevel);
+        }
+      },
+    });
   };
 
-  const onResend = async () => {
-    setResending(true);
-    try {
-      await resendVerificationEmail();
-      Alert.alert(pl.appTitle, pl.profile.verificationSentToast);
-    } catch {
-      Alert.alert(pl.appTitle, pl.profile.saveError);
-    } finally {
-      setResending(false);
-    }
+  const onResend = () => {
+    resend(undefined, {
+      onSuccess: () => {
+        Alert.alert(pl.appTitle, pl.profile.verificationSentToast);
+      },
+      onError: () => {
+        Alert.alert(pl.appTitle, pl.profile.saveError);
+      },
+    });
   };
 
   // Front-side mismatch check; only flagged once the user has typed a
@@ -186,26 +172,28 @@ export function ProfileScreen(_props: Props) {
     newPassword === confirmPassword &&
     !changingPassword;
 
-  const onChangePassword = async () => {
-    setChangingPassword(true);
+  const onChangePassword = () => {
     setPasswordError(null);
     setPasswordFieldErrors({});
-    try {
-      await changePassword({ currentPassword, newPassword });
-      Alert.alert(pl.appTitle, pl.profile.passwordChanged);
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-    } catch (err) {
-      const parsed = parseApiError(err, pl.profile.passwordChangeError);
-      setPasswordError(parsed.topLevel);
-      setPasswordFieldErrors(parsed.fields);
-    } finally {
-      setChangingPassword(false);
-    }
+    changePasswordMutate(
+      { currentPassword, newPassword },
+      {
+        onSuccess: () => {
+          Alert.alert(pl.appTitle, pl.profile.passwordChanged);
+          setCurrentPassword('');
+          setNewPassword('');
+          setConfirmPassword('');
+        },
+        onError: err => {
+          const parsed = parseApiError(err, pl.profile.passwordChangeError);
+          setPasswordError(parsed.topLevel);
+          setPasswordFieldErrors(parsed.fields);
+        },
+      },
+    );
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator />
