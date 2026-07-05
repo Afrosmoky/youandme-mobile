@@ -2,12 +2,8 @@ import React from 'react';
 import {Alert} from 'react-native';
 import axios from 'axios';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react-native';
+import {fireEvent, screen, waitFor} from '@testing-library/react-native';
+import {renderWithQueryClient} from '../src/test/renderWithQueryClient';
 import {ResetPasswordScreen} from '../src/screens/ResetPasswordScreen';
 import {resetPassword} from '../src/api/passwordReset';
 import type {RootStackParamList} from '../src/navigation/types';
@@ -37,7 +33,7 @@ describe('ResetPasswordScreen', () => {
   test('submitting matching passwords calls resetPassword with the params', async () => {
     jest.mocked(resetPassword).mockResolvedValue({message: 'ok'});
 
-    render(<ResetPasswordScreen {...makeProps()} />);
+    renderWithQueryClient(<ResetPasswordScreen {...makeProps()} />);
 
     fireEvent.changeText(
       screen.getByPlaceholderText(pl.resetPassword.password),
@@ -60,7 +56,7 @@ describe('ResetPasswordScreen', () => {
   });
 
   test('renders both password fields with a show/hide toggle', () => {
-    render(<ResetPasswordScreen {...makeProps()} />);
+    renderWithQueryClient(<ResetPasswordScreen {...makeProps()} />);
 
     expect(
       screen.getByTestId('reset-password-password-toggle'),
@@ -71,7 +67,7 @@ describe('ResetPasswordScreen', () => {
   });
 
   test('shows an inline error when the passwords do not match', () => {
-    render(<ResetPasswordScreen {...makeProps()} />);
+    renderWithQueryClient(<ResetPasswordScreen {...makeProps()} />);
 
     fireEvent.changeText(
       screen.getByPlaceholderText(pl.resetPassword.password),
@@ -97,7 +93,7 @@ describe('ResetPasswordScreen', () => {
       },
     });
 
-    render(<ResetPasswordScreen {...makeProps()} />);
+    renderWithQueryClient(<ResetPasswordScreen {...makeProps()} />);
 
     fireEvent.changeText(
       screen.getByPlaceholderText(pl.resetPassword.password),
@@ -126,7 +122,7 @@ describe('ResetPasswordScreen', () => {
       },
     });
 
-    render(<ResetPasswordScreen {...makeProps()} />);
+    renderWithQueryClient(<ResetPasswordScreen {...makeProps()} />);
 
     fireEvent.changeText(
       screen.getByPlaceholderText(pl.resetPassword.password),
@@ -152,7 +148,7 @@ describe('ResetPasswordScreen', () => {
       },
     });
 
-    render(<ResetPasswordScreen {...makeProps()} />);
+    renderWithQueryClient(<ResetPasswordScreen {...makeProps()} />);
 
     fireEvent.changeText(
       screen.getByPlaceholderText(pl.resetPassword.password),
@@ -186,7 +182,7 @@ describe('ResetPasswordScreen', () => {
       },
     });
 
-    render(<ResetPasswordScreen {...makeProps()} />);
+    renderWithQueryClient(<ResetPasswordScreen {...makeProps()} />);
 
     fireEvent.changeText(
       screen.getByPlaceholderText(pl.resetPassword.password),
@@ -213,7 +209,7 @@ describe('ResetPasswordScreen', () => {
       .mocked(resetPassword)
       .mockRejectedValueOnce({response: {status: 500}});
 
-    render(<ResetPasswordScreen {...makeProps()} />);
+    renderWithQueryClient(<ResetPasswordScreen {...makeProps()} />);
 
     fireEvent.changeText(
       screen.getByPlaceholderText(pl.resetPassword.password),

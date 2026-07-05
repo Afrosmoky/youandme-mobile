@@ -2,12 +2,8 @@ import React from 'react';
 import {Alert} from 'react-native';
 import axios from 'axios';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react-native';
+import {fireEvent, screen, waitFor} from '@testing-library/react-native';
+import {renderWithQueryClient} from '../src/test/renderWithQueryClient';
 import {ForgotPasswordScreen} from '../src/screens/ForgotPasswordScreen';
 import {requestPasswordReset} from '../src/api/passwordReset';
 import type {RootStackParamList} from '../src/navigation/types';
@@ -35,7 +31,7 @@ describe('ForgotPasswordScreen', () => {
   test('submitting a valid email calls requestPasswordReset', async () => {
     jest.mocked(requestPasswordReset).mockResolvedValue({message: 'ok'});
 
-    render(<ForgotPasswordScreen {...makeProps()} />);
+    renderWithQueryClient(<ForgotPasswordScreen {...makeProps()} />);
 
     fireEvent.changeText(
       screen.getByPlaceholderText(pl.forgotPassword.email),
@@ -53,7 +49,7 @@ describe('ForgotPasswordScreen', () => {
       .mocked(requestPasswordReset)
       .mockRejectedValueOnce(new Error('network'));
 
-    render(<ForgotPasswordScreen {...makeProps()} />);
+    renderWithQueryClient(<ForgotPasswordScreen {...makeProps()} />);
 
     fireEvent.changeText(
       screen.getByPlaceholderText(pl.forgotPassword.email),
@@ -81,7 +77,7 @@ describe('ForgotPasswordScreen', () => {
     });
     jest.mocked(axios.isAxiosError).mockReturnValue(true);
 
-    render(<ForgotPasswordScreen {...makeProps()} />);
+    renderWithQueryClient(<ForgotPasswordScreen {...makeProps()} />);
 
     fireEvent.changeText(
       screen.getByPlaceholderText(pl.forgotPassword.email),
@@ -101,7 +97,7 @@ describe('ForgotPasswordScreen', () => {
       .mockRejectedValueOnce({response: {status: 500}});
     jest.mocked(axios.isAxiosError).mockReturnValue(true);
 
-    render(<ForgotPasswordScreen {...makeProps()} />);
+    renderWithQueryClient(<ForgotPasswordScreen {...makeProps()} />);
 
     fireEvent.changeText(
       screen.getByPlaceholderText(pl.forgotPassword.email),

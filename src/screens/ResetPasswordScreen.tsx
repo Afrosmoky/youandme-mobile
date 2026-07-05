@@ -10,9 +10,9 @@ import {
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { resetPassword } from '../api/passwordReset';
 import { PasswordInput } from '../components/PasswordInput';
 import { parseApiError, FieldErrors } from '../api/errors';
+import { useResetPassword } from '../queries/useResetPassword';
 import { pl } from '../i18n/pl';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ResetPassword'>;
@@ -28,7 +28,7 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
   // expired token) have nowhere to render inline, so we surface the topLevel
   // message as a banner above the form.
   const [topLevelError, setTopLevelError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+  const { mutate: submitReset, isPending } = useResetPassword();
 
   const tooShort = password.length < MIN_PASSWORD_LENGTH;
   const mismatch = confirm.length > 0 && password !== confirm;
@@ -63,31 +63,28 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
     setTopLevelError(null);
   };
 
-  const onSubmit = async () => {
+  const onSubmit = () => {
     if (!valid) {
       return;
     }
-    setSubmitting(true);
     setFieldErrors({});
     setTopLevelError(null);
-    try {
-      await resetPassword({
-        token,
-        email,
-        password,
-        passwordConfirmation: confirm,
-      });
-      Alert.alert(pl.appTitle, pl.resetPassword.successAlert);
-      navigation.navigate('Auth');
-    } catch (err) {
-      const parsed = parseApiError(err, pl.resetPassword.errorAlert);
-      setFieldErrors(parsed.fields);
-      // Always surface the banner — field errors keyed to email/token are
-      // invisible otherwise, leaving submit looking like a no-op.
-      setTopLevelError(parsed.topLevel);
-    } finally {
-      setSubmitting(false);
-    }
+    submitReset(
+      { token, email, password, passwordConfirmation: confirm },
+      {
+        onSuccess: () => {
+          Alert.alert(pl.appTitle, pl.resetPassword.successAlert);
+          navigation.navigate('Auth');
+        },
+        onError: err => {
+          const parsed = parseApiError(err, pl.resetPassword.errorAlert);
+          setFieldErrors(parsed.fields);
+          // Always surface the banner — field errors keyed to email/token are
+          // invisible otherwise, leaving submit looking like a no-op.
+          setTopLevelError(parsed.topLevel);
+        },
+      },
+    );
   };
 
   return (
@@ -123,10 +120,10 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
 
       <TouchableOpacity
         testID="reset-password-submit"
-        style={[styles.button, (submitting || !valid) && styles.buttonDisabled]}
+        style={[styles.button, (isPending || !valid) && styles.buttonDisabled]}
         onPress={onSubmit}
-        disabled={submitting || !valid}>
-        {submitting ? (
+        disabled={isPending || !valid}>
+        {isPending ? (
           <ActivityIndicator color="#fff" />
         ) : (
           <Text style={styles.buttonText}>{pl.resetPassword.submit}</Text>

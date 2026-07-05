@@ -11,8 +11,8 @@ import {
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { requestPasswordReset } from '../api/passwordReset';
 import { parseApiError, FieldErrors } from '../api/errors';
+import { useRequestPasswordReset } from '../queries/useRequestPasswordReset';
 import { pl } from '../i18n/pl';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ForgotPassword'>;
@@ -23,7 +23,7 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export function ForgotPasswordScreen({ navigation }: Props) {
   const [email, setEmail] = useState('');
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  const [submitting, setSubmitting] = useState(false);
+  const { mutate: sendReset, isPending } = useRequestPasswordReset();
 
   const emailValid = EMAIL_PATTERN.test(email);
 
@@ -39,27 +39,26 @@ export function ForgotPasswordScreen({ navigation }: Props) {
     });
   };
 
-  const onSubmit = async () => {
+  const onSubmit = () => {
     if (!emailValid) {
       Alert.alert(pl.appTitle, pl.forgotPassword.invalidEmail);
       return;
     }
-    setSubmitting(true);
     setFieldErrors({});
-    try {
-      await requestPasswordReset(email);
-      Alert.alert(pl.appTitle, pl.forgotPassword.sentToast);
-      navigation.goBack();
-    } catch (err) {
-      const parsed = parseApiError(err, pl.forgotPassword.error);
-      setFieldErrors(parsed.fields);
-      // No field detail (network, 500): fall back to the banner alert.
-      if (Object.keys(parsed.fields).length === 0) {
-        Alert.alert(pl.appTitle, parsed.topLevel);
-      }
-    } finally {
-      setSubmitting(false);
-    }
+    sendReset(email, {
+      onSuccess: () => {
+        Alert.alert(pl.appTitle, pl.forgotPassword.sentToast);
+        navigation.goBack();
+      },
+      onError: err => {
+        const parsed = parseApiError(err, pl.forgotPassword.error);
+        setFieldErrors(parsed.fields);
+        // No field detail (network, 500): fall back to the banner alert.
+        if (Object.keys(parsed.fields).length === 0) {
+          Alert.alert(pl.appTitle, parsed.topLevel);
+        }
+      },
+    });
   };
 
   return (
@@ -88,11 +87,11 @@ export function ForgotPasswordScreen({ navigation }: Props) {
         testID="forgot-password-submit"
         style={[
           styles.button,
-          (submitting || !emailValid) && styles.buttonDisabled,
+          (isPending || !emailValid) && styles.buttonDisabled,
         ]}
         onPress={onSubmit}
-        disabled={submitting || !emailValid}>
-        {submitting ? (
+        disabled={isPending || !emailValid}>
+        {isPending ? (
           <ActivityIndicator color="#fff" />
         ) : (
           <Text style={styles.buttonText}>{pl.forgotPassword.submit}</Text>

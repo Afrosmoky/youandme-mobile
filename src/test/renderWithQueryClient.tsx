@@ -10,13 +10,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 export function renderWithQueryClient(ui: ReactElement) {
   const queryClient = new QueryClient({
     defaultOptions: {
-      queries: {
-        retry: false,
-        // Disable cache garbage collection: with a finite gcTime the client
-        // schedules a setTimeout that outlives the test and makes Jest warn
-        // about a worker failing to exit. Infinity schedules no timer.
-        gcTime: Infinity,
-      },
+      // Disable cache garbage collection on both queries and mutations: with a
+      // finite gcTime the client schedules a setTimeout that outlives the test
+      // and makes Jest warn about a worker failing to exit. Infinity schedules
+      // no timer. retry: false makes a rejected call fail fast into onError.
+      queries: { retry: false, gcTime: Infinity },
+      mutations: { retry: false, gcTime: Infinity },
     },
   });
   return render(
