@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import React, { useCallback, useLayoutEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -10,18 +10,23 @@ import {
 import axios from 'axios';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { listCategories } from '../api/categories';
 import { startSession } from '../api/sessions';
 import { parseApiError } from '../api/errors';
-import { Category } from '../domain/types';
+import { useCategories } from '../queries/useCategories';
 import { pl } from '../i18n/pl';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CategoryPicker'>;
 
 export function CategoryPickerScreen({ navigation }: Props) {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    data: categories,
+    isLoading,
+    isError,
+    error: categoriesError,
+  } = useCategories();
+  // Session-start errors are separate from the categories query error; both
+  // surface in the same banner, with the session error taking precedence.
+  const [sessionError, setSessionError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
 
   useLayoutEffect(() => {
@@ -45,38 +50,12 @@ export function CategoryPickerScreen({ navigation }: Props) {
     });
   }, [navigation]);
 
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      try {
-        const result = await listCategories();
-        if (!active) {
-          return;
-        }
-        // Defensive sort: backend already orders by `ordering`, but the screen
-        // must not rely on transport order.
-        setCategories([...result].sort((a, b) => a.ordering - b.ordering));
-      } catch (err) {
-        if (active) {
-          setError(parseApiError(err, pl.categoryPicker.error).topLevel);
-        }
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, []);
-
   // Starts a session for the given category (null = mix mode), then opens the
   // Question screen. A 409 means the couple already has an active session — we
   // resume it by navigating without params (Question fetches it itself).
   const start = useCallback(
     async (slug: string | null) => {
-      setError(null);
+      setSessionError(null);
       setStarting(true);
       try {
         const session = await startSession(slug);
@@ -86,7 +65,7 @@ export function CategoryPickerScreen({ navigation }: Props) {
           navigation.navigate('Question');
           return;
         }
-        setError(
+        setSessionError(
           parseApiError(err, pl.categoryPicker.startSessionError).topLevel,
         );
       } finally {
@@ -96,7 +75,13 @@ export function CategoryPickerScreen({ navigation }: Props) {
     [navigation],
   );
 
-  if (loading) {
+  const error =
+    sessionError ??
+    (isError
+      ? parseApiError(categoriesError, pl.categoryPicker.error).topLevel
+      : null);
+
+  if (isLoading) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator />
@@ -113,7 +98,7 @@ export function CategoryPickerScreen({ navigation }: Props) {
         </Text>
       )}
       <FlatList
-        data={categories}
+        data={categories ?? []}
         keyExtractor={item => item.slug}
         contentContainerStyle={styles.listContent}
         renderItem={({ item }) => (

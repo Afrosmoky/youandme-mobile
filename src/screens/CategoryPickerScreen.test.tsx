@@ -2,6 +2,7 @@ import React from 'react';
 import axios from 'axios';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {fireEvent, render, screen, waitFor} from '@testing-library/react-native';
+import {renderWithQueryClient} from '../test/renderWithQueryClient';
 import {CategoryPickerScreen} from './CategoryPickerScreen';
 import {listCategories} from '../api/categories';
 import {startSession} from '../api/sessions';
@@ -79,7 +80,7 @@ describe('CategoryPickerScreen', () => {
   });
 
   test('renders a tile for each category from the API', async () => {
-    render(<CategoryPickerScreen {...makeProps()} />);
+    renderWithQueryClient(<CategoryPickerScreen {...makeProps()} />);
 
     expect(await screen.findByTestId('category-na_poznanie')).toBeOnTheScreen();
     expect(screen.getByTestId('category-intymnosc')).toBeOnTheScreen();
@@ -87,14 +88,14 @@ describe('CategoryPickerScreen', () => {
   });
 
   test('renders the mix button', async () => {
-    render(<CategoryPickerScreen {...makeProps()} />);
+    renderWithQueryClient(<CategoryPickerScreen {...makeProps()} />);
 
     expect(await screen.findByTestId('category-picker-mix')).toBeOnTheScreen();
   });
 
   test('the header memories button navigates to Memories', async () => {
     const props = makeProps();
-    render(<CategoryPickerScreen {...props} />);
+    renderWithQueryClient(<CategoryPickerScreen {...props} />);
     await screen.findByTestId('category-na_poznanie');
 
     const header = renderHeader(props, 'headerRight');
@@ -104,7 +105,7 @@ describe('CategoryPickerScreen', () => {
   });
 
   test('tapping a category starts a session and navigates to Question', async () => {
-    render(<CategoryPickerScreen {...makeProps()} />);
+    renderWithQueryClient(<CategoryPickerScreen {...makeProps()} />);
     fireEvent.press(await screen.findByTestId('category-na_poznanie'));
 
     await waitFor(() =>
@@ -114,7 +115,7 @@ describe('CategoryPickerScreen', () => {
   });
 
   test('tapping mix starts a session with null', async () => {
-    render(<CategoryPickerScreen {...makeProps()} />);
+    renderWithQueryClient(<CategoryPickerScreen {...makeProps()} />);
     fireEvent.press(await screen.findByTestId('category-picker-mix'));
 
     await waitFor(() => expect(startSession).toHaveBeenCalledWith(null));
@@ -126,7 +127,7 @@ describe('CategoryPickerScreen', () => {
       .mockRejectedValueOnce({response: {status: 409}});
     jest.mocked(axios.isAxiosError).mockReturnValue(true);
 
-    render(<CategoryPickerScreen {...makeProps()} />);
+    renderWithQueryClient(<CategoryPickerScreen {...makeProps()} />);
     fireEvent.press(await screen.findByTestId('category-na_poznanie'));
 
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('Question'));
@@ -135,7 +136,7 @@ describe('CategoryPickerScreen', () => {
   test('shows a spinner while categories are loading', () => {
     jest.mocked(listCategories).mockReturnValue(new Promise(() => {}));
 
-    render(<CategoryPickerScreen {...makeProps()} />);
+    renderWithQueryClient(<CategoryPickerScreen {...makeProps()} />);
 
     expect(screen.getByText(pl.categoryPicker.loading)).toBeOnTheScreen();
   });
@@ -143,7 +144,7 @@ describe('CategoryPickerScreen', () => {
   test('shows an error message when loading categories fails', async () => {
     jest.mocked(listCategories).mockRejectedValueOnce(new Error('network'));
 
-    render(<CategoryPickerScreen {...makeProps()} />);
+    renderWithQueryClient(<CategoryPickerScreen {...makeProps()} />);
 
     expect(
       await screen.findByTestId('category-picker-error'),

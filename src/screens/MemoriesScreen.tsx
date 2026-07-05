@@ -1,9 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useState,
-} from 'react';
+import React, { useEffect, useLayoutEffect } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -15,8 +10,7 @@ import {
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { listMemories } from '../api/memories';
-import { Memory } from '../domain/types';
+import { useMemories } from '../queries/useMemories';
 import { pl } from '../i18n/pl';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Memories'>;
@@ -47,54 +41,37 @@ function originLabel(origin: string): string {
 }
 
 export function MemoriesScreen({ navigation }: Props) {
-  const [memories, setMemories] = useState<Memory[]>([]);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  const {
+    data,
+    isLoading,
+    isError,
+    isRefetching,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+    refetch,
+  } = useMemories();
 
-  // Loads the first page, replacing the list and cursor. Used on mount and on
-  // pull-to-refresh.
-  const loadInitial = useCallback(async () => {
-    try {
-      const page = await listMemories();
-      setMemories(page.memories);
-      setNextCursor(page.nextCursor);
-    } catch {
+  // Flatten the paginated cache into a single newest-first list for the FlatList.
+  const memories = data?.pages.flatMap(page => page.memories) ?? [];
+
+  // Preserve the previous behaviour: a failed initial load or page fetch shows
+  // the same alert. TanStack owns the error state, so we mirror it into the
+  // side-effect here. Fires once per transition into the error state (temporary
+  // pattern for this slice; superseded when error UI lands in P11).
+  useEffect(() => {
+    if (isError) {
       Alert.alert(pl.appTitle, pl.memories.loadError);
     }
-  }, []);
-
-  useEffect(() => {
-    (async () => {
-      await loadInitial();
-      setLoading(false);
-    })();
-  }, [loadInitial]);
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await loadInitial();
-    setRefreshing(false);
-  }, [loadInitial]);
+  }, [isError]);
 
   // Appends the next page when the user scrolls near the end. No-op while a
   // page is already loading or there is no further cursor.
-  const onEndReached = useCallback(async () => {
-    if (loadingMore || nextCursor === null) {
-      return;
+  const onEndReached = () => {
+    if (hasNextPage && !isFetchingNextPage) {
+      fetchNextPage();
     }
-    setLoadingMore(true);
-    try {
-      const page = await listMemories(nextCursor);
-      setMemories(prev => [...prev, ...page.memories]);
-      setNextCursor(page.nextCursor);
-    } catch {
-      Alert.alert(pl.appTitle, pl.memories.loadError);
-    } finally {
-      setLoadingMore(false);
-    }
-  }, [loadingMore, nextCursor]);
+  };
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -108,7 +85,7 @@ export function MemoriesScreen({ navigation }: Props) {
     });
   }, [navigation]);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator />
@@ -124,12 +101,12 @@ export function MemoriesScreen({ navigation }: Props) {
       contentContainerStyle={
         memories.length === 0 ? styles.emptyContent : styles.listContent
       }
-      refreshing={refreshing}
-      onRefresh={onRefresh}
+      refreshing={isRefetching && !isFetchingNextPage}
+      onRefresh={() => refetch()}
       onEndReached={onEndReached}
       onEndReachedThreshold={0.5}
       ListFooterComponent={
-        loadingMore ? (
+        isFetchingNextPage ? (
           <ActivityIndicator style={styles.footer} />
         ) : null
       }

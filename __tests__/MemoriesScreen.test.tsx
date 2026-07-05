@@ -1,11 +1,7 @@
 import React from 'react';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react-native';
+import {fireEvent, screen, waitFor} from '@testing-library/react-native';
+import {renderWithQueryClient} from '../src/test/renderWithQueryClient';
 import {MemoriesScreen} from '../src/screens/MemoriesScreen';
 import {listMemories} from '../src/api/memories';
 import {useAuth} from '../src/auth/AuthContext';
@@ -65,7 +61,7 @@ describe('MemoriesScreen', () => {
       .mocked(listMemories)
       .mockResolvedValue({memories: [memory], nextCursor: null, prevCursor: null});
 
-    render(<MemoriesScreen {...makeProps()} />);
+    renderWithQueryClient(<MemoriesScreen {...makeProps()} />);
 
     expect(await screen.findByText(memory.answerA)).toBeOnTheScreen();
     expect(screen.getByText(memory.question.body)).toBeOnTheScreen();
@@ -76,7 +72,7 @@ describe('MemoriesScreen', () => {
       .mocked(listMemories)
       .mockResolvedValue({memories: [], nextCursor: null, prevCursor: null});
 
-    render(<MemoriesScreen {...makeProps()} />);
+    renderWithQueryClient(<MemoriesScreen {...makeProps()} />);
 
     expect(await screen.findByText(pl.memories.empty)).toBeOnTheScreen();
   });
@@ -86,7 +82,7 @@ describe('MemoriesScreen', () => {
       .mocked(listMemories)
       .mockResolvedValue({memories: [memory], nextCursor: null, prevCursor: null});
 
-    render(<MemoriesScreen {...makeProps()} />);
+    renderWithQueryClient(<MemoriesScreen {...makeProps()} />);
 
     expect(await screen.findByTestId('memory-player-a-m_01')).toHaveTextContent(
       'Świetny żart w pracy.',
@@ -106,7 +102,7 @@ describe('MemoriesScreen', () => {
       .mocked(listMemories)
       .mockResolvedValue({memories: [both], nextCursor: null, prevCursor: null});
 
-    render(<MemoriesScreen {...makeProps()} />);
+    renderWithQueryClient(<MemoriesScreen {...makeProps()} />);
 
     expect(await screen.findByTestId('memory-player-a-m_02')).toHaveTextContent(
       'Świetny żart w pracy.',
@@ -127,7 +123,7 @@ describe('MemoriesScreen', () => {
       .mocked(listMemories)
       .mockResolvedValue({memories, nextCursor: null, prevCursor: null});
 
-    render(<MemoriesScreen {...makeProps()} />);
+    renderWithQueryClient(<MemoriesScreen {...makeProps()} />);
 
     expect(await screen.findByTestId('memory-origin-m_s')).toHaveTextContent(
       pl.memories.origin.session,
@@ -145,7 +141,7 @@ describe('MemoriesScreen', () => {
       .mocked(listMemories)
       .mockResolvedValue({memories: [memory], nextCursor: null, prevCursor: null});
 
-    render(<MemoriesScreen {...makeProps()} />);
+    renderWithQueryClient(<MemoriesScreen {...makeProps()} />);
     await screen.findByText(memory.answerA);
     expect(listMemories).toHaveBeenCalledTimes(1);
 
