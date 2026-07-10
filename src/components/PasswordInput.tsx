@@ -1,11 +1,6 @@
-import React, { useState } from 'react';
-import {
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Theme, useTheme } from '../theme';
 import { pl } from '../i18n/pl';
 
 type Props = {
@@ -29,6 +24,8 @@ export function PasswordInput({
   error,
   autoComplete = 'password',
 }: Props) {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [showPassword, setShowPassword] = useState(false);
 
   return (
@@ -38,6 +35,7 @@ export function PasswordInput({
           testID={testID}
           style={styles.input}
           placeholder={placeholder}
+          placeholderTextColor={theme.colors.text.muted}
           secureTextEntry={!showPassword}
           autoCapitalize="none"
           autoCorrect={false}
@@ -65,35 +63,40 @@ export function PasswordInput({
   );
 }
 
-const styles = StyleSheet.create({
-  wrapper: {
-    marginBottom: 12,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-  },
-  input: {
-    flex: 1,
-    paddingVertical: 12,
-    fontSize: 16,
-  },
-  toggle: {
-    paddingVertical: 12,
-    paddingLeft: 12,
-  },
-  toggleText: {
-    color: '#0a84ff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  error: {
-    color: '#b00020',
-    fontSize: 13,
-    marginTop: 6,
-  },
-});
+const createStyles = (theme: Theme) => {
+  const { colors, typography, spacing, radius } = theme;
+  return StyleSheet.create({
+    wrapper: {
+      marginBottom: spacing.md,
+    },
+    row: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: colors.bg.elevated,
+      borderRadius: radius.md,
+      paddingHorizontal: spacing.md,
+    },
+    input: {
+      flex: 1,
+      paddingVertical: spacing.md,
+      fontFamily: typography.family.body,
+      fontSize: typography.size.body,
+      color: colors.text.primary,
+    },
+    toggle: {
+      paddingVertical: spacing.md,
+      paddingLeft: spacing.md,
+    },
+    toggleText: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.bodySm,
+      color: colors.gold.primary,
+    },
+    error: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.bodySm,
+      color: colors.burgundy.accent,
+      marginTop: spacing.xs,
+    },
+  });
+};

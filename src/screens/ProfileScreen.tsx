@@ -1,11 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -18,8 +16,14 @@ import { useUpdateMe } from '../queries/useUpdateMe';
 import { useChangePassword } from '../queries/useChangePassword';
 import { useResendVerification } from '../queries/useResendVerification';
 import { PasswordInput } from '../components/PasswordInput';
+import { ScreenContainer } from '../components/ScreenContainer';
+import { TextField } from '../components/TextField';
+import { Banner } from '../components/Banner';
+import { SectionLabel } from '../components/SectionLabel';
+import { GoldButton } from '../components/GoldButton';
 import { parseApiError, FieldErrors } from '../api/errors';
 import { validateNickname } from '../domain/validation';
+import { Theme, useTheme } from '../theme';
 import { pl } from '../i18n/pl';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
@@ -29,7 +33,10 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 const TIMEZONES = ['Europe/Warsaw', 'UTC'];
 const DEFAULT_TIMEZONE = 'Europe/Warsaw';
 
-export function ProfileScreen(_props: Props) {
+export function ProfileScreen({ navigation }: Props) {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+
   // P3: user + couple come from the auth context (hydrated at startup by
   // BootstrapScreen, refreshed after login). The screen only fetches the
   // verification status itself.
@@ -62,6 +69,19 @@ export function ProfileScreen(_props: Props) {
   const [passwordFieldErrors, setPasswordFieldErrors] = useState<FieldErrors>(
     {},
   );
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerStyle: { backgroundColor: theme.colors.bg.base },
+      headerTintColor: theme.colors.gold.primary,
+      headerShadowVisible: false,
+      headerTitleAlign: 'center',
+      // eslint-disable-next-line react/no-unstable-nested-components
+      headerTitle: () => (
+        <Text style={styles.headerTitle}>{pl.profile.title}</Text>
+      ),
+    });
+  }, [navigation, styles, theme]);
 
   // Re-seed the editable fields whenever the cached user/couple change (initial
   // hydration, or after a successful save pushes fresh values back).
@@ -196,70 +216,52 @@ export function ProfileScreen(_props: Props) {
   if (isLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator />
+        <ActivityIndicator color={theme.colors.gold.primary} />
       </View>
     );
   }
 
   return (
-    <ScrollView
-      testID="profile-screen"
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled">
+    <ScreenContainer testID="profile-screen">
       {verification && !verification.verified && (
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{pl.profile.verifyBadge}</Text>
-          <TouchableOpacity
-            testID="profile-resend-verification"
-            onPress={onResend}
-            disabled={resending}>
-            {resending ? (
-              <ActivityIndicator />
-            ) : (
-              <Text style={styles.badgeAction}>
-                {pl.profile.resendVerification}
-              </Text>
-            )}
-          </TouchableOpacity>
-        </View>
+        <Banner
+          variant="warning"
+          title={pl.profile.verifyBadge}
+          action={pl.profile.resendVerification}
+          onAction={onResend}
+          actionLoading={resending}
+          actionTestID="profile-resend-verification"
+          style={styles.banner}
+        />
       )}
 
-      <Text style={styles.label}>{pl.profile.email}</Text>
-      <Text style={styles.readonly}>{user?.email}</Text>
+      <TextField
+        label={pl.profile.email}
+        value={user?.email ?? ''}
+        editable={false}
+      />
 
-      <Text style={styles.label}>{pl.profile.nickname}</Text>
-      <TextInput
+      <TextField
+        label={pl.profile.nickname}
         testID="profile-nickname"
-        style={styles.input}
-        autoCapitalize="none"
-        autoCorrect={false}
         value={nickname}
         onChangeText={onNicknameChange}
+        error={nicknameError ?? fieldErrors.nickname}
+        autoCapitalize="none"
       />
-      {(nicknameError ?? fieldErrors.nickname) && (
-        <Text testID="profile-nickname-error" style={styles.error}>
-          {nicknameError ?? fieldErrors.nickname}
-        </Text>
-      )}
 
-      <Text style={styles.label}>{pl.profile.partnerName}</Text>
-      <TextInput
+      <TextField
+        label={pl.profile.partnerName}
         testID="profile-partner-name"
-        style={styles.input}
-        autoCorrect={false}
         value={partnerName}
         onChangeText={onPartnerNameChange}
+        error={fieldErrors.partner_name_local}
+        hint={pl.profile.partnerNameHint}
       />
-      {fieldErrors.partner_name_local ? (
-        <Text testID="profile-partner-name-error" style={styles.error}>
-          {fieldErrors.partner_name_local}
-        </Text>
-      ) : (
-        <Text style={styles.hint}>{pl.profile.partnerNameHint}</Text>
-      )}
 
-      <Text style={styles.label}>{pl.profile.timezone}</Text>
+      <SectionLabel style={styles.tzLabel}>
+        {pl.profile.timezone}
+      </SectionLabel>
       <View style={styles.tzRow}>
         {TIMEZONES.map(tz => {
           const active = tz === timezone;
@@ -277,20 +279,20 @@ export function ProfileScreen(_props: Props) {
         })}
       </View>
 
-      <Text style={styles.label}>{pl.profile.locale}</Text>
-      <Text style={styles.readonly}>{user?.locale ?? 'pl'}</Text>
+      <TextField
+        label={pl.profile.locale}
+        value={user?.locale ?? 'pl'}
+        editable={false}
+      />
 
-      <TouchableOpacity
+      <GoldButton
         testID="profile-save"
-        style={[styles.button, !canSave && styles.buttonDisabled]}
+        title={pl.profile.save}
         onPress={onSave}
-        disabled={!canSave}>
-        {saving ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>{pl.profile.save}</Text>
-        )}
-      </TouchableOpacity>
+        disabled={!canSave}
+        loading={saving}
+        style={styles.saveButton}
+      />
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>
@@ -298,7 +300,7 @@ export function ProfileScreen(_props: Props) {
         </Text>
 
         {passwordError && (
-          <Text testID="profile-password-error" style={styles.error}>
+          <Text testID="profile-password-error" style={styles.passwordError}>
             {passwordError}
           </Text>
         )}
@@ -328,149 +330,105 @@ export function ProfileScreen(_props: Props) {
           autoComplete="new-password"
         />
 
-        <TouchableOpacity
+        <GoldButton
           testID="profile-change-password-submit"
-          style={[styles.button, !canChangePassword && styles.buttonDisabled]}
+          title={pl.profile.changePasswordButton}
           onPress={onChangePassword}
-          disabled={!canChangePassword}>
-          {changingPassword ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>
-              {pl.profile.changePasswordButton}
-            </Text>
-          )}
-        </TouchableOpacity>
+          disabled={!canChangePassword}
+          loading={changingPassword}
+          style={styles.changePasswordButton}
+        />
       </View>
 
       <TouchableOpacity
         testID="profile-logout"
-        style={[styles.button, styles.logoutButton]}
+        style={styles.logout}
         onPress={logout}>
-        <Text style={styles.logoutButtonText}>{pl.profile.logout}</Text>
+        <Text style={styles.logoutText}>{pl.profile.logout}</Text>
       </TouchableOpacity>
-    </ScrollView>
+    </ScreenContainer>
   );
 }
 
-const styles = StyleSheet.create({
-  section: {
-    marginTop: 24,
-    paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-  },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#222',
-    marginBottom: 16,
-  },
-  container: {
-    flex: 1,
-  },
-  content: {
-    padding: 24,
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  badge: {
-    backgroundColor: '#fff4e5',
-    borderWidth: 1,
-    borderColor: '#ffcc80',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 20,
-  },
-  badgeText: {
-    color: '#8a5a00',
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  badgeAction: {
-    color: '#0a84ff',
-    fontSize: 15,
-  },
-  label: {
-    fontSize: 13,
-    color: '#888',
-    marginBottom: 6,
-  },
-  readonly: {
-    fontSize: 16,
-    color: '#222',
-    marginBottom: 20,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    fontSize: 16,
-    marginBottom: 8,
-  },
-  hint: {
-    fontSize: 12,
-    color: '#aaa',
-    marginBottom: 20,
-  },
-  error: {
-    color: '#b00020',
-    marginBottom: 12,
-  },
-  tzRow: {
-    flexDirection: 'row',
-    marginBottom: 20,
-  },
-  tzOption: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    marginRight: 8,
-  },
-  tzOptionActive: {
-    backgroundColor: '#333',
-    borderColor: '#333',
-  },
-  tzText: {
-    color: '#333',
-    fontSize: 15,
-  },
-  tzTextActive: {
-    color: '#fff',
-    fontSize: 15,
-  },
-  button: {
-    backgroundColor: '#333',
-    borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 4,
-    marginBottom: 12,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  logoutButton: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#b00020',
-  },
-  logoutButtonText: {
-    color: '#b00020',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});
+const createStyles = (theme: Theme) => {
+  const { colors, typography, spacing, radius } = theme;
+  return StyleSheet.create({
+    centered: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.bg.base,
+    },
+    headerTitle: {
+      fontFamily: typography.family.heading,
+      fontSize: typography.size.h2,
+      color: colors.text.primary,
+    },
+    banner: {
+      marginBottom: spacing.xl,
+    },
+    tzLabel: {
+      marginBottom: spacing.sm,
+    },
+    tzRow: {
+      flexDirection: 'row',
+      marginBottom: spacing.lg,
+    },
+    tzOption: {
+      borderWidth: 1,
+      borderColor: colors.border.subtle,
+      borderRadius: radius.md,
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.sm,
+      marginRight: spacing.sm,
+    },
+    tzOptionActive: {
+      backgroundColor: colors.bg.goldTint,
+      borderColor: colors.gold.borderStrong,
+    },
+    tzText: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.bodySm,
+      color: colors.text.secondary,
+    },
+    tzTextActive: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.bodySm,
+      color: colors.gold.primary,
+    },
+    saveButton: {
+      marginTop: spacing.xs,
+    },
+    section: {
+      marginTop: spacing.xxl,
+      paddingTop: spacing.xl,
+      borderTopWidth: 1,
+      borderTopColor: colors.border.subtle,
+    },
+    sectionTitle: {
+      fontFamily: typography.family.heading,
+      fontSize: typography.size.h3,
+      color: colors.text.primary,
+      marginBottom: spacing.lg,
+    },
+    passwordError: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.bodySm,
+      color: colors.burgundy.accent,
+      marginBottom: spacing.md,
+    },
+    changePasswordButton: {
+      marginTop: spacing.xs,
+    },
+    logout: {
+      marginTop: spacing.xl,
+      alignItems: 'center',
+      paddingVertical: spacing.md,
+    },
+    logoutText: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.body,
+      color: colors.text.muted,
+    },
+  });
+};

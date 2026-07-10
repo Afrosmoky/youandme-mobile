@@ -1,11 +1,16 @@
-import React from 'react';
+import React, {ReactElement} from 'react';
 import {fireEvent, render, screen} from '@testing-library/react-native';
+import {ThemeProvider} from '../theme';
 import {PasswordInput} from './PasswordInput';
 import {pl} from '../i18n/pl';
 
+// PasswordInput reads the theme, so tests render it inside a ThemeProvider.
+const renderThemed = (ui: ReactElement) =>
+  render(<ThemeProvider>{ui}</ThemeProvider>);
+
 describe('PasswordInput', () => {
   test('hides the password by default', () => {
-    render(
+    renderThemed(
       <PasswordInput value="secret" onChangeText={jest.fn()} testID="pw" />,
     );
 
@@ -14,7 +19,7 @@ describe('PasswordInput', () => {
   });
 
   test('tapping the toggle reveals the password', () => {
-    render(
+    renderThemed(
       <PasswordInput value="secret" onChangeText={jest.fn()} testID="pw" />,
     );
 
@@ -25,7 +30,7 @@ describe('PasswordInput', () => {
   });
 
   test('a second tap hides the password again', () => {
-    render(
+    renderThemed(
       <PasswordInput value="secret" onChangeText={jest.fn()} testID="pw" />,
     );
 
@@ -37,7 +42,7 @@ describe('PasswordInput', () => {
   });
 
   test('renders an inline error below when provided', () => {
-    render(
+    renderThemed(
       <PasswordInput
         value="secret"
         onChangeText={jest.fn()}
