@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -11,6 +11,10 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useMemories } from '../queries/useMemories';
+import { Card } from '../components/Card';
+import { SectionLabel } from '../components/SectionLabel';
+import { Badge } from '../components/Badge';
+import { Theme, useTheme } from '../theme';
 import { pl } from '../i18n/pl';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Memories'>;
@@ -41,6 +45,8 @@ function originLabel(origin: string): string {
 }
 
 export function MemoriesScreen({ navigation }: Props) {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const {
     data,
     isLoading,
@@ -75,6 +81,14 @@ export function MemoriesScreen({ navigation }: Props) {
 
   useLayoutEffect(() => {
     navigation.setOptions({
+      headerStyle: { backgroundColor: theme.colors.bg.base },
+      headerTintColor: theme.colors.gold.primary,
+      headerShadowVisible: false,
+      headerTitleAlign: 'left',
+      // eslint-disable-next-line react/no-unstable-nested-components
+      headerTitle: () => (
+        <Text style={styles.headerTitle}>{pl.memories.headerTitle}</Text>
+      ),
       // headerRight is a navigation render prop, not a remounted subtree.
       // eslint-disable-next-line react/no-unstable-nested-components
       headerRight: () => (
@@ -83,12 +97,12 @@ export function MemoriesScreen({ navigation }: Props) {
         </TouchableOpacity>
       ),
     });
-  }, [navigation]);
+  }, [navigation, styles, theme]);
 
   if (isLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator />
+        <ActivityIndicator color={theme.colors.gold.primary} />
       </View>
     );
   }
@@ -96,6 +110,7 @@ export function MemoriesScreen({ navigation }: Props) {
   return (
     <FlatList
       testID="memories-list"
+      style={styles.list}
       data={memories}
       keyExtractor={item => item.ulid}
       contentContainerStyle={
@@ -107,24 +122,29 @@ export function MemoriesScreen({ navigation }: Props) {
       onEndReachedThreshold={0.5}
       ListFooterComponent={
         isFetchingNextPage ? (
-          <ActivityIndicator style={styles.footer} />
+          <ActivityIndicator
+            style={styles.footer}
+            color={theme.colors.gold.primary}
+          />
         ) : null
       }
       ListEmptyComponent={
         <Text style={styles.emptyText}>{pl.memories.empty}</Text>
       }
       renderItem={({ item }) => (
-        <View testID={`memory-item-${item.ulid}`} style={styles.card}>
+        <Card testID={`memory-item-${item.ulid}`} style={styles.card}>
           <View style={styles.cardHeader}>
-            <Text style={styles.question}>{item.question.body}</Text>
-            {item.question.category && (
-              <Text style={styles.category}>{item.question.category.name}</Text>
-            )}
+            <View style={styles.categorySlot}>
+              {item.question.category && (
+                <SectionLabel>{item.question.category.name}</SectionLabel>
+              )}
+            </View>
+            <Badge testID={`memory-origin-${item.ulid}`}>
+              {originLabel(item.origin)}
+            </Badge>
           </View>
 
-          <Text testID={`memory-origin-${item.ulid}`} style={styles.origin}>
-            {originLabel(item.origin)}
-          </Text>
+          <Text style={styles.question}>{item.question.body}</Text>
 
           <Text style={styles.playerLabel}>
             {pl.memories.player(item.playerAName)}
@@ -147,78 +167,85 @@ export function MemoriesScreen({ navigation }: Props) {
           )}
 
           <Text style={styles.date}>{formatDate(item.answeredAt)}</Text>
-        </View>
+        </Card>
       )}
     />
   );
 }
 
-const styles = StyleSheet.create({
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  listContent: {
-    padding: 16,
-  },
-  emptyContent: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  emptyText: {
-    color: '#777',
-    fontSize: 16,
-    textAlign: 'center',
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#eee',
-    padding: 16,
-    marginBottom: 12,
-  },
-  cardHeader: {
-    marginBottom: 8,
-  },
-  question: {
-    fontSize: 15,
-    color: '#333',
-    fontWeight: '600',
-  },
-  category: {
-    fontSize: 12,
-    color: '#888',
-    marginTop: 2,
-  },
-  origin: {
-    fontSize: 11,
-    color: '#aaa',
-    textTransform: 'uppercase',
-    marginBottom: 8,
-  },
-  playerLabel: {
-    fontSize: 12,
-    color: '#888',
-    marginBottom: 2,
-  },
-  answer: {
-    fontSize: 17,
-    color: '#222',
-    marginBottom: 8,
-  },
-  date: {
-    fontSize: 12,
-    color: '#aaa',
-  },
-  headerButton: {
-    color: '#0a84ff',
-    fontSize: 16,
-  },
-  footer: {
-    paddingVertical: 16,
-  },
-});
+const createStyles = (theme: Theme) => {
+  const { colors, typography, spacing } = theme;
+  return StyleSheet.create({
+    list: {
+      backgroundColor: colors.bg.base,
+    },
+    centered: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.bg.base,
+    },
+    listContent: {
+      padding: spacing.lg,
+    },
+    emptyContent: {
+      flexGrow: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: spacing.xxl,
+    },
+    emptyText: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.body,
+      color: colors.text.muted,
+      textAlign: 'center',
+    },
+    card: {
+      marginBottom: spacing.md,
+    },
+    cardHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: spacing.md,
+    },
+    categorySlot: {
+      flex: 1,
+    },
+    question: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.bodySm,
+      color: colors.text.secondary,
+      marginBottom: spacing.md,
+    },
+    playerLabel: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.bodySm,
+      color: colors.text.muted,
+      marginBottom: spacing.xs,
+    },
+    answer: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.body,
+      color: colors.text.primary,
+      marginBottom: spacing.md,
+    },
+    date: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.micro,
+      color: colors.text.muted,
+    },
+    headerTitle: {
+      fontFamily: typography.family.heading,
+      fontSize: typography.size.h2,
+      color: colors.text.primary,
+    },
+    headerButton: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.bodySm,
+      color: colors.gold.primary,
+    },
+    footer: {
+      paddingVertical: spacing.lg,
+    },
+  });
+};

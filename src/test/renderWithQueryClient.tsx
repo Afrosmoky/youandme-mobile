@@ -1,6 +1,7 @@
 import React, { ReactElement } from 'react';
 import { render } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ThemeProvider } from '../theme';
 
 // Renders a component tree wrapped in a QueryClientProvider for tests.
 //
@@ -25,7 +26,9 @@ export function renderWithQueryClient(ui: ReactElement) {
   return {
     queryClient,
     ...render(
-      <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
+      <ThemeProvider>
+        <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
+      </ThemeProvider>,
     ),
   };
 }

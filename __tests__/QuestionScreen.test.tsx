@@ -9,6 +9,7 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import {renderWithQueryClient} from '../src/test/renderWithQueryClient';
+import {ThemeProvider} from '../src/theme';
 import {QuestionScreen} from '../src/screens/QuestionScreen';
 import {fetchNextQuestion} from '../src/api/questions';
 import {createMemory} from '../src/api/memories';
@@ -75,7 +76,10 @@ function makeProps(): Props {
 function renderHeader(props: Props, key: 'headerTitle' | 'headerRight') {
   const calls = jest.mocked(props.navigation.setOptions).mock.calls;
   const opts = calls[calls.length - 1][0];
-  return render((opts[key] as unknown as RenderProp)({}));
+  // The header title uses SectionLabel (useTheme), so wrap in ThemeProvider.
+  return render(
+    <ThemeProvider>{(opts[key] as unknown as RenderProp)({})}</ThemeProvider>,
+  );
 }
 
 describe('QuestionScreen', () => {
@@ -92,15 +96,21 @@ describe('QuestionScreen', () => {
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   });
 
-  test('renders the question from the active session with header progress', async () => {
+  test('renders the question from the active session with header label and counter', async () => {
     const props = makeProps();
     renderWithQueryClient(<QuestionScreen {...props} />);
 
     expect(await screen.findByText(question.body)).toBeOnTheScreen();
+    // Counter lives in the body next to the progress bar.
+    expect(screen.getByTestId('question-counter')).toHaveTextContent(
+      pl.question.counter(1, 20),
+    );
 
+    // Header shows the category label; caps is visual (textTransform), so the
+    // text content stays the original label.
     const header = renderHeader(props, 'headerTitle');
     expect(header.getByTestId('question-progress')).toHaveTextContent(
-      pl.question.progress('Na poznanie', 1, 20),
+      'Na poznanie',
     );
   });
 

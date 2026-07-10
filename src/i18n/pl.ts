@@ -102,6 +102,8 @@ export const pl = {
     // Header progress, e.g. "Na poznanie — 3 z 20".
     progress: (label: string, current: number, total: number) =>
       `${label} — ${current} z ${total}`,
+    // Progress-bar counter, e.g. "3 / 20".
+    counter: (current: number, total: number) => `${current} / ${total}`,
     placeholder: 'Wpisz odpowiedź...',
     submitButton: 'Zapisz wspomnienie',
     skipButton: 'Pomiń',

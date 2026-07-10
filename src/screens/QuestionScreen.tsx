@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -21,11 +21,17 @@ import {
 import { parseApiError } from '../api/errors';
 import { useSaveMemory } from '../queries/useSaveMemory';
 import { GameSession, Question } from '../domain/types';
+import { Theme, useTheme } from '../theme';
+import { SectionLabel } from '../components/SectionLabel';
+import { GoldButton } from '../components/GoldButton';
+import { OutlineButton } from '../components/OutlineButton';
 import { pl } from '../i18n/pl';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Question'>;
 
 export function QuestionScreen({ navigation }: Props) {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [question, setQuestion] = useState<Question | null>(null);
   const [session, setSession] = useState<GameSession | null>(null);
   const [answer, setAnswer] = useState('');
@@ -123,16 +129,17 @@ export function QuestionScreen({ navigation }: Props) {
 
   useLayoutEffect(() => {
     const label = session?.category?.name ?? pl.question.mixLabel;
-    const current = session ? session.currentIndex + 1 : 0;
-    const total = session?.remainingCount ?? 0;
     navigation.setOptions({
+      headerStyle: { backgroundColor: theme.colors.bg.base },
+      headerTintColor: theme.colors.gold.primary,
+      headerShadowVisible: false,
+      headerTitleAlign: 'center',
+      // Category label in gold caps; testID stays for the render test.
       // eslint-disable-next-line react/no-unstable-nested-components
       headerTitle: () => (
-        <Text testID="question-progress" style={styles.progress}>
-          {session
-            ? pl.question.progress(label, current, total)
-            : pl.question.headerTitle}
-        </Text>
+        <SectionLabel testID="question-progress">
+          {session ? label : pl.question.headerTitle}
+        </SectionLabel>
       ),
       // headerRight is a navigation render prop, not a remounted subtree.
       // eslint-disable-next-line react/no-unstable-nested-components
@@ -194,10 +201,14 @@ export function QuestionScreen({ navigation }: Props) {
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator />
+        <ActivityIndicator color={theme.colors.gold.primary} />
       </View>
     );
   }
+
+  const current = session ? session.currentIndex + 1 : 0;
+  const total = session?.remainingCount ?? 0;
+  const progressFraction = total > 0 ? Math.min(current / total, 1) : 0;
 
   return (
     <ScrollView
@@ -205,6 +216,17 @@ export function QuestionScreen({ navigation }: Props) {
       style={styles.container}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled">
+      <View style={styles.progressRow}>
+        <View style={styles.progressTrack}>
+          <View
+            style={[styles.progressFill, { width: `${progressFraction * 100}%` }]}
+          />
+        </View>
+        <Text testID="question-counter" style={styles.counter}>
+          {pl.question.counter(current, total)}
+        </Text>
+      </View>
+
       {error && (
         <Text testID="question-error" style={styles.error}>
           {error}
@@ -217,8 +239,18 @@ export function QuestionScreen({ navigation }: Props) {
 
       <TextInput
         testID="question-answer-input"
-        style={styles.input}
+        style={[
+          styles.input,
+          // Alegreya italic while empty (placeholder), regular once typing.
+          {
+            fontFamily:
+              answer.length === 0
+                ? theme.typography.family.bodyItalic
+                : theme.typography.family.body,
+          },
+        ]}
         placeholder={pl.question.placeholder}
+        placeholderTextColor={theme.colors.text.muted}
         multiline
         textAlignVertical="top"
         editable={!submitting}
@@ -226,90 +258,93 @@ export function QuestionScreen({ navigation }: Props) {
         onChangeText={setAnswer}
       />
 
-      <TouchableOpacity
+      <GoldButton
         testID="question-submit"
-        style={[styles.button, submitting && styles.buttonDisabled]}
+        title={pl.question.submitButton}
         onPress={onSave}
-        disabled={submitting}>
-        {submitting ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>{pl.question.submitButton}</Text>
-        )}
-      </TouchableOpacity>
+        loading={submitting}
+        disabled={submitting}
+        style={styles.submitButton}
+      />
 
-      <TouchableOpacity
+      <OutlineButton
         testID="question-skip"
-        style={[styles.button, styles.secondaryButton]}
+        title={pl.question.skipButton}
         onPress={onSkip}
-        disabled={submitting}>
-        <Text style={styles.secondaryButtonText}>{pl.question.skipButton}</Text>
-      </TouchableOpacity>
+        disabled={submitting}
+      />
     </ScrollView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  content: {
-    padding: 24,
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  progress: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  error: {
-    color: '#b00020',
-    marginBottom: 12,
-  },
-  questionBody: {
-    fontSize: 22,
-    fontWeight: '600',
-    marginBottom: 20,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    padding: 12,
-    minHeight: 120,
-    fontSize: 16,
-    marginBottom: 16,
-  },
-  button: {
-    backgroundColor: '#333',
-    borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  secondaryButton: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#333',
-  },
-  secondaryButtonText: {
-    color: '#333',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  headerButton: {
-    color: '#0a84ff',
-    fontSize: 16,
-  },
-});
+const createStyles = (theme: Theme) => {
+  const { colors, typography, spacing, radius } = theme;
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.bg.base,
+    },
+    content: {
+      padding: spacing.xxl,
+    },
+    centered: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.bg.base,
+    },
+    headerButton: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.bodySm,
+      color: colors.gold.primary,
+    },
+    progressRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: spacing.xxl,
+    },
+    progressTrack: {
+      flex: 1,
+      height: 3,
+      borderRadius: radius.pill,
+      backgroundColor: colors.border.subtle,
+      overflow: 'hidden',
+      marginRight: spacing.md,
+    },
+    progressFill: {
+      height: '100%',
+      borderRadius: radius.pill,
+      backgroundColor: colors.gold.primary,
+    },
+    counter: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.micro,
+      color: colors.text.muted,
+    },
+    error: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.bodySm,
+      color: colors.burgundy.accent,
+      marginBottom: spacing.md,
+    },
+    questionBody: {
+      fontFamily: typography.family.heading,
+      fontSize: typography.size.h2,
+      color: colors.text.primary,
+      lineHeight: typography.size.h2 * 1.3,
+      marginBottom: spacing.xxl,
+    },
+    input: {
+      backgroundColor: colors.bg.elevated,
+      borderRadius: radius.md,
+      padding: spacing.lg,
+      minHeight: 120,
+      fontSize: typography.size.body,
+      color: colors.text.primary,
+      marginBottom: spacing.xl,
+    },
+    submitButton: {
+      marginBottom: spacing.md,
+    },
+  });
+};

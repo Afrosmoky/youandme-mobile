@@ -1,4 +1,4 @@
-import React, { useCallback, useLayoutEffect, useState } from 'react';
+import React, { useCallback, useLayoutEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -13,11 +13,15 @@ import { RootStackParamList } from '../navigation/types';
 import { startSession } from '../api/sessions';
 import { parseApiError } from '../api/errors';
 import { useCategories } from '../queries/useCategories';
+import { Card } from '../components/Card';
+import { Theme, useTheme } from '../theme';
 import { pl } from '../i18n/pl';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CategoryPicker'>;
 
 export function CategoryPickerScreen({ navigation }: Props) {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const {
     data: categories,
     isLoading,
@@ -31,6 +35,11 @@ export function CategoryPickerScreen({ navigation }: Props) {
 
   useLayoutEffect(() => {
     navigation.setOptions({
+      headerStyle: { backgroundColor: theme.colors.bg.base },
+      headerTintColor: theme.colors.gold.primary,
+      headerShadowVisible: false,
+      // The screen title lives in the body as an h1 (per mockup).
+      headerTitle: () => null,
       // headerRight is a navigation render prop, not a remounted subtree.
       // eslint-disable-next-line react/no-unstable-nested-components
       headerRight: () => (
@@ -48,7 +57,7 @@ export function CategoryPickerScreen({ navigation }: Props) {
         </View>
       ),
     });
-  }, [navigation]);
+  }, [navigation, styles, theme]);
 
   // Starts a session for the given category (null = mix mode), then opens the
   // Question screen. A 409 means the couple already has an active session — we
@@ -84,7 +93,7 @@ export function CategoryPickerScreen({ navigation }: Props) {
   if (isLoading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator />
+        <ActivityIndicator color={theme.colors.gold.primary} />
         <Text style={styles.loadingText}>{pl.categoryPicker.loading}</Text>
       </View>
     );
@@ -101,92 +110,136 @@ export function CategoryPickerScreen({ navigation }: Props) {
         data={categories ?? []}
         keyExtractor={item => item.slug}
         contentContainerStyle={styles.listContent}
+        ListHeaderComponent={
+          <Text style={styles.title}>{pl.categoryPicker.title}</Text>
+        }
         renderItem={({ item }) => (
-          <TouchableOpacity
+          <Card
             testID={`category-${item.slug}`}
-            style={styles.categoryTile}
+            onPress={() => start(item.slug)}
             disabled={starting}
-            onPress={() => start(item.slug)}>
-            <Text style={styles.categoryName}>{item.name}</Text>
-          </TouchableOpacity>
+            style={styles.categoryCard}>
+            <View style={styles.categoryRow}>
+              <View style={styles.categoryText}>
+                <Text style={styles.categoryName}>{item.name}</Text>
+                {item.description && (
+                  <Text style={styles.categoryDesc}>{item.description}</Text>
+                )}
+              </View>
+              <Text style={styles.chevron}>›</Text>
+            </View>
+          </Card>
         )}
         ListFooterComponent={
-          <TouchableOpacity
+          <Card
             testID="category-picker-mix"
-            style={styles.mixTile}
+            variant="gold"
+            onPress={() => start(null)}
             disabled={starting}
-            onPress={() => start(null)}>
+            style={styles.mixCard}>
             <Text style={styles.mixName}>{pl.categoryPicker.mixButton}</Text>
             <Text style={styles.mixHint}>{pl.categoryPicker.mixHint}</Text>
-          </TouchableOpacity>
+          </Card>
         }
       />
-      {starting && <ActivityIndicator style={styles.startingSpinner} />}
+      {starting && (
+        <ActivityIndicator
+          style={styles.startingSpinner}
+          color={theme.colors.gold.primary}
+        />
+      )}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: 12,
-    color: '#777',
-    fontSize: 15,
-  },
-  listContent: {
-    padding: 16,
-  },
-  error: {
-    color: '#b00020',
-    fontSize: 14,
-    paddingHorizontal: 16,
-    paddingTop: 12,
-  },
-  categoryTile: {
-    backgroundColor: '#333',
-    borderRadius: 8,
-    paddingVertical: 20,
-    paddingHorizontal: 16,
-    marginBottom: 12,
-  },
-  categoryName: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  mixTile: {
-    backgroundColor: '#666',
-    borderRadius: 8,
-    paddingVertical: 24,
-    paddingHorizontal: 16,
-    marginTop: 8,
-  },
-  mixName: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  mixHint: {
-    color: '#ddd',
-    fontSize: 13,
-    marginTop: 4,
-  },
-  startingSpinner: {
-    paddingVertical: 16,
-  },
-  headerButtons: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  headerButton: {
-    color: '#0a84ff',
-    fontSize: 16,
-  },
-});
+const createStyles = (theme: Theme) => {
+  const { colors, typography, spacing } = theme;
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.bg.base,
+    },
+    centered: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.bg.base,
+    },
+    loadingText: {
+      marginTop: spacing.md,
+      color: colors.text.muted,
+      fontFamily: typography.family.body,
+      fontSize: typography.size.bodySm,
+    },
+    listContent: {
+      padding: spacing.lg,
+    },
+    title: {
+      fontFamily: typography.family.heading,
+      fontSize: typography.size.h1,
+      color: colors.text.primary,
+      marginBottom: spacing.xl,
+    },
+    error: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.bodySm,
+      color: colors.burgundy.accent,
+      paddingHorizontal: spacing.lg,
+      paddingTop: spacing.md,
+    },
+    categoryCard: {
+      marginBottom: spacing.md,
+    },
+    categoryRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    categoryText: {
+      flex: 1,
+    },
+    categoryName: {
+      fontFamily: typography.family.heading,
+      fontSize: typography.size.h3,
+      color: colors.text.primary,
+    },
+    categoryDesc: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.bodySm,
+      color: colors.text.secondary,
+      marginTop: spacing.xs,
+    },
+    chevron: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.h3,
+      color: colors.gold.deep,
+      marginLeft: spacing.md,
+    },
+    mixCard: {
+      marginTop: spacing.sm,
+      paddingVertical: spacing.xl,
+    },
+    mixName: {
+      fontFamily: typography.family.heading,
+      fontSize: typography.size.h3,
+      color: colors.gold.primary,
+    },
+    mixHint: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.bodySm,
+      color: colors.text.secondary,
+      marginTop: spacing.xs,
+    },
+    startingSpinner: {
+      paddingVertical: spacing.lg,
+    },
+    headerButtons: {
+      flexDirection: 'row',
+      gap: spacing.lg,
+    },
+    headerButton: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.bodySm,
+      color: colors.gold.primary,
+    },
+  });
+};
