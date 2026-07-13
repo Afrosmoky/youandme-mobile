@@ -4,6 +4,7 @@ import {
   scheduleDailyReminder,
   scheduleStreakWarning,
   cancelStreakWarning,
+  scheduleWeeklyRitualReminder,
 } from './notifee';
 
 type Args = {
@@ -35,6 +36,9 @@ export function useLocalPushSchedule({
           await requestNotificationPermission();
         }
         await scheduleDailyReminder(dailyPushHour);
+        // Sunday evening ritual reminder — fixed hour/text, independent of the
+        // daily card state; idempotent (stable id), so re-running is harmless.
+        await scheduleWeeklyRitualReminder();
         // The streak warning is the crux: schedule it only while unanswered,
         // cancel it the moment the couple has answered today.
         if (answeredToday) {

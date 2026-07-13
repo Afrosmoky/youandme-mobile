@@ -50,7 +50,7 @@ jest.mock('@notifee/react-native', () => ({
     displayNotification: jest.fn(() => Promise.resolve()),
   },
   AndroidImportance: { HIGH: 4 },
-  RepeatFrequency: { DAILY: 1 },
+  RepeatFrequency: { DAILY: 1, WEEKLY: 2 },
   TriggerType: { TIMESTAMP: 0 },
 }));
 

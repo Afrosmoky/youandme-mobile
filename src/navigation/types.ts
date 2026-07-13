@@ -12,6 +12,8 @@ export type RootStackParamList = {
   Home: undefined;
   // Daily card (P4): the couple's question of the day.
   DailyCard: undefined;
+  // Weekly ritual (P4): read-only ritual of the week.
+  Ritual: undefined;
   CategoryPicker: undefined;
   // sessionUlid is passed when a fresh session was just started; absent when
   // resuming or when Question fetches the active session itself.

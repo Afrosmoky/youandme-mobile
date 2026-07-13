@@ -4,11 +4,13 @@ import {fireEvent, screen, waitFor} from '@testing-library/react-native';
 import {renderWithQueryClient} from '../src/test/renderWithQueryClient';
 import {HomeScreen} from '../src/screens/HomeScreen';
 import {getDailyCard} from '../src/api/dailyCard';
-import type {DailyCard} from '../src/domain/types';
+import {getWeeklyRitual} from '../src/api/rituals';
+import type {DailyCard, WeeklyRitual} from '../src/domain/types';
 import type {RootStackParamList} from '../src/navigation/types';
 import {pl} from '../src/i18n/pl';
 
 jest.mock('../src/api/dailyCard', () => ({getDailyCard: jest.fn()}));
+jest.mock('../src/api/rituals', () => ({getWeeklyRitual: jest.fn()}));
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
 
@@ -26,6 +28,16 @@ const dailyCard: DailyCard = {
   dailyPushHour: 20,
 };
 
+const weeklyRitual: WeeklyRitual = {
+  ritual: {
+    ulid: 'r_01',
+    title: 'Tydzień intymności',
+    body: 'Usiądźcie naprzeciw siebie i dajcie sobie 2 minuty kontaktu wzrokowego.',
+  },
+  startedOn: '2026-07-12',
+  dayOfWeek: 3,
+};
+
 const navigate = jest.fn();
 
 function makeProps(): Props {
@@ -39,6 +51,7 @@ describe('HomeScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.mocked(getDailyCard).mockResolvedValue(dailyCard);
+    jest.mocked(getWeeklyRitual).mockResolvedValue(weeklyRitual);
   });
 
   test('shows the "answer today" state and the streak when unanswered', async () => {
@@ -82,5 +95,28 @@ describe('HomeScreen', () => {
     fireEvent.press(await screen.findByTestId('home-session'));
 
     expect(navigate).toHaveBeenCalledWith('CategoryPicker');
+  });
+
+  test('shows the ritual tile with title and day counter, and navigates', async () => {
+    renderWithQueryClient(<HomeScreen {...makeProps()} />);
+
+    expect(await screen.findByText(weeklyRitual.ritual.title)).toBeOnTheScreen();
+    expect(screen.getByTestId('home-ritual-day')).toHaveTextContent(
+      pl.ritual.day(3),
+    );
+
+    fireEvent.press(screen.getByTestId('home-ritual'));
+    expect(navigate).toHaveBeenCalledWith('Ritual');
+  });
+
+  test('hides the ritual tile (and does not crash) on a 404', async () => {
+    jest.mocked(getWeeklyRitual).mockRejectedValue({response: {status: 404}});
+
+    renderWithQueryClient(<HomeScreen {...makeProps()} />);
+
+    // The rest of the home screen still renders.
+    await screen.findByText(dailyCard.question.body);
+    expect(screen.getByTestId('home-session')).toBeOnTheScreen();
+    expect(screen.queryByTestId('home-ritual')).toBeNull();
   });
 });

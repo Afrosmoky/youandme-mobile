@@ -3,6 +3,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useDailyCard } from '../queries/useDailyCard';
+import { useWeeklyRitual } from '../queries/useWeeklyRitual';
 import { useLocalPushSchedule } from '../notifications/useLocalPushSchedule';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { GlowBackground } from '../components/GlowBackground';
@@ -27,6 +28,9 @@ export function HomeScreen({ navigation }: Props) {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { data: daily } = useDailyCard();
+  // A 404 / empty ritual seed leaves `ritual` undefined; the tile is simply
+  // hidden (quiet empty state), the rest of the home screen is unaffected.
+  const { data: ritual } = useWeeklyRitual();
 
   // Push scheduling is driven by the daily card state; gated until it resolves.
   useLocalPushSchedule({
@@ -82,6 +86,20 @@ export function HomeScreen({ navigation }: Props) {
           </Text>
         </View>
       </Card>
+
+      {ritual && (
+        <Card
+          testID="home-ritual"
+          onPress={() => navigation.navigate('Ritual')}
+          style={styles.tile}>
+          <Text style={styles.ritualLabel}>{pl.home.ritualLabel}</Text>
+          <Text style={styles.tileTitle}>{ritual.ritual.title}</Text>
+          <Text style={styles.tileHint}>{teaser(ritual.ritual.body)}</Text>
+          <Text testID="home-ritual-day" style={styles.ritualDay}>
+            {pl.ritual.day(ritual.dayOfWeek)}
+          </Text>
+        </Card>
+      )}
 
       <Card
         testID="home-session"
@@ -148,6 +166,23 @@ const createStyles = (theme: Theme) => {
       fontSize: typography.size.bodySm,
       color: colors.text.secondary,
       marginTop: spacing.xs,
+    },
+    // Ritual tile accent is text.bright (near-white), not gold — the gold tile
+    // is the daily card. Colour is the only distinction until the P11a style
+    // guide (Wiktoria, task #36) may assign the ritual its own token.
+    ritualLabel: {
+      fontFamily: typography.family.heading,
+      fontSize: typography.size.label,
+      color: colors.text.bright,
+      letterSpacing: typography.letterSpacing.label,
+      textTransform: 'uppercase',
+      marginBottom: spacing.sm,
+    },
+    ritualDay: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.bodySm,
+      color: colors.text.bright,
+      marginTop: spacing.md,
     },
   });
 };

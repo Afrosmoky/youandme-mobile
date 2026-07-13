@@ -10,6 +10,7 @@ import { ResetPasswordScreen } from '../screens/ResetPasswordScreen';
 import { BootstrapScreen } from '../screens/BootstrapScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { DailyCardScreen } from '../screens/DailyCardScreen';
+import { RitualScreen } from '../screens/RitualScreen';
 import { CategoryPickerScreen } from '../screens/CategoryPickerScreen';
 import { QuestionScreen } from '../screens/QuestionScreen';
 import { MemoriesScreen } from '../screens/MemoriesScreen';
@@ -76,6 +77,11 @@ export function RootNavigator() {
             name="DailyCard"
             component={DailyCardScreen}
             options={{ title: pl.dailyCard.headerTitle }}
+          />
+          <Stack.Screen
+            name="Ritual"
+            component={RitualScreen}
+            options={{ title: pl.ritual.headerTitle }}
           />
           <Stack.Screen
             name="CategoryPicker"

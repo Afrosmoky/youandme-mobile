@@ -6,4 +6,5 @@ export const queryKeys = {
   memories: ['memories'] as const,
   verificationStatus: ['verification-status'] as const,
   dailyCard: ['daily-card'] as const,
+  weeklyRitual: ['weekly-ritual'] as const,
 };

@@ -273,3 +273,38 @@ export function mapRawDailyCard(
     dailyPushHour: raw.daily_push_hour,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Weekly ritual (P4) — the couple's ritual of the week plus a day counter. Light
+// version: no completion status, no weekly streak. day_of_week (1–7) is computed
+// backend-side in the couple's timezone; the front never recounts it.
+// ---------------------------------------------------------------------------
+export const rawWeeklyRitualSchema = z.object({
+  ritual: z.object({
+    ulid: z.string(),
+    title: z.string(),
+    body: z.string(),
+  }),
+  started_on: z.string(),
+  day_of_week: z.number(),
+});
+
+export type WeeklyRitual = {
+  ritual: { ulid: string; title: string; body: string };
+  startedOn: string;
+  dayOfWeek: number;
+};
+
+export function mapRawWeeklyRitual(
+  raw: z.infer<typeof rawWeeklyRitualSchema>,
+): WeeklyRitual {
+  return {
+    ritual: {
+      ulid: raw.ritual.ulid,
+      title: raw.ritual.title,
+      body: raw.ritual.body,
+    },
+    startedOn: raw.started_on,
+    dayOfWeek: raw.day_of_week,
+  };
+}

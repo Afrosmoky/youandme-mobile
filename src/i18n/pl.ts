@@ -137,10 +137,17 @@ export const pl = {
     // "3 dni serii"
     streak: (days: number) => `${days} dni serii`,
     streakNone: 'Zacznijcie serię dziś',
+    ritualLabel: 'Rytuał tygodnia',
     sessionTitle: 'Sesja pytań',
     sessionHint: 'Wybierzcie kategorię i grajcie',
     memoriesTitle: 'Wspomnienia',
     memoriesHint: 'Wasze zapisane odpowiedzi',
+  },
+
+  ritual: {
+    headerTitle: 'Rytuał tygodnia',
+    // "dzień 3 z 7"
+    day: (day: number) => `dzień ${day} z 7`,
   },
 
   dailyCard: {
@@ -173,5 +180,8 @@ export const pl = {
     milestoneTitle: 'Kamień milowy!',
     // "Seria 7 dni — gratulacje!"
     milestoneBody: (days: number) => `Seria ${days} dni — gratulacje!`,
+    ritualReminderTitle: 'Rytuał tygodnia',
+    ritualReminderBody:
+      'Wyzwanie tygodnia — sprawdźcie wasz rytuał na ten tydzień.',
   },
 } as const;

@@ -25,6 +25,23 @@ describe('useLocalPushSchedule', () => {
     expect(notifee.cancelNotification).not.toHaveBeenCalledWith('streak-warning');
   });
 
+  test('schedules the weekly ritual reminder', async () => {
+    renderHook(() =>
+      useLocalPushSchedule({
+        dailyPushHour: 20,
+        answeredToday: false,
+        enabled: true,
+      }),
+    );
+
+    await waitFor(() =>
+      expect(notifee.createTriggerNotification).toHaveBeenCalledWith(
+        expect.objectContaining({id: 'weekly-ritual-reminder'}),
+        expect.anything(),
+      ),
+    );
+  });
+
   test('cancels the streak warning when the card is answered', async () => {
     renderHook(() =>
       useLocalPushSchedule({

@@ -12,9 +12,13 @@ import { pl } from '../i18n/pl';
 const CHANNEL_ID = 'daily-card';
 const DAILY_REMINDER_ID = 'daily-card-reminder';
 const STREAK_WARNING_ID = 'streak-warning';
+const RITUAL_REMINDER_ID = 'weekly-ritual-reminder';
 // No point warning about a lost streak past this hour, and never after the
 // reminder itself — so the warning is capped and skipped for late push hours.
 const STREAK_WARNING_MAX_HOUR = 22;
+// Fixed local hour for the Sunday ritual reminder — not tied to dailyPushHour
+// (that setting is about the daily card, not the ritual).
+const RITUAL_REMINDER_HOUR = 19;
 
 async function ensureChannel(): Promise<string> {
   return notifee.createChannel({
@@ -33,6 +37,21 @@ function nextAt(hour: number): number {
   if (next.getTime() <= now.getTime()) {
     next.setDate(next.getDate() + 1);
   }
+  return next.getTime();
+}
+
+// Next timestamp (ms) for the coming Sunday at a local hour (today if it is
+// Sunday and the hour is still ahead, otherwise the next Sunday).
+function nextSundayAt(hour: number): number {
+  const now = new Date();
+  const next = new Date();
+  next.setHours(hour, 0, 0, 0);
+  // getDay(): Sunday = 0. Days until the next Sunday.
+  let daysUntilSunday = (7 - next.getDay()) % 7;
+  if (daysUntilSunday === 0 && next.getTime() <= now.getTime()) {
+    daysUntilSunday = 7;
+  }
+  next.setDate(next.getDate() + daysUntilSunday);
   return next.getTime();
 }
 
@@ -79,6 +98,26 @@ export async function scheduleStreakWarning(dailyPushHour: number): Promise<void
 
 export async function cancelStreakWarning(): Promise<void> {
   await notifee.cancelNotification(STREAK_WARNING_ID);
+}
+
+// Weekly "check your ritual" reminder, Sunday evening, repeating. Fixed text and
+// hour — the backend knows nothing about it; notifee schedules once and the OS
+// repeats it weekly.
+export async function scheduleWeeklyRitualReminder(): Promise<void> {
+  const channelId = await ensureChannel();
+  await notifee.createTriggerNotification(
+    {
+      id: RITUAL_REMINDER_ID,
+      title: pl.notifications.ritualReminderTitle,
+      body: pl.notifications.ritualReminderBody,
+      android: { channelId },
+    },
+    {
+      type: TriggerType.TIMESTAMP,
+      timestamp: nextSundayAt(RITUAL_REMINDER_HOUR),
+      repeatFrequency: RepeatFrequency.WEEKLY,
+    },
+  );
 }
 
 // Milestone push only when the app is NOT in the foreground — otherwise the
