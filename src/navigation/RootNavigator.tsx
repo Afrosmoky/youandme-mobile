@@ -8,6 +8,8 @@ import { AuthScreen } from '../screens/AuthScreen';
 import { ForgotPasswordScreen } from '../screens/ForgotPasswordScreen';
 import { ResetPasswordScreen } from '../screens/ResetPasswordScreen';
 import { BootstrapScreen } from '../screens/BootstrapScreen';
+import { HomeScreen } from '../screens/HomeScreen';
+import { DailyCardScreen } from '../screens/DailyCardScreen';
 import { CategoryPickerScreen } from '../screens/CategoryPickerScreen';
 import { QuestionScreen } from '../screens/QuestionScreen';
 import { MemoriesScreen } from '../screens/MemoriesScreen';
@@ -64,6 +66,16 @@ export function RootNavigator() {
             name="Bootstrap"
             component={BootstrapScreen}
             options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="Home"
+            component={HomeScreen}
+            options={{ title: pl.home.headerTitle }}
+          />
+          <Stack.Screen
+            name="DailyCard"
+            component={DailyCardScreen}
+            options={{ title: pl.dailyCard.headerTitle }}
           />
           <Stack.Screen
             name="CategoryPicker"

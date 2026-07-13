@@ -128,4 +128,50 @@ export const pl = {
       challenge: 'Wyzwanie',
     },
   },
+
+  home: {
+    headerTitle: 'Ja i Ty',
+    dailyCardTitle: 'Karta dnia',
+    dailyCardTodo: 'Odpowiedzcie dziś',
+    dailyCardDone: 'Odpowiedziane',
+    // "3 dni serii"
+    streak: (days: number) => `${days} dni serii`,
+    streakNone: 'Zacznijcie serię dziś',
+    sessionTitle: 'Sesja pytań',
+    sessionHint: 'Wybierzcie kategorię i grajcie',
+    memoriesTitle: 'Wspomnienia',
+    memoriesHint: 'Wasze zapisane odpowiedzi',
+  },
+
+  dailyCard: {
+    headerTitle: 'Karta dnia',
+    placeholder: 'Wpisz odpowiedź...',
+    submitButton: 'Zapisz',
+    answeredTitle: 'Odpowiedziane dziś',
+    answeredLink: 'Odpowiedziane — zobacz we wspomnieniach',
+    emptyAnswer: 'Najpierw wpisz odpowiedź.',
+    loadError: 'Nie udało się pobrać karty dnia.',
+    saveError: 'Nie udało się zapisać odpowiedzi.',
+    // Both 409 cases (already answered / not-today card) refresh and let the
+    // fresh state speak for itself.
+    staleRefreshing: 'Karta była nieaktualna — odświeżamy.',
+  },
+
+  celebration: {
+    // "7 dni z rzędu!"
+    title: (days: number) => `${days} dni z rzędu!`,
+    body: 'Wasza seria rośnie. Tak trzymać!',
+    dismiss: 'Super',
+  },
+
+  notifications: {
+    channelName: 'Karta dnia',
+    dailyReminderTitle: 'Karta dnia czeka',
+    dailyReminderBody: 'Odpowiedzcie razem na dzisiejsze pytanie.',
+    streakWarningTitle: 'Nie traćcie serii',
+    streakWarningBody: 'Wasza karta dnia wciąż czeka — odpowiedzcie przed północą.',
+    milestoneTitle: 'Kamień milowy!',
+    // "Seria 7 dni — gratulacje!"
+    milestoneBody: (days: number) => `Seria ${days} dni — gratulacje!`,
+  },
 } as const;

@@ -38,6 +38,22 @@ jest.mock('@react-navigation/native', () => ({
   useRoute: () => ({ params: {} }),
 }));
 
+// @notifee/react-native: native module. Default to resolved no-ops; tests that
+// assert scheduling read the mocked default's calls.
+jest.mock('@notifee/react-native', () => ({
+  __esModule: true,
+  default: {
+    requestPermission: jest.fn(() => Promise.resolve({})),
+    createChannel: jest.fn(() => Promise.resolve('daily-card')),
+    createTriggerNotification: jest.fn(() => Promise.resolve()),
+    cancelNotification: jest.fn(() => Promise.resolve()),
+    displayNotification: jest.fn(() => Promise.resolve()),
+  },
+  AndroidImportance: { HIGH: 4 },
+  RepeatFrequency: { DAILY: 1 },
+  TriggerType: { TIMESTAMP: 0 },
+}));
+
 // axios: AuthScreen reads `axios.isAxiosError`, and api/client.ts calls
 // `axios.create`. Tests override isAxiosError per case.
 jest.mock('axios', () => {

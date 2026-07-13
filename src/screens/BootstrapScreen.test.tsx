@@ -68,23 +68,19 @@ describe('BootstrapScreen', () => {
     );
   });
 
-  test('goes to the category picker when there is no active session', async () => {
+  test('goes to the home hub when there is no active session', async () => {
     jest.mocked(getActiveSession).mockResolvedValue(null);
 
     renderThemed(<BootstrapScreen {...makeProps()} />);
 
-    await waitFor(() =>
-      expect(replace).toHaveBeenCalledWith('CategoryPicker'),
-    );
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('Home'));
   });
 
-  test('falls back to the category picker when the check fails', async () => {
+  test('falls back to the home hub when the check fails', async () => {
     jest.mocked(getActiveSession).mockRejectedValueOnce(new Error('boom'));
 
     renderThemed(<BootstrapScreen {...makeProps()} />);
 
-    await waitFor(() =>
-      expect(replace).toHaveBeenCalledWith('CategoryPicker'),
-    );
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('Home'));
   });
 });

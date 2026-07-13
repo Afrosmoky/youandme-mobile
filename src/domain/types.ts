@@ -241,3 +241,35 @@ export function mapRawMemory(raw: z.infer<typeof rawMemorySchema>): Memory {
     answeredAt: raw.answered_at,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Daily card (P4) — the couple's question of the day plus streak state. The
+// streak_current is already effective (0 when broken); the front never recounts.
+// ---------------------------------------------------------------------------
+export const rawDailyCardSchema = z.object({
+  question: rawQuestionSchema,
+  answered_today: z.boolean(),
+  streak_current: z.number(),
+  streak_longest: z.number(),
+  daily_push_hour: z.number(),
+});
+
+export type DailyCard = {
+  question: Question;
+  answeredToday: boolean;
+  streakCurrent: number;
+  streakLongest: number;
+  dailyPushHour: number;
+};
+
+export function mapRawDailyCard(
+  raw: z.infer<typeof rawDailyCardSchema>,
+): DailyCard {
+  return {
+    question: mapRawQuestion(raw.question),
+    answeredToday: raw.answered_today,
+    streakCurrent: raw.streak_current,
+    streakLongest: raw.streak_longest,
+    dailyPushHour: raw.daily_push_hour,
+  };
+}

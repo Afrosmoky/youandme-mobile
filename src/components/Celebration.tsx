@@ -1,0 +1,80 @@
+import React, { useMemo } from 'react';
+import { Modal, StyleSheet, Text, View } from 'react-native';
+import { Theme, useTheme } from '../theme';
+import { GlowBackground } from './GlowBackground';
+import { GoldButton } from './GoldButton';
+import { pl } from '../i18n/pl';
+
+type Props = {
+  visible: boolean;
+  streak: number;
+  onDismiss: () => void;
+};
+
+// Streak-milestone celebration modal in the P11a look: gold glow, big gold
+// number, a dismiss CTA. No reward copy — the card pack lands in P7.
+export function Celebration({ visible, streak, onDismiss }: Props) {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onDismiss}>
+      <View style={styles.scrim}>
+        <View testID="celebration" style={styles.card}>
+          <GlowBackground size={280} intensity={0.4} />
+          <Text style={styles.title}>{pl.celebration.title(streak)}</Text>
+          <Text style={styles.body}>{pl.celebration.body}</Text>
+          <GoldButton
+            testID="celebration-dismiss"
+            title={pl.celebration.dismiss}
+            onPress={onDismiss}
+            style={styles.button}
+          />
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const createStyles = (theme: Theme) => {
+  const { colors, typography, spacing, radius } = theme;
+  return StyleSheet.create({
+    scrim: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.bg.deep + 'cc',
+      padding: spacing.xxl,
+    },
+    card: {
+      alignSelf: 'stretch',
+      backgroundColor: colors.bg.surface,
+      borderWidth: 1,
+      borderColor: colors.gold.borderStrong,
+      borderRadius: radius.lg,
+      padding: spacing.xxl,
+      alignItems: 'center',
+      overflow: 'hidden',
+    },
+    title: {
+      fontFamily: typography.family.heading,
+      fontSize: typography.size.h1,
+      color: colors.gold.primary,
+      textAlign: 'center',
+      marginBottom: spacing.md,
+    },
+    body: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.body,
+      color: colors.text.primary,
+      textAlign: 'center',
+      marginBottom: spacing.xl,
+    },
+    button: {
+      alignSelf: 'stretch',
+    },
+  });
+};

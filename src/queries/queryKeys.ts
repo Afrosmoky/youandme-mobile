@@ -5,4 +5,5 @@ export const queryKeys = {
   categories: ['categories'] as const,
   memories: ['memories'] as const,
   verificationStatus: ['verification-status'] as const,
+  dailyCard: ['daily-card'] as const,
 };

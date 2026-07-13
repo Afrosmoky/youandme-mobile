@@ -6,8 +6,12 @@ export type RootStackParamList = {
   // come from the email link's query string.
   ResetPassword: { token: string; email: string };
   // Authenticated entry point: decides whether to resume an active session or
-  // send the user to the category picker.
+  // send the user to the home hub.
   Bootstrap: undefined;
+  // Home hub (P4): daily card + session + memories tiles.
+  Home: undefined;
+  // Daily card (P4): the couple's question of the day.
+  DailyCard: undefined;
   CategoryPicker: undefined;
   // sessionUlid is passed when a fresh session was just started; absent when
   // resuming or when Question fetches the active session itself.

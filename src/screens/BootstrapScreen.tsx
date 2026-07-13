@@ -37,11 +37,11 @@ export function BootstrapScreen({ navigation }: Props) {
         if (session) {
           navigation.replace('Question', { sessionUlid: session.ulid });
         } else {
-          navigation.replace('CategoryPicker');
+          navigation.replace('Home');
         }
       } catch {
         if (active) {
-          navigation.replace('CategoryPicker');
+          navigation.replace('Home');
         }
       }
     })();
