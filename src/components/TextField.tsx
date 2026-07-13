@@ -12,7 +12,8 @@ import { Theme, useTheme } from '../theme';
 import { SectionLabel } from './SectionLabel';
 
 type Props = {
-  label: string;
+  // Omit for a label-less field (e.g. Auth uses placeholder-only inputs).
+  label?: string;
   value: string;
   onChangeText?: (value: string) => void;
   error?: string;
@@ -47,7 +48,7 @@ export function TextField({
   const styles = useMemo(() => createStyles(theme), [theme]);
   return (
     <View style={[styles.wrapper, style]}>
-      <SectionLabel style={styles.label}>{label}</SectionLabel>
+      {label ? <SectionLabel style={styles.label}>{label}</SectionLabel> : null}
       {editable ? (
         <TextInput
           testID={testID}

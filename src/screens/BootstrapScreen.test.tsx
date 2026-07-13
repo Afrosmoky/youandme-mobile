@@ -1,6 +1,7 @@
-import React from 'react';
+import React, {ReactElement} from 'react';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {render, waitFor} from '@testing-library/react-native';
+import {ThemeProvider} from '../theme';
 import {BootstrapScreen} from './BootstrapScreen';
 import {getActiveSession} from '../api/sessions';
 import {useAuth} from '../auth/AuthContext';
@@ -33,6 +34,10 @@ function makeProps(): Props {
   } as unknown as Props;
 }
 
+// BootstrapScreen reads the theme (Logo/GlowBackground), so wrap in a provider.
+const renderThemed = (ui: ReactElement) =>
+  render(<ThemeProvider>{ui}</ThemeProvider>);
+
 describe('BootstrapScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -55,7 +60,7 @@ describe('BootstrapScreen', () => {
   test('hydrates the user and resumes an active session', async () => {
     jest.mocked(getActiveSession).mockResolvedValue(session);
 
-    render(<BootstrapScreen {...makeProps()} />);
+    renderThemed(<BootstrapScreen {...makeProps()} />);
 
     await waitFor(() => expect(refreshUser).toHaveBeenCalled());
     await waitFor(() =>
@@ -66,7 +71,7 @@ describe('BootstrapScreen', () => {
   test('goes to the category picker when there is no active session', async () => {
     jest.mocked(getActiveSession).mockResolvedValue(null);
 
-    render(<BootstrapScreen {...makeProps()} />);
+    renderThemed(<BootstrapScreen {...makeProps()} />);
 
     await waitFor(() =>
       expect(replace).toHaveBeenCalledWith('CategoryPicker'),
@@ -76,7 +81,7 @@ describe('BootstrapScreen', () => {
   test('falls back to the category picker when the check fails', async () => {
     jest.mocked(getActiveSession).mockRejectedValueOnce(new Error('boom'));
 
-    render(<BootstrapScreen {...makeProps()} />);
+    renderThemed(<BootstrapScreen {...makeProps()} />);
 
     await waitFor(() =>
       expect(replace).toHaveBeenCalledWith('CategoryPicker'),

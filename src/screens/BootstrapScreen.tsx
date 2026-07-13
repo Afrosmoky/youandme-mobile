@@ -1,9 +1,12 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useAuth } from '../auth/AuthContext';
 import { getActiveSession } from '../api/sessions';
+import { GlowBackground } from '../components/GlowBackground';
+import { Logo } from '../components/Logo';
+import { Theme, useTheme } from '../theme';
 import { pl } from '../i18n/pl';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Bootstrap'>;
@@ -12,6 +15,8 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Bootstrap'>;
 // to land: resume an active session (→ Question) or pick a category. Renders a
 // spinner while deciding and replaces itself so it never sits on the back stack.
 export function BootstrapScreen({ navigation }: Props) {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { refreshUser } = useAuth();
 
   useEffect(() => {
@@ -49,21 +54,31 @@ export function BootstrapScreen({ navigation }: Props) {
 
   return (
     <View style={styles.centered}>
-      <ActivityIndicator />
+      <GlowBackground size={520} intensity={0.55} />
+      <Logo style={styles.logo} />
+      <ActivityIndicator color={theme.colors.gold.primary} />
       <Text style={styles.text}>{pl.bootstrap.loading}</Text>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  text: {
-    marginTop: 12,
-    color: '#777',
-    fontSize: 15,
-  },
-});
+const createStyles = (theme: Theme) => {
+  const { colors, typography, spacing } = theme;
+  return StyleSheet.create({
+    centered: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: colors.bg.deep,
+    },
+    logo: {
+      marginBottom: spacing.xxl,
+    },
+    text: {
+      marginTop: spacing.md,
+      fontFamily: typography.family.body,
+      fontSize: typography.size.bodySm,
+      color: colors.text.muted,
+    },
+  });
+};

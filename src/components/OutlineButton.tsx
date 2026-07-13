@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import {
+  ActivityIndicator,
   StyleProp,
   StyleSheet,
   Text,
@@ -11,6 +12,8 @@ import { Theme, useTheme } from '../theme';
 type Props = {
   title: string;
   onPress: () => void;
+  // Shows a spinner and blocks presses (used for in-flight actions).
+  loading?: boolean;
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
   testID?: string;
@@ -20,19 +23,25 @@ type Props = {
 export function OutlineButton({
   title,
   onPress,
+  loading,
   disabled,
   style,
   testID,
 }: Props) {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  const blocked = disabled || loading;
   return (
     <TouchableOpacity
       testID={testID}
-      style={[styles.button, disabled && styles.disabled, style]}
+      style={[styles.button, blocked && styles.disabled, style]}
       onPress={onPress}
-      disabled={disabled}>
-      <Text style={styles.text}>{title}</Text>
+      disabled={blocked}>
+      {loading ? (
+        <ActivityIndicator color={theme.colors.text.primary} />
+      ) : (
+        <Text style={styles.text}>{title}</Text>
+      )}
     </TouchableOpacity>
   );
 }

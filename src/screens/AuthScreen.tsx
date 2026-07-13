@@ -1,12 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
 } from 'react-native';
 import axios from 'axios';
@@ -21,9 +19,15 @@ import { useAuth } from '../auth/AuthContext';
 import { useLogin } from '../queries/useLogin';
 import { useRegister } from '../queries/useRegister';
 import { PasswordInput } from '../components/PasswordInput';
+import { TextField } from '../components/TextField';
+import { GoldButton } from '../components/GoldButton';
+import { OutlineButton } from '../components/OutlineButton';
+import { GlowBackground } from '../components/GlowBackground';
+import { Logo } from '../components/Logo';
 import { parseApiError, FieldErrors } from '../api/errors';
 import { validateNickname } from '../domain/validation';
 import { RootStackParamList } from '../navigation/types';
+import { Theme, useTheme } from '../theme';
 import { pl } from '../i18n/pl';
 
 type Mode = 'login' | 'register';
@@ -38,6 +42,8 @@ const GOOGLE_IOS_CLIENT_ID =
   '1050573934208-9op7d68meh7jov11j6tu7spjocjs3fss.apps.googleusercontent.com';
 
 export function AuthScreen() {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { signInWithGoogle } = useAuth();
   const loginMutation = useLogin();
   const registerMutation = useRegister();
@@ -177,24 +183,22 @@ export function AuthScreen() {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <GlowBackground size={360} intensity={0.35} style={styles.glow} />
+
+      <Logo style={styles.logo} />
       <Text style={styles.title}>
         {isRegister ? pl.auth.registerTitle : pl.auth.loginTitle}
       </Text>
 
-      <TextInput
-        style={styles.input}
-        placeholder={pl.auth.email}
-        autoCapitalize="none"
-        autoCorrect={false}
-        keyboardType="email-address"
+      <TextField
+        testID="auth-email"
         value={email}
         onChangeText={onEmailChange}
+        placeholder={pl.auth.email}
+        error={isRegister ? fieldErrors.email : undefined}
+        autoCapitalize="none"
+        keyboardType="email-address"
       />
-      {isRegister && fieldErrors.email && (
-        <Text testID="auth-email-error" style={styles.fieldError}>
-          {fieldErrors.email}
-        </Text>
-      )}
       <PasswordInput
         value={password}
         onChangeText={onPasswordChange}
@@ -204,22 +208,14 @@ export function AuthScreen() {
         autoComplete={isRegister ? 'new-password' : 'password'}
       />
       {isRegister && (
-        <>
-          <TextInput
-            testID="auth-nickname"
-            style={styles.input}
-            placeholder={pl.auth.nickname}
-            autoCapitalize="none"
-            autoCorrect={false}
-            value={nickname}
-            onChangeText={onNicknameChange}
-          />
-          {(nicknameError ?? fieldErrors.nickname) && (
-            <Text testID="auth-nickname-error" style={styles.fieldError}>
-              {nicknameError ?? fieldErrors.nickname}
-            </Text>
-          )}
-        </>
+        <TextField
+          testID="auth-nickname"
+          value={nickname}
+          onChangeText={onNicknameChange}
+          placeholder={pl.auth.nickname}
+          error={nicknameError ?? fieldErrors.nickname}
+          autoCapitalize="none"
+        />
       )}
 
       {!isRegister && (
@@ -233,34 +229,22 @@ export function AuthScreen() {
 
       {error && <Text style={styles.error}>{error}</Text>}
 
-      <TouchableOpacity
+      <GoldButton
         testID="auth-submit"
-        style={[
-          styles.button,
-          (submitting || !nicknameOk) && styles.buttonDisabled,
-        ]}
+        title={isRegister ? pl.auth.submitRegister : pl.auth.submitLogin}
         onPress={onSubmit}
-        disabled={submitting || !nicknameOk}>
-        {submitting ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>
-            {isRegister ? pl.auth.submitRegister : pl.auth.submitLogin}
-          </Text>
-        )}
-      </TouchableOpacity>
+        loading={submitting}
+        disabled={submitting || !nicknameOk}
+        style={styles.submit}
+      />
 
-      <TouchableOpacity
+      <OutlineButton
         testID="auth-google"
-        style={[styles.googleButton, googleSubmitting && styles.buttonDisabled]}
+        title={pl.auth.googleSignIn}
         onPress={onGoogleSignIn}
-        disabled={googleSubmitting}>
-        {googleSubmitting ? (
-          <ActivityIndicator color="#333" />
-        ) : (
-          <Text style={styles.googleButtonText}>{pl.auth.googleSignIn}</Text>
-        )}
-      </TouchableOpacity>
+        loading={googleSubmitting}
+        style={styles.google}
+      />
 
       <TouchableOpacity onPress={toggleMode} style={styles.switch}>
         <Text style={styles.switchText}>
@@ -271,80 +255,59 @@ export function AuthScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '600',
-    marginBottom: 24,
-    textAlign: 'center',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    marginBottom: 12,
-    fontSize: 16,
-  },
-  error: {
-    color: '#b00020',
-    marginBottom: 12,
-  },
-  fieldError: {
-    color: '#b00020',
-    fontSize: 13,
-    marginTop: -6,
-    marginBottom: 12,
-  },
-  forgot: {
-    alignSelf: 'flex-end',
-    marginBottom: 12,
-  },
-  forgotText: {
-    color: '#555',
-    fontSize: 14,
-  },
-  button: {
-    backgroundColor: '#333',
-    borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  googleButton: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#333',
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  googleButtonText: {
-    color: '#333',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  switch: {
-    marginTop: 16,
-    alignItems: 'center',
-  },
-  switchText: {
-    color: '#555',
-    fontSize: 14,
-  },
-});
+const createStyles = (theme: Theme) => {
+  const { colors, typography, spacing } = theme;
+  return StyleSheet.create({
+    container: {
+      flex: 1,
+      justifyContent: 'center',
+      paddingHorizontal: spacing.xxl,
+      backgroundColor: colors.bg.base,
+    },
+    glow: {
+      justifyContent: 'flex-start',
+      paddingTop: spacing.xxxl,
+    },
+    logo: {
+      alignSelf: 'center',
+      marginBottom: spacing.sm,
+    },
+    title: {
+      fontFamily: typography.family.heading,
+      fontSize: typography.size.h2,
+      color: colors.text.primary,
+      marginBottom: spacing.xxl,
+      textAlign: 'center',
+    },
+    error: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.bodySm,
+      color: colors.burgundy.accent,
+      marginBottom: spacing.md,
+    },
+    forgot: {
+      alignSelf: 'flex-end',
+      marginBottom: spacing.md,
+    },
+    forgotText: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.bodySm,
+      color: colors.gold.primary,
+    },
+    submit: {
+      marginTop: spacing.xs,
+    },
+    google: {
+      marginTop: spacing.md,
+    },
+    switch: {
+      marginTop: spacing.lg,
+      alignItems: 'center',
+    },
+    switchText: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.bodySm,
+      color: colors.text.secondary,
+    },
+  });
+};
