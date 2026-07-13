@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "1050573934208",
+    "project_id": "ja-i-ty-mobile",
+    "storage_bucket": "ja-i-ty-mobile.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1050573934208:android:ae26ba215feb7bfa6c6065",
+        "android_client_info": {
+          "package_name": "com.youandmemobile"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1050573934208-5m7g7qhgu9p8i19hu2dci96ibg0ni2ku.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.youandmemobile",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "1050573934208-6s4a631jirskdjgpmlt5pbmu4sa9fnn5.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDsET2U8mZRkKmNK88cAQlm3b-V9H6fgOw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1050573934208-6s4a631jirskdjgpmlt5pbmu4sa9fnn5.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "1050573934208-9bkc5dv1jedoin87p8l5k281e343i2o1.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "app.jaity.mobile"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

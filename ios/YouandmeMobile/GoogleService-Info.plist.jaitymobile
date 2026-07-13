@@ -3,9 +3,9 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>1050573934208-9op7d68meh7jov11j6tu7spjocjs3fss.apps.googleusercontent.com</string>
+	<string>1050573934208-9bkc5dv1jedoin87p8l5k281e343i2o1.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.1050573934208-9op7d68meh7jov11j6tu7spjocjs3fss</string>
+	<string>com.googleusercontent.apps.1050573934208-9bkc5dv1jedoin87p8l5k281e343i2o1</string>
 	<key>API_KEY</key>
 	<string>AIzaSyDtKBVeWqTYUAWEQU9onoRXktUoRon_vZM</string>
 	<key>GCM_SENDER_ID</key>
@@ -13,7 +13,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>org.reactjs.native.example.YouandmeMobile</string>
+	<string>app.jaity.mobile</string>
 	<key>PROJECT_ID</key>
 	<string>ja-i-ty-mobile</string>
 	<key>STORAGE_BUCKET</key>
@@ -29,6 +29,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:1050573934208:ios:b9014b7202af6a826c6065</string>
+	<string>1:1050573934208:ios:f7931eb858bbe25e6c6065</string>
 </dict>
 </plist>

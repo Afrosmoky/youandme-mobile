@@ -77,3 +77,4 @@ yarn-error.log
 # Claude Code context (lokalne, nie wersjonowane)
 /CLAUDE.md
 /docs/
+.claude/

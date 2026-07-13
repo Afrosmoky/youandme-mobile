@@ -37,7 +37,7 @@
 			<string>com.googleusercontent.apps</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>com.googleusercontent.apps.1050573934208-9bkc5dv1jedoin87p8l5k281e343i2o1</string>
+				<string>com.googleusercontent.apps.1050573934208-9op7d68meh7jov11j6tu7spjocjs3fss</string>
 			</array>
 		</dict>
 	</array>
@@ -53,7 +53,7 @@
 		<true/>
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string></string>
+	<string/>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
@@ -75,5 +75,12 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<false/>
+	<key>UIAppFonts</key>
+	<array>
+		<string>Alegreya-Italic.ttf</string>
+		<string>Alegreya-Bold.ttf</string>
+		<string>Alegreya-Regular.ttf</string>
+		<string>Belleza-Regular.ttf</string>
+	</array>
 </dict>
 </plist>
