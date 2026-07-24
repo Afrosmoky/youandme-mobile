@@ -53,6 +53,8 @@ export function AuthScreen() {
   const [password, setPassword] = useState('');
   const [nickname, setNickname] = useState('');
   const [nicknameError, setNicknameError] = useState<string | null>(null);
+  const [referrer, setReferrer] = useState('');
+  const [referrerError, setReferrerError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -73,6 +75,12 @@ export function AuthScreen() {
   // In register mode the nickname must pass the front-side rules before we let
   // the user submit. Empty input shows no error yet, but still blocks submit.
   const nicknameOk = !isRegister || validateNickname(nickname).valid;
+  // The referrer is optional: empty is fine and never blocks submit. Kept
+  // separate from nicknameOk so an empty referrer does not gate the button.
+  const referrerOk =
+    !isRegister ||
+    referrer.trim().length === 0 ||
+    (validateNickname(referrer.trim()).valid && referrer.trim() !== nickname);
 
   // Drops the backend error for one field once the user edits it.
   const clearFieldError = (field: string) => {
@@ -105,6 +113,26 @@ export function AuthScreen() {
     );
   };
 
+  // Front-side referrer check, only when non-empty: same nickname rules as the
+  // user's own nick, plus a self-referral guard (shown inline before the 422).
+  const onReferrerChange = (value: string) => {
+    setReferrer(value);
+    clearFieldError('referrer_nickname');
+    const trimmed = value.trim();
+    if (trimmed.length === 0) {
+      setReferrerError(null);
+      return;
+    }
+    const result = validateNickname(trimmed);
+    if (!result.valid) {
+      setReferrerError(result.error ?? null);
+    } else if (trimmed === nickname) {
+      setReferrerError(pl.auth.referrerSelf);
+    } else {
+      setReferrerError(null);
+    }
+  };
+
   const onSubmit = () => {
     setError(null);
     setFieldErrors({});
@@ -112,7 +140,12 @@ export function AuthScreen() {
     // so neither mutation needs an onSuccess.
     if (isRegister) {
       registerMutation.mutate(
-        { email, password, nickname },
+        {
+          email,
+          password,
+          nickname,
+          referrerNickname: referrer.trim() || undefined,
+        },
         {
           onError: err => {
             // Register surfaces the real backend messages (e.g. "nick zajęty").
@@ -147,6 +180,7 @@ export function AuthScreen() {
     setMode(isRegister ? 'login' : 'register');
     setError(null);
     setNicknameError(null);
+    setReferrerError(null);
     setFieldErrors({});
   };
 
@@ -217,6 +251,16 @@ export function AuthScreen() {
           autoCapitalize="none"
         />
       )}
+      {isRegister && (
+        <TextField
+          testID="auth-referrer"
+          value={referrer}
+          onChangeText={onReferrerChange}
+          placeholder={pl.auth.referrerPlaceholder}
+          error={referrerError ?? fieldErrors.referrer_nickname}
+          autoCapitalize="none"
+        />
+      )}
 
       {!isRegister && (
         <TouchableOpacity
@@ -234,7 +278,7 @@ export function AuthScreen() {
         title={isRegister ? pl.auth.submitRegister : pl.auth.submitLogin}
         onPress={onSubmit}
         loading={submitting}
-        disabled={submitting || !nicknameOk}
+        disabled={submitting || !nicknameOk || !referrerOk}
         style={styles.submit}
       />
 

@@ -61,6 +61,40 @@ describe('auth API', () => {
     expect(result.token).toBe('tok_123');
   });
 
+  test('register includes referrer_nickname when provided', async () => {
+    jest.mocked(apiClient.post).mockResolvedValue(res(authBody));
+
+    await register({
+      email: 'ola@example.com',
+      password: 'tajne-haslo-123',
+      nickname: 'ola_test',
+      referrerNickname: 'tomek_99',
+    });
+
+    expect(apiClient.post).toHaveBeenCalledWith('/auth/register', {
+      email: 'ola@example.com',
+      password: 'tajne-haslo-123',
+      nickname: 'ola_test',
+      referrer_nickname: 'tomek_99',
+    });
+  });
+
+  test('register omits referrer_nickname when empty', async () => {
+    jest.mocked(apiClient.post).mockResolvedValue(res(authBody));
+
+    await register({
+      email: 'ola@example.com',
+      password: 'tajne-haslo-123',
+      nickname: 'ola_test',
+      referrerNickname: '',
+    });
+
+    expect(apiClient.post).toHaveBeenCalledWith(
+      '/auth/register',
+      expect.not.objectContaining({referrer_nickname: expect.anything()}),
+    );
+  });
+
   test('login maps the couple alongside the user', async () => {
     jest.mocked(apiClient.post).mockResolvedValue(res(authBody));
 

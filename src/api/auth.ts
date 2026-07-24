@@ -12,6 +12,10 @@ export type RegisterInput = {
   email: string;
   password: string;
   nickname: string;
+  // P5: optional referrer's nickname. When present it must resolve to an
+  // existing user (and not the registrant) server-side, else a 422 on
+  // referrer_nickname. Omitted entirely when empty — see register().
+  referrerNickname?: string;
 };
 
 export type LoginInput = {
@@ -37,7 +41,18 @@ function mapAuthResponse(data: unknown): AuthResponse {
 }
 
 export async function register(input: RegisterInput): Promise<AuthResponse> {
-  const res = await apiClient.post('/auth/register', input);
+  // Explicit camel→snake body. referrer_nickname is added only when non-empty:
+  // the referral is optional, and sending "" would make the backend treat it as
+  // a present-but-invalid referrer rather than "no referral".
+  const body: Record<string, string> = {
+    email: input.email,
+    password: input.password,
+    nickname: input.nickname,
+  };
+  if (input.referrerNickname) {
+    body.referrer_nickname = input.referrerNickname;
+  }
+  const res = await apiClient.post('/auth/register', body);
   return mapAuthResponse(res.data);
 }
 

@@ -162,6 +162,138 @@ describe('AuthScreen', () => {
     expect(Alert.alert).not.toHaveBeenCalled();
   });
 
+  test('sends a valid referrer nickname in register mode', async () => {
+    renderWithQueryClient(<AuthScreen />);
+    fireEvent.press(screen.getByText(pl.auth.switchToRegister));
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText(pl.auth.email),
+      'nowa@example.com',
+    );
+    fireEvent.changeText(
+      screen.getByPlaceholderText(pl.auth.password),
+      'tajne-haslo-123',
+    );
+    fireEvent.changeText(
+      screen.getByPlaceholderText(pl.auth.nickname),
+      'ola_test',
+    );
+    fireEvent.changeText(
+      screen.getByPlaceholderText(pl.auth.referrerPlaceholder),
+      'tomek_99',
+    );
+    fireEvent.press(screen.getByTestId('auth-submit'));
+
+    await waitFor(() =>
+      expect(register).toHaveBeenCalledWith({
+        email: 'nowa@example.com',
+        password: 'tajne-haslo-123',
+        nickname: 'ola_test',
+        referrerNickname: 'tomek_99',
+      }),
+    );
+  });
+
+  test('an empty referrer shows no error and does not block submit', async () => {
+    renderWithQueryClient(<AuthScreen />);
+    fireEvent.press(screen.getByText(pl.auth.switchToRegister));
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText(pl.auth.email),
+      'nowa@example.com',
+    );
+    fireEvent.changeText(
+      screen.getByPlaceholderText(pl.auth.password),
+      'tajne-haslo-123',
+    );
+    fireEvent.changeText(
+      screen.getByPlaceholderText(pl.auth.nickname),
+      'ola_test',
+    );
+    fireEvent.press(screen.getByTestId('auth-submit'));
+
+    expect(screen.queryByTestId('auth-referrer-error')).toBeNull();
+    await waitFor(() => expect(register).toHaveBeenCalled());
+  });
+
+  test('a malformed referrer shows an inline error and blocks submit', async () => {
+    renderWithQueryClient(<AuthScreen />);
+    fireEvent.press(screen.getByText(pl.auth.switchToRegister));
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText(pl.auth.nickname),
+      'ola_test',
+    );
+    fireEvent.changeText(
+      screen.getByPlaceholderText(pl.auth.referrerPlaceholder),
+      'ab',
+    );
+
+    expect(screen.getByTestId('auth-referrer-error')).toHaveTextContent(
+      pl.auth.nicknameInvalid,
+    );
+    fireEvent.press(screen.getByTestId('auth-submit'));
+    expect(register).not.toHaveBeenCalled();
+  });
+
+  test('a self-referral is flagged inline before submit', async () => {
+    renderWithQueryClient(<AuthScreen />);
+    fireEvent.press(screen.getByText(pl.auth.switchToRegister));
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText(pl.auth.nickname),
+      'ola_test',
+    );
+    fireEvent.changeText(
+      screen.getByPlaceholderText(pl.auth.referrerPlaceholder),
+      'ola_test',
+    );
+
+    expect(screen.getByTestId('auth-referrer-error')).toHaveTextContent(
+      pl.auth.referrerSelf,
+    );
+    fireEvent.press(screen.getByTestId('auth-submit'));
+    expect(register).not.toHaveBeenCalled();
+  });
+
+  test('shows the backend referrer error under the field on 422', async () => {
+    register.mockRejectedValueOnce({
+      response: {
+        status: 422,
+        data: {
+          message: 'Nie znaleziono osoby o tym nicku.',
+          errors: {referrer_nickname: ['Nie znaleziono osoby o tym nicku.']},
+        },
+      },
+    });
+    jest.mocked(axios.isAxiosError).mockReturnValue(true);
+
+    renderWithQueryClient(<AuthScreen />);
+    fireEvent.press(screen.getByText(pl.auth.switchToRegister));
+
+    fireEvent.changeText(
+      screen.getByPlaceholderText(pl.auth.email),
+      'nowa@example.com',
+    );
+    fireEvent.changeText(
+      screen.getByPlaceholderText(pl.auth.password),
+      'tajne-haslo-123',
+    );
+    fireEvent.changeText(
+      screen.getByPlaceholderText(pl.auth.nickname),
+      'ola_test',
+    );
+    fireEvent.changeText(
+      screen.getByPlaceholderText(pl.auth.referrerPlaceholder),
+      'ghost_user',
+    );
+    fireEvent.press(screen.getByTestId('auth-submit'));
+
+    expect(await screen.findByTestId('auth-referrer-error')).toHaveTextContent(
+      'Nie znaleziono osoby o tym nicku.',
+    );
+  });
+
   test('login shows the network error when the backend is offline', async () => {
     // No response = connection refused / timeout. Must NOT be masked as a
     // credentials problem, or the user blames their password.

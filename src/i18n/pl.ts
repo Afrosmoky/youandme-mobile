@@ -28,6 +28,8 @@ export const pl = {
     nicknameInvalid:
       'Nick może zawierać tylko małe litery, cyfry i podkreślenia (3-30 znaków)',
     nicknameReserved: 'Ta nazwa jest zarezerwowana',
+    referrerPlaceholder: 'Nick osoby polecającej (opcjonalnie)',
+    referrerSelf: 'To Twój własny nick',
     forgotPassword: 'Zapomniałem hasła',
     googleSignIn: 'Zaloguj przez Google',
     googleSignInError: 'Logowanie przez Google się nie powiodło.',
