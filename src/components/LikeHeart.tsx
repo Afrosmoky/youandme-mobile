@@ -11,9 +11,13 @@ type Props = {
 
 // P5 Slice 1b: the like heart. Provisional look pending Wiktoria's style guide
 // (task #36) — a text glyph, not an icon library (keeps the P4 no-icon-lib
-// decision). Filled ♥ in gold when liked, outline ♡ in muted otherwise. If the
-// glyph renders as an emoji instead of the font face, we tune it in P11b — no
-// native icon dependency added for it.
+// decision). Filled heart in gold when liked, outline heart in muted otherwise.
+// Each glyph is followed by U+FE0E (variation selector-15) forcing text
+// presentation: without it iOS renders U+2665 as a red emoji that ignores
+// `color`. Written as explicit escapes so the invisible selector survives copy.
+const HEART_FILLED = '♥︎';
+const HEART_OUTLINE = '♡︎';
+
 export function LikeHeart({ liked, onToggle, disabled, testID }: Props) {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -32,7 +36,7 @@ export function LikeHeart({ liked, onToggle, disabled, testID }: Props) {
               : theme.colors.text.muted,
           },
         ]}>
-        {liked ? '♥' : '♡'}
+        {liked ? HEART_FILLED : HEART_OUTLINE}
       </Text>
     </TouchableOpacity>
   );

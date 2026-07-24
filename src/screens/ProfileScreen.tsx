@@ -37,8 +37,10 @@ const TIMEZONES = ['Europe/Warsaw', 'UTC'];
 const DEFAULT_TIMEZONE = 'Europe/Warsaw';
 
 // P5 share target. Landing page placeholder until store links exist (P12). The
-// URL is passed to Share separately from the message so the link is not doubled
-// on Android (which appends url to message).
+// URL is embedded in the message rather than passed as Share's separate `url`:
+// some iOS targets (e.g. Reminders) take only the message and drop `url`, and
+// the app link is the whole point of the share. We accept losing the iOS
+// rich-preview (irrelevant in MVP) to guarantee the link always travels.
 const SHARE_URL = 'https://jaity.app';
 
 export function ProfileScreen({ navigation }: Props) {
@@ -183,8 +185,7 @@ export function ProfileScreen({ navigation }: Props) {
   const onShare = async () => {
     try {
       const result = await Share.share({
-        message: pl.share.message,
-        url: SHARE_URL,
+        message: `${pl.share.message} ${SHARE_URL}`,
       });
       if (result.action === Share.sharedAction) {
         await claimShareReward();

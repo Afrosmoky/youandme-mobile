@@ -371,8 +371,7 @@ describe('ProfileScreen', () => {
 
     await waitFor(() =>
       expect(shareSpy).toHaveBeenCalledWith({
-        message: pl.share.message,
-        url: 'https://jaity.app',
+        message: `${pl.share.message} https://jaity.app`,
       }),
     );
     await waitFor(() => expect(claimShareReward).toHaveBeenCalled());

@@ -154,10 +154,9 @@ export const pl = {
   },
 
   // P5 share. Copy is a neutral placeholder pending Wiktoria's sign-off (#36) —
-  // no card promise (the deck is closed until P7). The message deliberately does
-  // NOT embed the URL: Share.share receives `url` separately, and embedding it
-  // in the message too doubles the link on Android (which appends url to
-  // message). Landing page for now; store link lands in P12.
+  // no card promise (the deck is closed until P7). The URL is appended to this
+  // message at the call site (ProfileScreen.onShare), not passed as Share's
+  // separate `url`, so it survives targets that drop `url`.
   share: {
     message: 'Gramy w „Ja i Ty" — grę dla par. Wypróbuj z kimś bliskim.',
     thanksToast: 'Dzięki, że dzielisz się aplikacją!',

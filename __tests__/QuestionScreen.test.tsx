@@ -238,12 +238,12 @@ describe('QuestionScreen', () => {
     await screen.findByText(question.body);
 
     const heart = screen.getByTestId('question-like');
-    expect(heart).toHaveTextContent('♡');
+    expect(heart).toHaveTextContent('♡︎');
 
     fireEvent.press(heart);
 
     await waitFor(() =>
-      expect(screen.getByTestId('question-like')).toHaveTextContent('♥'),
+      expect(screen.getByTestId('question-like')).toHaveTextContent('♥︎'),
     );
     expect(likeQuestion).toHaveBeenCalledWith('q_01');
   });
@@ -258,7 +258,7 @@ describe('QuestionScreen', () => {
 
     // Optimistically liked, then rolled back to not-liked on error.
     await waitFor(() =>
-      expect(screen.getByTestId('question-like')).toHaveTextContent('♡'),
+      expect(screen.getByTestId('question-like')).toHaveTextContent('♡︎'),
     );
   });
 

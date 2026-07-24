@@ -11,7 +11,7 @@ describe('LikeHeart', () => {
   test('renders a filled heart when liked', () => {
     renderThemed(<LikeHeart liked onToggle={jest.fn()} testID="heart" />);
 
-    expect(screen.getByTestId('heart')).toHaveTextContent('♥');
+    expect(screen.getByTestId('heart')).toHaveTextContent('♥︎');
   });
 
   test('renders an outline heart when not liked', () => {
@@ -19,7 +19,7 @@ describe('LikeHeart', () => {
       <LikeHeart liked={false} onToggle={jest.fn()} testID="heart" />,
     );
 
-    expect(screen.getByTestId('heart')).toHaveTextContent('♡');
+    expect(screen.getByTestId('heart')).toHaveTextContent('♡︎');
   });
 
   test('tapping calls onToggle', () => {

@@ -67,13 +67,13 @@ describe('DailyCardScreen', () => {
 
     renderWithQueryClient(<DailyCardScreen {...makeProps()} />);
     const heart = await screen.findByTestId('daily-card-like');
-    expect(heart).toHaveTextContent('♡');
+    expect(heart).toHaveTextContent('♡︎');
 
     fireEvent.press(heart);
 
     // Flips before the API resolves, and stays liked after reconcile.
     await waitFor(() =>
-      expect(screen.getByTestId('daily-card-like')).toHaveTextContent('♥'),
+      expect(screen.getByTestId('daily-card-like')).toHaveTextContent('♥︎'),
     );
     expect(likeQuestion).toHaveBeenCalledWith('q_01');
     // Let the mutation's onSuccess reconcile settle (TanStack batches its cache
@@ -93,7 +93,7 @@ describe('DailyCardScreen', () => {
 
     // Optimistically liked, then rolled back to not-liked on error.
     await waitFor(() =>
-      expect(screen.getByTestId('daily-card-like')).toHaveTextContent('♡'),
+      expect(screen.getByTestId('daily-card-like')).toHaveTextContent('♡︎'),
     );
     await act(async () => {
       await Promise.resolve();
