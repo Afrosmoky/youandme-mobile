@@ -18,6 +18,7 @@ import {
   getActiveSession,
   skipCurrentQuestion,
 } from '../src/api/sessions';
+import {likeQuestion, unlikeQuestion} from '../src/api/likes';
 import {queryKeys} from '../src/queries/queryKeys';
 import type {RootStackParamList} from '../src/navigation/types';
 import {pl} from '../src/i18n/pl';
@@ -29,6 +30,10 @@ jest.mock('../src/api/sessions', () => ({
   endSession: jest.fn(),
   skipCurrentQuestion: jest.fn(),
 }));
+jest.mock('../src/api/likes', () => ({
+  likeQuestion: jest.fn(),
+  unlikeQuestion: jest.fn(),
+}));
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Question'>;
 type RenderProp = (p: object) => React.ReactElement;
@@ -39,6 +44,7 @@ const question = {
   type: 'session',
   category: {slug: 'na_poznanie', name: 'Na poznanie'},
   tags: [],
+  liked: false,
 };
 
 const session = {
@@ -92,6 +98,8 @@ describe('QuestionScreen', () => {
     jest.mocked(createMemory).mockResolvedValue({memory, session});
     jest.mocked(skipCurrentQuestion).mockResolvedValue(session);
     jest.mocked(endSession).mockResolvedValue(undefined);
+    jest.mocked(likeQuestion).mockResolvedValue({liked: true});
+    jest.mocked(unlikeQuestion).mockResolvedValue({liked: false});
     jest.mocked(axios.isAxiosError).mockReturnValue(false);
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   });
@@ -222,6 +230,35 @@ describe('QuestionScreen', () => {
 
     expect(await screen.findByTestId('question-error')).toHaveTextContent(
       'Odpowiedź jest wymagana.',
+    );
+  });
+
+  test('tapping the heart optimistically flips the local like', async () => {
+    renderWithQueryClient(<QuestionScreen {...makeProps()} />);
+    await screen.findByText(question.body);
+
+    const heart = screen.getByTestId('question-like');
+    expect(heart).toHaveTextContent('♡');
+
+    fireEvent.press(heart);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('question-like')).toHaveTextContent('♥'),
+    );
+    expect(likeQuestion).toHaveBeenCalledWith('q_01');
+  });
+
+  test('a rejected like rolls back the local state', async () => {
+    jest.mocked(likeQuestion).mockRejectedValueOnce(new Error('network'));
+
+    renderWithQueryClient(<QuestionScreen {...makeProps()} />);
+    await screen.findByText(question.body);
+
+    fireEvent.press(screen.getByTestId('question-like'));
+
+    // Optimistically liked, then rolled back to not-liked on error.
+    await waitFor(() =>
+      expect(screen.getByTestId('question-like')).toHaveTextContent('♡'),
     );
   });
 

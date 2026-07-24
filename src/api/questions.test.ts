@@ -46,9 +46,25 @@ describe('fetchNextQuestion', () => {
       type: 'session',
       category: { slug: 'na_poznanie', name: 'Na poznanie' },
       tags: ['niespodzianki'],
+      // No `liked` in the payload → defaults to false (P5 Slice 1b).
+      liked: false,
     });
     expect(result.session?.currentIndex).toBe(5);
     expect(result.sessionComplete).toBe(false);
+  });
+
+  test('reads liked from inside the question object', async () => {
+    jest.mocked(apiClient.get).mockResolvedValue(
+      res({
+        question: { ...rawQuestion, liked: true },
+        session: rawSession,
+        session_complete: false,
+      }),
+    );
+
+    const result = await fetchNextQuestion();
+
+    expect(result.question?.liked).toBe(true);
   });
 
   test('returns a null question when the session is complete', async () => {

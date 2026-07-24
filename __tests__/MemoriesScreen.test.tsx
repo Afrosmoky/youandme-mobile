@@ -22,6 +22,7 @@ const memory: Memory = {
     type: 'session',
     category: {slug: 'na_poznanie', name: 'Na poznanie'},
     tags: [],
+    liked: false,
   },
   answerA: 'Świetny żart w pracy.',
   answerB: null,

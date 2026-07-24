@@ -139,6 +139,10 @@ export const rawQuestionSchema = z.object({
   type: z.string(),
   category: rawCategoryRefSchema.nullable(),
   tags: z.array(z.string()),
+  // P5 Slice 1b: whether this couple liked the question. Optional with a false
+  // default because questions embedded in memories (rawMemorySchema) never carry
+  // it — without the default those payloads would fail to parse.
+  liked: z.boolean().optional().default(false),
 });
 
 export type Question = {
@@ -147,6 +151,7 @@ export type Question = {
   type: string;
   category: CategoryRef | null;
   tags: string[];
+  liked: boolean;
 };
 
 export function mapRawQuestion(raw: z.infer<typeof rawQuestionSchema>): Question {
@@ -156,6 +161,7 @@ export function mapRawQuestion(raw: z.infer<typeof rawQuestionSchema>): Question
     type: raw.type,
     category: raw.category,
     tags: raw.tags,
+    liked: raw.liked,
   };
 }
 
@@ -248,6 +254,11 @@ export function mapRawMemory(raw: z.infer<typeof rawMemorySchema>): Memory {
 // ---------------------------------------------------------------------------
 export const rawDailyCardSchema = z.object({
   question: rawQuestionSchema,
+  // P5 Slice 1b: for /daily-card the backend puts `liked` at the top level
+  // (Game appends it beside the question, not inside it), unlike /questions/next
+  // where it sits on the question. mapRawDailyCard folds it back into
+  // question.liked so both screens read it uniformly.
+  liked: z.boolean(),
   answered_today: z.boolean(),
   streak_current: z.number(),
   streak_longest: z.number(),
@@ -266,7 +277,9 @@ export function mapRawDailyCard(
   raw: z.infer<typeof rawDailyCardSchema>,
 ): DailyCard {
   return {
-    question: mapRawQuestion(raw.question),
+    // Fold the top-level `liked` into the question so the screen reads
+    // question.liked exactly as it does on QuestionScreen.
+    question: { ...mapRawQuestion(raw.question), liked: raw.liked },
     answeredToday: raw.answered_today,
     streakCurrent: raw.streak_current,
     streakLongest: raw.streak_longest,

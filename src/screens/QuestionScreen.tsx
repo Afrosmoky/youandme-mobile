@@ -18,6 +18,7 @@ import {
   getActiveSession,
   skipCurrentQuestion,
 } from '../api/sessions';
+import { likeQuestion, unlikeQuestion } from '../api/likes';
 import { parseApiError } from '../api/errors';
 import { useSaveMemory } from '../queries/useSaveMemory';
 import { GameSession, Question } from '../domain/types';
@@ -25,6 +26,7 @@ import { Theme, useTheme } from '../theme';
 import { SectionLabel } from '../components/SectionLabel';
 import { GoldButton } from '../components/GoldButton';
 import { OutlineButton } from '../components/OutlineButton';
+import { LikeHeart } from '../components/LikeHeart';
 import { pl } from '../i18n/pl';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Question'>;
@@ -38,6 +40,12 @@ export function QuestionScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Like state is imperative here (R1m keeps this whole screen imperative): a
+  // local flag seeded from question.liked, flipped optimistically. likePending
+  // blocks overlapping toggles — without it a fast double-tap would race a POST
+  // and a DELETE (mirrors the daily card's isPending guard).
+  const [liked, setLiked] = useState(false);
+  const [likePending, setLikePending] = useState(false);
   // Saving a memory also invalidates the memories list (see useSaveMemory). The
   // local `submitting` flag still gates both save and skip identically.
   const saveMemory = useSaveMemory();
@@ -68,7 +76,30 @@ export function QuestionScreen({ navigation }: Props) {
       return;
     }
     setQuestion(res.question);
+    setLiked(res.question.liked);
     setAnswer('');
+  };
+
+  // Optimistic like toggle: flip local state now, call the API, reconcile with
+  // the server's returned state, roll back on error. Guarded by likePending so a
+  // double-tap doesn't fire two overlapping requests.
+  const onToggleLike = async () => {
+    if (!question || likePending) {
+      return;
+    }
+    const current = liked;
+    setLiked(!current);
+    setLikePending(true);
+    try {
+      const res = current
+        ? await unlikeQuestion(question.ulid)
+        : await likeQuestion(question.ulid);
+      setLiked(res.liked);
+    } catch {
+      setLiked(current);
+    } finally {
+      setLikePending(false);
+    }
   };
 
   const handleError = async (err: unknown) => {
@@ -233,9 +264,17 @@ export function QuestionScreen({ navigation }: Props) {
         </Text>
       )}
 
-      <Text testID="question-body" style={styles.questionBody}>
-        {question?.body}
-      </Text>
+      <View style={styles.questionRow}>
+        <Text testID="question-body" style={styles.questionBody}>
+          {question?.body}
+        </Text>
+        <LikeHeart
+          testID="question-like"
+          liked={liked}
+          onToggle={onToggleLike}
+          disabled={!question || likePending}
+        />
+      </View>
 
       <TextInput
         testID="question-answer-input"
@@ -327,12 +366,18 @@ const createStyles = (theme: Theme) => {
       color: colors.burgundy.accent,
       marginBottom: spacing.md,
     },
+    questionRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      marginBottom: spacing.xxl,
+    },
     questionBody: {
+      flex: 1,
       fontFamily: typography.family.heading,
       fontSize: typography.size.h2,
       color: colors.text.primary,
       lineHeight: typography.size.h2 * 1.3,
-      marginBottom: spacing.xxl,
+      marginRight: spacing.md,
     },
     input: {
       backgroundColor: colors.bg.elevated,

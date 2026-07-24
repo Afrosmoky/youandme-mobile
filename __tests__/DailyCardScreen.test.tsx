@@ -1,10 +1,11 @@
 import React from 'react';
 import axios from 'axios';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
-import {fireEvent, screen, waitFor} from '@testing-library/react-native';
+import {act, fireEvent, screen, waitFor} from '@testing-library/react-native';
 import {renderWithQueryClient} from '../src/test/renderWithQueryClient';
 import {DailyCardScreen} from '../src/screens/DailyCardScreen';
 import {getDailyCard, answerDailyCard} from '../src/api/dailyCard';
+import {likeQuestion} from '../src/api/likes';
 import type {DailyCard, Couple, Memory} from '../src/domain/types';
 import type {RootStackParamList} from '../src/navigation/types';
 import {pl} from '../src/i18n/pl';
@@ -13,11 +14,22 @@ jest.mock('../src/api/dailyCard', () => ({
   getDailyCard: jest.fn(),
   answerDailyCard: jest.fn(),
 }));
+jest.mock('../src/api/likes', () => ({
+  likeQuestion: jest.fn(),
+  unlikeQuestion: jest.fn(),
+}));
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DailyCard'>;
 
 const card: DailyCard = {
-  question: {ulid: 'q_01', body: 'Pytanie dnia?', type: 'daily', category: null, tags: []},
+  question: {
+    ulid: 'q_01',
+    body: 'Pytanie dnia?',
+    type: 'daily',
+    category: null,
+    tags: [],
+    liked: false,
+  },
   answeredToday: false,
   streakCurrent: 5,
   streakLongest: 12,
@@ -48,6 +60,44 @@ describe('DailyCardScreen', () => {
     jest.clearAllMocks();
     jest.mocked(getDailyCard).mockResolvedValue(card);
     jest.mocked(axios.isAxiosError).mockReturnValue(false);
+  });
+
+  test('tapping the heart optimistically flips the like', async () => {
+    jest.mocked(likeQuestion).mockResolvedValue({liked: true});
+
+    renderWithQueryClient(<DailyCardScreen {...makeProps()} />);
+    const heart = await screen.findByTestId('daily-card-like');
+    expect(heart).toHaveTextContent('♡');
+
+    fireEvent.press(heart);
+
+    // Flips before the API resolves, and stays liked after reconcile.
+    await waitFor(() =>
+      expect(screen.getByTestId('daily-card-like')).toHaveTextContent('♥'),
+    );
+    expect(likeQuestion).toHaveBeenCalledWith('q_01');
+    // Let the mutation's onSuccess reconcile settle (TanStack batches its cache
+    // notifications on a timer) so no state update leaks past the test.
+    await act(async () => {
+      await Promise.resolve();
+    });
+  });
+
+  test('a rejected like rolls back to the previous state', async () => {
+    jest.mocked(likeQuestion).mockRejectedValue(new Error('network'));
+
+    renderWithQueryClient(<DailyCardScreen {...makeProps()} />);
+    const heart = await screen.findByTestId('daily-card-like');
+
+    fireEvent.press(heart);
+
+    // Optimistically liked, then rolled back to not-liked on error.
+    await waitFor(() =>
+      expect(screen.getByTestId('daily-card-like')).toHaveTextContent('♡'),
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
   });
 
   test('saves an answer, then shows the answered state', async () => {

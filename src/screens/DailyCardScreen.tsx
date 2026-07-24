@@ -13,12 +13,14 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useDailyCard } from '../queries/useDailyCard';
 import { useAnswerDailyCard } from '../queries/useAnswerDailyCard';
+import { useLikeQuestion } from '../queries/useLikeQuestion';
 import { queryKeys } from '../queries/queryKeys';
 import { parseApiError } from '../api/errors';
 import { isStreakMilestone } from '../domain/streak';
 import { notifyStreakMilestone } from '../notifications/notifee';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { GoldButton } from '../components/GoldButton';
+import { LikeHeart } from '../components/LikeHeart';
 import { Celebration } from '../components/Celebration';
 import { Theme, useTheme } from '../theme';
 import { pl } from '../i18n/pl';
@@ -31,6 +33,7 @@ export function DailyCardScreen({ navigation }: Props) {
   const queryClient = useQueryClient();
   const { data: daily, isLoading } = useDailyCard();
   const answer = useAnswerDailyCard();
+  const like = useLikeQuestion();
 
   const [text, setText] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -54,6 +57,16 @@ export function DailyCardScreen({ navigation }: Props) {
       ),
     });
   }, [navigation, styles, theme]);
+
+  // Toggle the like on the daily question. Visible whether or not the card has
+  // been answered — a couple can still like a question they already answered.
+  // isPending blocks overlapping toggles; the hook handles optimistic/rollback.
+  const onToggleLike = () => {
+    if (!daily || like.isPending) {
+      return;
+    }
+    like.mutate({ ulid: daily.question.ulid, liked: daily.question.liked });
+  };
 
   const onSubmit = () => {
     if (!daily) {
@@ -104,9 +117,17 @@ export function DailyCardScreen({ navigation }: Props) {
 
   return (
     <ScreenContainer testID="daily-card-screen">
-      <Text testID="daily-card-question" style={styles.question}>
-        {daily?.question.body}
-      </Text>
+      <View style={styles.questionRow}>
+        <Text testID="daily-card-question" style={styles.question}>
+          {daily?.question.body}
+        </Text>
+        <LikeHeart
+          testID="daily-card-like"
+          liked={daily?.question.liked ?? false}
+          onToggle={onToggleLike}
+          disabled={!daily || like.isPending}
+        />
+      </View>
 
       {answered ? (
         <View>
@@ -167,12 +188,18 @@ const createStyles = (theme: Theme) => {
       fontSize: typography.size.h2,
       color: colors.text.primary,
     },
+    questionRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      marginBottom: spacing.xxl,
+    },
     question: {
+      flex: 1,
       fontFamily: typography.family.heading,
       fontSize: typography.size.h2,
       color: colors.text.primary,
       lineHeight: typography.size.h2 * 1.3,
-      marginBottom: spacing.xxl,
+      marginRight: spacing.md,
     },
     error: {
       fontFamily: typography.family.body,

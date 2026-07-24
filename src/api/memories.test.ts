@@ -64,6 +64,9 @@ describe('memories API', () => {
     expect(result.memory.answerA).toBe('Placek zamiast chleba.');
     expect(result.memory.playerBName).toBe('Tomek');
     expect(result.memory.question.tags).toEqual([]);
+    // Embedded questions carry no `liked` — it defaults to false rather than
+    // failing to parse (P5 Slice 1b, rawQuestionSchema.liked is optional).
+    expect(result.memory.question.liked).toBe(false);
     expect(result.session.cardsSavedCount).toBe(3);
   });
 
