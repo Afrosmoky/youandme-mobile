@@ -2,6 +2,7 @@ import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -21,6 +22,8 @@ import { TextField } from '../components/TextField';
 import { Banner } from '../components/Banner';
 import { SectionLabel } from '../components/SectionLabel';
 import { GoldButton } from '../components/GoldButton';
+import { OutlineButton } from '../components/OutlineButton';
+import { claimShareReward } from '../api/share';
 import { parseApiError, FieldErrors } from '../api/errors';
 import { validateNickname } from '../domain/validation';
 import { Theme, useTheme } from '../theme';
@@ -32,6 +35,11 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 // list lands in stage IV.
 const TIMEZONES = ['Europe/Warsaw', 'UTC'];
 const DEFAULT_TIMEZONE = 'Europe/Warsaw';
+
+// P5 share target. Landing page placeholder until store links exist (P12). The
+// URL is passed to Share separately from the message so the link is not doubled
+// on Android (which appends url to message).
+const SHARE_URL = 'https://jaity.app';
 
 export function ProfileScreen({ navigation }: Props) {
   const theme = useTheme();
@@ -166,6 +174,26 @@ export function ProfileScreen({ navigation }: Props) {
         }
       },
     });
+  };
+
+  // Opens the native share sheet. Claims the reward only when the user actually
+  // picks a target (sharedAction) — dismissing withdraws the gesture. The claim
+  // is best-effort and idempotent server-side, so any failure stays silent (the
+  // bonus is granted server-side; there is nothing local to correct).
+  const onShare = async () => {
+    try {
+      const result = await Share.share({
+        message: pl.share.message,
+        url: SHARE_URL,
+      });
+      if (result.action === Share.sharedAction) {
+        await claimShareReward();
+        Alert.alert(pl.appTitle, pl.share.thanksToast);
+      }
+    } catch {
+      // Share sheet failed to open, or the claim call failed — nothing to
+      // recover here; the reward is idempotent and server-owned.
+    }
   };
 
   const onResend = () => {
@@ -340,6 +368,13 @@ export function ProfileScreen({ navigation }: Props) {
         />
       </View>
 
+      <OutlineButton
+        testID="profile-share"
+        title={pl.profile.shareApp}
+        onPress={onShare}
+        style={styles.shareButton}
+      />
+
       <TouchableOpacity
         testID="profile-logout"
         style={styles.logout}
@@ -420,8 +455,11 @@ const createStyles = (theme: Theme) => {
     changePasswordButton: {
       marginTop: spacing.xs,
     },
-    logout: {
+    shareButton: {
       marginTop: spacing.xl,
+    },
+    logout: {
+      marginTop: spacing.lg,
       alignItems: 'center',
       paddingVertical: spacing.md,
     },

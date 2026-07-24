@@ -45,6 +45,7 @@ export const pl = {
     locale: 'Język',
     save: 'Zapisz zmiany',
     logout: 'Wyloguj',
+    shareApp: 'Udostępnij aplikację',
     partnerName: 'Imię partnera',
     partnerNameHint: 'Imię osoby z którą grasz (opcjonalne)',
     verifyBadge: 'Email niezweryfikowany',
@@ -150,6 +151,16 @@ export const pl = {
     headerTitle: 'Rytuał tygodnia',
     // "dzień 3 z 7"
     day: (day: number) => `dzień ${day} z 7`,
+  },
+
+  // P5 share. Copy is a neutral placeholder pending Wiktoria's sign-off (#36) —
+  // no card promise (the deck is closed until P7). The message deliberately does
+  // NOT embed the URL: Share.share receives `url` separately, and embedding it
+  // in the message too doubles the link on Android (which appends url to
+  // message). Landing page for now; store link lands in P12.
+  share: {
+    message: 'Gramy w „Ja i Ty" — grę dla par. Wypróbuj z kimś bliskim.',
+    thanksToast: 'Dzięki, że dzielisz się aplikacją!',
   },
 
   dailyCard: {

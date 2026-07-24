@@ -1,5 +1,5 @@
 import React from 'react';
-import {Alert} from 'react-native';
+import {Alert, Share} from 'react-native';
 import axios from 'axios';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {fireEvent, screen, waitFor} from '@testing-library/react-native';
@@ -11,6 +11,7 @@ import {
   resendVerificationEmail,
   updateMe,
 } from '../src/api/profile';
+import {claimShareReward} from '../src/api/share';
 import {useAuth} from '../src/auth/AuthContext';
 import type {RootStackParamList} from '../src/navigation/types';
 import type {Couple, User} from '../src/domain/types';
@@ -22,6 +23,7 @@ jest.mock('../src/api/profile', () => ({
   resendVerificationEmail: jest.fn(),
   changePassword: jest.fn(),
 }));
+jest.mock('../src/api/share', () => ({claimShareReward: jest.fn()}));
 jest.mock('../src/auth/AuthContext', () => ({useAuth: jest.fn()}));
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
@@ -356,5 +358,35 @@ describe('ProfileScreen', () => {
         screen.queryByText(pl.profile.changePasswordButton),
       ).toBeNull(),
     );
+  });
+
+  test('sharing opens the native sheet and claims the reward when shared', async () => {
+    const shareSpy = jest
+      .spyOn(Share, 'share')
+      .mockResolvedValue({action: Share.sharedAction});
+    jest.mocked(claimShareReward).mockResolvedValue({claimed: true});
+
+    renderWithQueryClient(<ProfileScreen {...makeProps()} />);
+    fireEvent.press(await screen.findByTestId('profile-share'));
+
+    await waitFor(() =>
+      expect(shareSpy).toHaveBeenCalledWith({
+        message: pl.share.message,
+        url: 'https://jaity.app',
+      }),
+    );
+    await waitFor(() => expect(claimShareReward).toHaveBeenCalled());
+  });
+
+  test('dismissing the share sheet does not claim the reward', async () => {
+    jest
+      .spyOn(Share, 'share')
+      .mockResolvedValue({action: Share.dismissedAction});
+
+    renderWithQueryClient(<ProfileScreen {...makeProps()} />);
+    fireEvent.press(await screen.findByTestId('profile-share'));
+
+    await waitFor(() => expect(Share.share).toHaveBeenCalled());
+    expect(claimShareReward).not.toHaveBeenCalled();
   });
 });
