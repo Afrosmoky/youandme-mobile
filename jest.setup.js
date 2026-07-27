@@ -61,6 +61,40 @@ jest.mock('react-native-store-review', () => ({
   requestReview: jest.fn(),
 }));
 
+// react-native-google-mobile-ads: native AdMob SDK. `createForAdRequest`
+// returns a controllable fake — src/ads/rewardedAd.test.ts drives its event
+// listeners to simulate reward / dismissal / no-fill.
+jest.mock('react-native-google-mobile-ads', () => {
+  const AdEventType = {
+    LOADED: 'loaded',
+    OPENED: 'opened',
+    CLOSED: 'closed',
+    ERROR: 'error',
+    CLICKED: 'clicked',
+    PAID: 'paid',
+  };
+  const RewardedAdEventType = {
+    LOADED: 'rewarded_loaded',
+    EARNED_REWARD: 'rewarded_earned_reward',
+  };
+  return {
+    __esModule: true,
+    default: jest.fn(() => ({
+      initialize: jest.fn(() => Promise.resolve([])),
+    })),
+    AdEventType,
+    RewardedAdEventType,
+    TestIds: { REWARDED: 'test-rewarded-unit' },
+    RewardedAd: {
+      createForAdRequest: jest.fn(() => ({
+        load: jest.fn(),
+        show: jest.fn(() => Promise.resolve()),
+        addAdEventListener: jest.fn(() => jest.fn()),
+      })),
+    },
+  };
+});
+
 // axios: AuthScreen reads `axios.isAxiosError`, and api/client.ts calls
 // `axios.create`. Tests override isAxiosError per case.
 jest.mock('axios', () => {

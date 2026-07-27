@@ -47,6 +47,7 @@ export const pl = {
     logout: 'Wyloguj',
     shareApp: 'Udostępnij aplikację',
     rateApp: 'Oceń aplikację',
+    watchAd: 'Obejrzyj reklamę po bonus',
     partnerName: 'Imię partnera',
     partnerNameHint: 'Imię osoby z którą grasz (opcjonalne)',
     verifyBadge: 'Email niezweryfikowany',
@@ -169,6 +170,15 @@ export const pl = {
   // toast can only thank for the gesture.
   rating: {
     thanksToast: 'Dzięki, że nas wspierasz!',
+  },
+
+  // P6 rewarded ads. Same placeholder rules as `share` and `rating` above:
+  // neutral, no card promise. `capReached` deliberately says nothing about how
+  // many are left — the cap is a server-side rule, not a promise to the user.
+  ads: {
+    thanksToast: 'Dzięki za obejrzenie!',
+    capReached: 'Na dziś to już wszystko. Wróć jutro.',
+    unavailable: 'Nie udało się wczytać reklamy. Spróbuj później.',
   },
 
   dailyCard: {

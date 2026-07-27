@@ -321,3 +321,28 @@ export function mapRawWeeklyRitual(
     dayOfWeek: raw.day_of_week,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Ad reward (P6)
+// ---------------------------------------------------------------------------
+export const rawAdRewardSchema = z.object({
+  granted: z.boolean(),
+  credits_awarded: z.number(),
+  remaining_today: z.number(),
+});
+
+export type AdRewardResult = {
+  granted: boolean;
+  creditsAwarded: number;
+  remainingToday: number;
+};
+
+export function mapRawAdReward(
+  raw: z.infer<typeof rawAdRewardSchema>,
+): AdRewardResult {
+  return {
+    granted: raw.granted,
+    creditsAwarded: raw.credits_awarded,
+    remainingToday: raw.remaining_today,
+  };
+}

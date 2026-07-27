@@ -9,6 +9,7 @@ import { AppState, StatusBar } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { QueryClientProvider, focusManager } from '@tanstack/react-query';
+import mobileAds from 'react-native-google-mobile-ads';
 import { AuthProvider } from './src/auth/AuthContext';
 import { RootNavigator, linking } from './src/navigation/RootNavigator';
 import { queryClient } from './src/queries/queryClient';
@@ -22,6 +23,15 @@ focusManager.setEventListener(handleFocus => {
   );
   return () => sub.remove();
 });
+
+// AdMob has to be initialized once before any ad loads. Done at module scope
+// rather than in an effect so it is not tied to a render, and fire-and-forget
+// because nothing in P6 waits on the adapter statuses (no mediation).
+mobileAds()
+  .initialize()
+  .catch(() => {
+    // Ads simply stay unavailable; the rest of the app does not depend on them.
+  });
 
 function App() {
   // P11a is dark-only; ThemeProvider owns scheme resolution (see its comment),
