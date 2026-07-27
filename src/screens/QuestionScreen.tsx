@@ -50,9 +50,15 @@ export function QuestionScreen({ navigation }: Props) {
   // local `submitting` flag still gates both save and skip identically.
   const saveMemory = useSaveMemory();
 
-  // Ends the current session and returns to the picker. Tolerant of a missing
+  // Ends the current session and returns to the hub. Tolerant of a missing
   // session (e.g. it expired server-side) — the destination is the same.
-  const goToPicker = async (target: GameSession | null) => {
+  //
+  // The destination is Home, not CategoryPicker: since P4 the hub is Home, and
+  // `replace` resets the stack, so landing on the picker would strand the user
+  // on a screen with no path back to the daily card and the weekly ritual. A new
+  // session starts from Home's "sesja pytań" tile, which pushes the picker with
+  // a working back button.
+  const goToHome = async (target: GameSession | null) => {
     if (target) {
       try {
         await endSession(target.ulid);
@@ -60,11 +66,11 @@ export function QuestionScreen({ navigation }: Props) {
         // best-effort: the session may already be closed
       }
     }
-    navigation.replace('CategoryPicker');
+    navigation.replace('Home');
   };
 
   // Pulls the next card. When the deck is exhausted, closes the session and
-  // bounces back to the picker.
+  // bounces back to the hub.
   const loadNext = async () => {
     const res = await fetchNextQuestion();
     if (res.session) {
@@ -72,7 +78,7 @@ export function QuestionScreen({ navigation }: Props) {
     }
     if (res.sessionComplete || !res.question) {
       Alert.alert(pl.appTitle, pl.question.sessionComplete);
-      await goToPicker(res.session ?? session);
+      await goToHome(res.session ?? session);
       return;
     }
     setQuestion(res.question);
@@ -114,9 +120,9 @@ export function QuestionScreen({ navigation }: Props) {
         }
         return;
       }
-      // Session already ended server-side — back to the picker.
+      // Session already ended server-side — back to the hub.
       if (status === 410) {
-        navigation.replace('CategoryPicker');
+        navigation.replace('Home');
         return;
       }
     }
@@ -132,7 +138,7 @@ export function QuestionScreen({ navigation }: Props) {
           return;
         }
         if (!current) {
-          navigation.replace('CategoryPicker');
+          navigation.replace('Home');
           return;
         }
         setSession(current);
@@ -155,7 +161,7 @@ export function QuestionScreen({ navigation }: Props) {
   }, []);
 
   const onEnd = async () => {
-    await goToPicker(session);
+    await goToHome(session);
   };
 
   useLayoutEffect(() => {

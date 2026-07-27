@@ -12,8 +12,9 @@ import { pl } from '../i18n/pl';
 type Props = NativeStackScreenProps<RootStackParamList, 'Bootstrap'>;
 
 // Authenticated entry point. Hydrates the cached user/couple, then decides where
-// to land: resume an active session (→ Question) or pick a category. Renders a
-// spinner while deciding and replaces itself so it never sits on the back stack.
+// to land: resume an active session (→ Question) or go to the hub (→ Home).
+// Renders a spinner while deciding and replaces itself so it never sits on the
+// back stack.
 export function BootstrapScreen({ navigation }: Props) {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);

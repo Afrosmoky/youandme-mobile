@@ -153,7 +153,10 @@ describe('QuestionScreen', () => {
     await waitFor(() => expect(fetchNextQuestion).toHaveBeenCalledTimes(2));
   });
 
-  test('a complete session ends it and returns to the picker', async () => {
+  // Every exit from this screen lands on Home, the hub since P4 — never on
+  // CategoryPicker. `replace` resets the stack, so the picker would leave the
+  // user with no way back to the daily card and the weekly ritual.
+  test('a complete session ends it and returns to the hub', async () => {
     jest
       .mocked(fetchNextQuestion)
       .mockResolvedValue({question: null, session, sessionComplete: true});
@@ -163,11 +166,14 @@ describe('QuestionScreen', () => {
 
     await waitFor(() => expect(endSession).toHaveBeenCalledWith('s_01'));
     await waitFor(() =>
-      expect(props.navigation.replace).toHaveBeenCalledWith('CategoryPicker'),
+      expect(props.navigation.replace).toHaveBeenCalledWith('Home'),
+    );
+    expect(props.navigation.replace).not.toHaveBeenCalledWith(
+      'CategoryPicker',
     );
   });
 
-  test('the end button closes the session and navigates back', async () => {
+  test('the end button closes the session and returns to the hub', async () => {
     const props = makeProps();
     renderWithQueryClient(<QuestionScreen {...props} />);
     await screen.findByText(question.body);
@@ -177,20 +183,42 @@ describe('QuestionScreen', () => {
 
     await waitFor(() => expect(endSession).toHaveBeenCalledWith('s_01'));
     await waitFor(() =>
-      expect(props.navigation.replace).toHaveBeenCalledWith('CategoryPicker'),
+      expect(props.navigation.replace).toHaveBeenCalledWith('Home'),
+    );
+    expect(props.navigation.replace).not.toHaveBeenCalledWith(
+      'CategoryPicker',
     );
   });
 
-  test('redirects to the picker when there is no active session', async () => {
+  test('redirects to the hub when there is no active session', async () => {
     jest.mocked(getActiveSession).mockResolvedValue(null);
 
     const props = makeProps();
     renderWithQueryClient(<QuestionScreen {...props} />);
 
     await waitFor(() =>
-      expect(props.navigation.replace).toHaveBeenCalledWith('CategoryPicker'),
+      expect(props.navigation.replace).toHaveBeenCalledWith('Home'),
     );
     expect(fetchNextQuestion).not.toHaveBeenCalled();
+  });
+
+  test('a 410 on save returns to the hub (session ended server-side)', async () => {
+    jest.mocked(createMemory).mockRejectedValueOnce({response: {status: 410}});
+    jest.mocked(axios.isAxiosError).mockReturnValue(true);
+
+    const props = makeProps();
+    renderWithQueryClient(<QuestionScreen {...props} />);
+    await screen.findByText(question.body);
+
+    fireEvent.changeText(
+      screen.getByTestId('question-answer-input'),
+      'Mój żart',
+    );
+    fireEvent.press(screen.getByTestId('question-submit'));
+
+    await waitFor(() =>
+      expect(props.navigation.replace).toHaveBeenCalledWith('Home'),
+    );
   });
 
   test('a 409 on save refetches the question (race resolved)', async () => {
