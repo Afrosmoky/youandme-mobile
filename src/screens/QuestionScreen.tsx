@@ -54,10 +54,17 @@ export function QuestionScreen({ navigation }: Props) {
   // session (e.g. it expired server-side) — the destination is the same.
   //
   // The destination is Home, not CategoryPicker: since P4 the hub is Home, and
-  // `replace` resets the stack, so landing on the picker would strand the user
-  // on a screen with no path back to the daily card and the weekly ritual. A new
-  // session starts from Home's "sesja pytań" tile, which pushes the picker with
-  // a working back button.
+  // landing on the picker would strand the user on a screen with no path back to
+  // the daily card and the weekly ritual. A new session starts from Home's
+  // "sesja pytań" tile, which pushes the picker with a working back button.
+  //
+  // popTo rather than replace, because the two ways in here leave different
+  // stacks. Started from Home the stack is [Home, CategoryPicker, Question], and
+  // replace would swap only the top, leaving [Home, CategoryPicker, Home] — a
+  // hub with a back arrow onto the picker. Resumed at startup it is [Question]
+  // alone, with no Home to pop back to. popTo covers both: it unwinds to an
+  // existing Home, and creates one when there is none (verified against the
+  // installed StackRouter — both shapes settle on exactly [Home]).
   const goToHome = async (target: GameSession | null) => {
     if (target) {
       try {
@@ -66,7 +73,7 @@ export function QuestionScreen({ navigation }: Props) {
         // best-effort: the session may already be closed
       }
     }
-    navigation.replace('Home');
+    navigation.popTo('Home');
   };
 
   // Pulls the next card. When the deck is exhausted, closes the session and
@@ -120,9 +127,10 @@ export function QuestionScreen({ navigation }: Props) {
         }
         return;
       }
-      // Session already ended server-side — back to the hub.
+      // Session already ended server-side — back to the hub (see goToHome for
+      // why popTo and not replace).
       if (status === 410) {
-        navigation.replace('Home');
+        navigation.popTo('Home');
         return;
       }
     }
@@ -138,7 +146,7 @@ export function QuestionScreen({ navigation }: Props) {
           return;
         }
         if (!current) {
-          navigation.replace('Home');
+          navigation.popTo('Home');
           return;
         }
         setSession(current);

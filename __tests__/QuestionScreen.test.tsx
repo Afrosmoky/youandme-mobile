@@ -72,7 +72,17 @@ const memory = {
 
 function makeProps(): Props {
   return {
-    navigation: {replace: jest.fn(), navigate: jest.fn(), setOptions: jest.fn()},
+    // goBack/popToTop are mocked only so the exit tests can assert they are
+    // never used — a mocked navigation models no stack, so the guard against
+    // the wrong action is all a screen-level test can offer here.
+    navigation: {
+      popTo: jest.fn(),
+      replace: jest.fn(),
+      navigate: jest.fn(),
+      goBack: jest.fn(),
+      popToTop: jest.fn(),
+      setOptions: jest.fn(),
+    },
     route: {key: 'Question', name: 'Question', params: {sessionUlid: 's_01'}},
   } as unknown as Props;
 }
@@ -154,8 +164,13 @@ describe('QuestionScreen', () => {
   });
 
   // Every exit from this screen lands on Home, the hub since P4 — never on
-  // CategoryPicker. `replace` resets the stack, so the picker would leave the
-  // user with no way back to the daily card and the weekly ritual.
+  // CategoryPicker, which would leave the user with no way back to the daily
+  // card and the weekly ritual.
+  //
+  // The action is popTo, not replace. Both stacks this screen can sit on settle
+  // on exactly [Home]: [Home, CategoryPicker, Question] unwinds to the existing
+  // Home (replace would leave [Home, CategoryPicker, Home] — a hub with a back
+  // arrow), and the resume stack [Question] gets a Home created for it.
   test('a complete session ends it and returns to the hub', async () => {
     jest
       .mocked(fetchNextQuestion)
@@ -166,11 +181,9 @@ describe('QuestionScreen', () => {
 
     await waitFor(() => expect(endSession).toHaveBeenCalledWith('s_01'));
     await waitFor(() =>
-      expect(props.navigation.replace).toHaveBeenCalledWith('Home'),
+      expect(props.navigation.popTo).toHaveBeenCalledWith('Home'),
     );
-    expect(props.navigation.replace).not.toHaveBeenCalledWith(
-      'CategoryPicker',
-    );
+    expect(props.navigation.replace).not.toHaveBeenCalled();
   });
 
   test('the end button closes the session and returns to the hub', async () => {
@@ -183,11 +196,32 @@ describe('QuestionScreen', () => {
 
     await waitFor(() => expect(endSession).toHaveBeenCalledWith('s_01'));
     await waitFor(() =>
-      expect(props.navigation.replace).toHaveBeenCalledWith('Home'),
+      expect(props.navigation.popTo).toHaveBeenCalledWith('Home'),
     );
-    expect(props.navigation.replace).not.toHaveBeenCalledWith(
-      'CategoryPicker',
+    expect(props.navigation.replace).not.toHaveBeenCalled();
+  });
+
+  // The resume path: BootstrapScreen replaces itself with Question, so this
+  // screen is the whole stack and there is no Home underneath to pop back to.
+  // popTo has to create one. A mocked navigation cannot model that stack, so
+  // what this pins down is the action itself: neither a bare goBack (nothing to
+  // go back to when resumed) nor replace (leaves a duplicate Home when started
+  // from the hub) is correct, and only popTo survives both stacks.
+  test('ends the session with an action that works on the resume stack', async () => {
+    const props = makeProps();
+    renderWithQueryClient(<QuestionScreen {...props} />);
+    await screen.findByText(question.body);
+
+    const header = renderHeader(props, 'headerRight');
+    fireEvent.press(header.getByTestId('question-end'));
+
+    await waitFor(() =>
+      expect(props.navigation.popTo).toHaveBeenCalledWith('Home'),
     );
+    // Never a bare pop/goBack: with [Question] alone there is nothing to go
+    // back to, and the user would be left staring at the finished session.
+    expect(props.navigation.goBack).not.toHaveBeenCalled();
+    expect(props.navigation.popToTop).not.toHaveBeenCalled();
   });
 
   test('redirects to the hub when there is no active session', async () => {
@@ -197,7 +231,7 @@ describe('QuestionScreen', () => {
     renderWithQueryClient(<QuestionScreen {...props} />);
 
     await waitFor(() =>
-      expect(props.navigation.replace).toHaveBeenCalledWith('Home'),
+      expect(props.navigation.popTo).toHaveBeenCalledWith('Home'),
     );
     expect(fetchNextQuestion).not.toHaveBeenCalled();
   });
@@ -217,7 +251,7 @@ describe('QuestionScreen', () => {
     fireEvent.press(screen.getByTestId('question-submit'));
 
     await waitFor(() =>
-      expect(props.navigation.replace).toHaveBeenCalledWith('Home'),
+      expect(props.navigation.popTo).toHaveBeenCalledWith('Home'),
     );
   });
 
