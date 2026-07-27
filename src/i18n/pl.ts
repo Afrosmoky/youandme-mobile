@@ -46,6 +46,7 @@ export const pl = {
     save: 'Zapisz zmiany',
     logout: 'Wyloguj',
     shareApp: 'Udostępnij aplikację',
+    rateApp: 'Oceń aplikację',
     partnerName: 'Imię partnera',
     partnerNameHint: 'Imię osoby z którą grasz (opcjonalne)',
     verifyBadge: 'Email niezweryfikowany',
@@ -160,6 +161,14 @@ export const pl = {
   share: {
     message: 'Gramy w „Ja i Ty" — grę dla par. Wypróbuj z kimś bliskim.',
     thanksToast: 'Dzięki, że dzielisz się aplikacją!',
+  },
+
+  // P6 rating. Same placeholder rules as `share` above: neutral, no card
+  // promise. Deliberately says nothing about the review itself — the native
+  // prompt may never appear and we never learn whether the user rated, so the
+  // toast can only thank for the gesture.
+  rating: {
+    thanksToast: 'Dzięki, że nas wspierasz!',
   },
 
   dailyCard: {

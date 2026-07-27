@@ -9,6 +9,7 @@ import {
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import * as StoreReview from 'react-native-store-review';
 import { RootStackParamList } from '../navigation/types';
 import { UpdateMeInput } from '../api/profile';
 import { useAuth } from '../auth/AuthContext';
@@ -24,6 +25,7 @@ import { SectionLabel } from '../components/SectionLabel';
 import { GoldButton } from '../components/GoldButton';
 import { OutlineButton } from '../components/OutlineButton';
 import { claimShareReward } from '../api/share';
+import { claimRatingReward } from '../api/rating';
 import { parseApiError, FieldErrors } from '../api/errors';
 import { validateNickname } from '../domain/validation';
 import { Theme, useTheme } from '../theme';
@@ -194,6 +196,30 @@ export function ProfileScreen({ navigation }: Props) {
     } catch {
       // Share sheet failed to open, or the claim call failed — nothing to
       // recover here; the reward is idempotent and server-owned.
+    }
+  };
+
+  // Asks for a store review, then claims the one-time bonus. Unlike onShare
+  // above, the claim is unconditional: In-App Review has no callback, so there
+  // is no signal saying whether the prompt appeared or whether the user rated.
+  // We reward the gesture of asking, which is why the two steps sit in separate
+  // try blocks — a throwing requestReview() must not skip the claim.
+  //
+  // Note: Apple and Google both discourage triggering the review flow from a
+  // button (it is meant to fire at a natural moment in the journey), so the
+  // prompt will often silently not show. The button is a P6 placeholder pending
+  // the style guide (#36); the grant works either way.
+  const onRate = async () => {
+    try {
+      StoreReview.requestReview();
+    } catch {
+      // Native module missing, or no foreground scene to present in.
+    }
+    try {
+      await claimRatingReward();
+      Alert.alert(pl.appTitle, pl.rating.thanksToast);
+    } catch {
+      // Best-effort and idempotent server-side; nothing local to correct.
     }
   };
 
@@ -376,6 +402,13 @@ export function ProfileScreen({ navigation }: Props) {
         style={styles.shareButton}
       />
 
+      <OutlineButton
+        testID="profile-rate"
+        title={pl.profile.rateApp}
+        onPress={onRate}
+        style={styles.rateButton}
+      />
+
       <TouchableOpacity
         testID="profile-logout"
         style={styles.logout}
@@ -458,6 +491,9 @@ const createStyles = (theme: Theme) => {
     },
     shareButton: {
       marginTop: spacing.xl,
+    },
+    rateButton: {
+      marginTop: spacing.md,
     },
     logout: {
       marginTop: spacing.lg,

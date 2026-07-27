@@ -11,7 +11,9 @@ import {
   resendVerificationEmail,
   updateMe,
 } from '../src/api/profile';
+import * as StoreReview from 'react-native-store-review';
 import {claimShareReward} from '../src/api/share';
+import {claimRatingReward} from '../src/api/rating';
 import {useAuth} from '../src/auth/AuthContext';
 import type {RootStackParamList} from '../src/navigation/types';
 import type {Couple, User} from '../src/domain/types';
@@ -24,6 +26,7 @@ jest.mock('../src/api/profile', () => ({
   changePassword: jest.fn(),
 }));
 jest.mock('../src/api/share', () => ({claimShareReward: jest.fn()}));
+jest.mock('../src/api/rating', () => ({claimRatingReward: jest.fn()}));
 jest.mock('../src/auth/AuthContext', () => ({useAuth: jest.fn()}));
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
@@ -387,5 +390,45 @@ describe('ProfileScreen', () => {
 
     await waitFor(() => expect(Share.share).toHaveBeenCalled());
     expect(claimShareReward).not.toHaveBeenCalled();
+  });
+
+  test('rating asks for the native review prompt and claims the reward', async () => {
+    jest.mocked(claimRatingReward).mockResolvedValue({claimed: true});
+
+    renderWithQueryClient(<ProfileScreen {...makeProps()} />);
+    fireEvent.press(await screen.findByTestId('profile-rate'));
+
+    await waitFor(() => expect(StoreReview.requestReview).toHaveBeenCalled());
+    await waitFor(() => expect(claimRatingReward).toHaveBeenCalled());
+    expect(Alert.alert).toHaveBeenCalledWith(
+      pl.appTitle,
+      pl.rating.thanksToast,
+    );
+  });
+
+  // The reward is for the gesture of asking: In-App Review reports nothing
+  // back, so a failing prompt must not withhold the claim.
+  test('claims the reward even when the native prompt throws', async () => {
+    jest.mocked(StoreReview.requestReview).mockImplementationOnce(() => {
+      throw new Error('StoreReview native module not available');
+    });
+    jest.mocked(claimRatingReward).mockResolvedValue({claimed: true});
+
+    renderWithQueryClient(<ProfileScreen {...makeProps()} />);
+    fireEvent.press(await screen.findByTestId('profile-rate'));
+
+    await waitFor(() => expect(claimRatingReward).toHaveBeenCalled());
+  });
+
+  test('a failing claim stays silent', async () => {
+    jest
+      .mocked(claimRatingReward)
+      .mockRejectedValueOnce(new Error('network'));
+
+    renderWithQueryClient(<ProfileScreen {...makeProps()} />);
+    fireEvent.press(await screen.findByTestId('profile-rate'));
+
+    await waitFor(() => expect(claimRatingReward).toHaveBeenCalled());
+    expect(Alert.alert).not.toHaveBeenCalled();
   });
 });

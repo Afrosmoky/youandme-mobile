@@ -23,6 +23,7 @@
     "react-native-keychain": "^10.0.0",
     "react-native-safe-area-context": "^5.5.2",
     "react-native-screens": "^4.25.2",
+    "react-native-store-review": "^0.5.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

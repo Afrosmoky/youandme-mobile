@@ -54,6 +54,13 @@ jest.mock('@notifee/react-native', () => ({
   TriggerType: { TIMESTAMP: 0 },
 }));
 
+// react-native-store-review: native TurboModule wrapping SKStoreReviewController
+// / AppStore.requestReview (iOS) and the Play In-App Review API (Android).
+// Default to a no-op; tests that assert the prompt read the mocked calls.
+jest.mock('react-native-store-review', () => ({
+  requestReview: jest.fn(),
+}));
+
 // axios: AuthScreen reads `axios.isAxiosError`, and api/client.ts calls
 // `axios.create`. Tests override isAxiosError per case.
 jest.mock('axios', () => {
