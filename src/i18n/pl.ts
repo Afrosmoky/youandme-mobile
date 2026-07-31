@@ -179,6 +179,16 @@ export const pl = {
     adsToday: (remaining: number, cap: number) =>
       `Reklamy dziś: ${remaining} z ${cap}`,
     loadError: 'Nie udało się pobrać salda.',
+    codeTitle: 'Kod promocyjny',
+    codeLabel: 'Kod',
+    codePlaceholder: 'np. JAITY-TEST',
+    codeSubmit: 'Zrealizuj kod',
+    // Neutral on purpose: the response does not tell us how many cards opened,
+    // so the refreshed deck says that, not the toast.
+    codeRedeemed: 'Kod zrealizowany. Talia jest odblokowana.',
+    // Only used when the server gives no reason of its own (network, 5xx).
+    codeError: 'Nie udało się zrealizować kodu.',
+    codeEmpty: 'Najpierw wpisz kod.',
   },
 
   ritual: {

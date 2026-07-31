@@ -63,6 +63,19 @@ export function parseApiError(err: unknown, fallback: string): ParsedApiError {
           : Object.values(fields)[0] ?? fallback;
       return { topLevel: message, fields };
     }
+    // 409 = a conflict the server can explain better than we can ("this code is
+    // already redeemed on your account"). Added in P7 for redeem; before it,
+    // 409 fell through to the caller's generic fallback, which made "already
+    // redeemed" indistinguishable from a network failure. Screens that treat a
+    // 409 as stale state rather than a message (the daily card, the question
+    // screen) handle it themselves and never reach this helper.
+    if (status === 409) {
+      const message =
+        typeof data?.message === 'string' && data.message.length > 0
+          ? data.message
+          : fallback;
+      return { topLevel: message, fields: {} };
+    }
     // Server-side failure: a concrete "try later", not the generic fallback.
     if (status >= 500) {
       return { topLevel: pl.common.serverError, fields: {} };

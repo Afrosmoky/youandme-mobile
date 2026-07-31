@@ -60,6 +60,34 @@ describe('parseApiError', () => {
     expect(result.fields).toEqual({nickname: 'Ten nick jest już zajęty.'});
   });
 
+  test('surfaces the server message from a 409 conflict', () => {
+    jest.mocked(axios.isAxiosError).mockReturnValue(true);
+
+    const result = parseApiError(
+      {
+        response: {
+          status: 409,
+          data: {message: 'Ten kod został już zrealizowany.'},
+        },
+      },
+      'fallback',
+    );
+
+    expect(result.topLevel).toBe('Ten kod został już zrealizowany.');
+    expect(result.fields).toEqual({});
+  });
+
+  test('falls back when a 409 carries no message', () => {
+    jest.mocked(axios.isAxiosError).mockReturnValue(true);
+
+    const result = parseApiError(
+      {response: {status: 409, data: {}}},
+      'fallback',
+    );
+
+    expect(result.topLevel).toBe('fallback');
+  });
+
   test('returns the fallback for a non-axios error', () => {
     const result = parseApiError(new Error('boom'), 'fallback');
 
