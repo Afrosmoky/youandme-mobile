@@ -98,6 +98,14 @@ describe('HomeScreen', () => {
     expect(navigate).toHaveBeenCalledWith('CategoryPicker');
   });
 
+  test('the deck tile navigates to the closed deck', async () => {
+    renderWithQueryClient(<HomeScreen {...makeProps()} />);
+
+    fireEvent.press(await screen.findByTestId('home-deck'));
+
+    expect(navigate).toHaveBeenCalledWith('Deck');
+  });
+
   test('shows the ritual tile with title and day counter, and navigates', async () => {
     renderWithQueryClient(<HomeScreen {...makeProps()} />);
 

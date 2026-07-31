@@ -12,6 +12,8 @@ import { HomeScreen } from '../screens/HomeScreen';
 import { DailyCardScreen } from '../screens/DailyCardScreen';
 import { RitualScreen } from '../screens/RitualScreen';
 import { CategoryPickerScreen } from '../screens/CategoryPickerScreen';
+import { DeckScreen } from '../screens/DeckScreen';
+import { RewardsScreen } from '../screens/RewardsScreen';
 import { QuestionScreen } from '../screens/QuestionScreen';
 import { MemoriesScreen } from '../screens/MemoriesScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
@@ -92,6 +94,16 @@ export function RootNavigator() {
             name="Question"
             component={QuestionScreen}
             options={{ title: pl.question.headerTitle }}
+          />
+          <Stack.Screen
+            name="Deck"
+            component={DeckScreen}
+            options={{ title: pl.deck.headerTitle }}
+          />
+          <Stack.Screen
+            name="Rewards"
+            component={RewardsScreen}
+            options={{ title: pl.rewards.headerTitle }}
           />
           <Stack.Screen
             name="Memories"

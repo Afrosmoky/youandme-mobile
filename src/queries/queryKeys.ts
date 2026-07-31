@@ -7,4 +7,8 @@ export const queryKeys = {
   verificationStatus: ['verification-status'] as const,
   dailyCard: ['daily-card'] as const,
   weeklyRitual: ['weekly-ritual'] as const,
+  // P7. Deck and balance move together: unlocking spends a credit (rewards) and
+  // opens a card (deck), so anything touching one touches the other.
+  deck: ['deck'] as const,
+  rewards: ['rewards'] as const,
 };

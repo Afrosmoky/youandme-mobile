@@ -346,3 +346,111 @@ export function mapRawAdReward(
     remainingToday: raw.remaining_today,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Deck (P7) — the closed deck and what this couple has unlocked
+// ---------------------------------------------------------------------------
+
+// A card in the deck listing. Deliberately WITHOUT `body`: a locked question
+// must not leak its text before it is paid for, so the backend omits it for
+// every card here. The text arrives only through /questions/next once the card
+// is unlocked and drawn into a session.
+export const rawDeckCardSchema = z.object({
+  ulid: z.string(),
+  category: rawCategoryRefSchema.nullable(),
+  unlocked: z.boolean(),
+});
+
+export type DeckCard = {
+  ulid: string;
+  category: CategoryRef | null;
+  unlocked: boolean;
+};
+
+export const rawDeckSchema = z.object({
+  locked_total: z.number(),
+  unlocked_count: z.number(),
+  // Whole deck unlocked. Drives hiding the earning actions (P7 §8: with a full
+  // deck there is nothing left to spend credits on).
+  complete: z.boolean(),
+  cards: z.array(rawDeckCardSchema),
+});
+
+export type Deck = {
+  lockedTotal: number;
+  unlockedCount: number;
+  complete: boolean;
+  cards: DeckCard[];
+};
+
+export function mapRawDeck(raw: z.infer<typeof rawDeckSchema>): Deck {
+  return {
+    lockedTotal: raw.locked_total,
+    unlockedCount: raw.unlocked_count,
+    complete: raw.complete,
+    cards: raw.cards.map(card => ({
+      ulid: card.ulid,
+      category: card.category,
+      unlocked: card.unlocked,
+    })),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Rewards (P7) — the credit balance, visible to the user for the first time
+// ---------------------------------------------------------------------------
+export const rawRewardsSchema = z.object({
+  credits: z.number(),
+  share_reward_claimed: z.boolean(),
+  rating_reward_claimed: z.boolean(),
+  ads: z.object({
+    remaining_today: z.number(),
+    daily_cap: z.number(),
+  }),
+});
+
+export type Rewards = {
+  credits: number;
+  // P7 exposes these for the first time, but the share and rating buttons stay
+  // visible regardless: share keeps its viral value after the reward is taken,
+  // and the claimed-state styling waits for the style guide (#36).
+  shareRewardClaimed: boolean;
+  ratingRewardClaimed: boolean;
+  ads: {
+    remainingToday: number;
+    dailyCap: number;
+  };
+};
+
+export function mapRawRewards(raw: z.infer<typeof rawRewardsSchema>): Rewards {
+  return {
+    credits: raw.credits,
+    shareRewardClaimed: raw.share_reward_claimed,
+    ratingRewardClaimed: raw.rating_reward_claimed,
+    ads: {
+      remainingToday: raw.ads.remaining_today,
+      dailyCap: raw.ads.daily_cap,
+    },
+  };
+}
+
+// Unlocking returns fresh balance AND fresh deck in one response, so the client
+// can write both caches without a follow-up read (P7 mobile, decision 3).
+export const rawUnlockResultSchema = z.object({
+  credits: z.number(),
+  deck: rawDeckSchema,
+});
+
+export type UnlockResult = {
+  credits: number;
+  deck: Deck;
+};
+
+export function mapRawUnlockResult(
+  raw: z.infer<typeof rawUnlockResultSchema>,
+): UnlockResult {
+  return {
+    credits: raw.credits,
+    deck: mapRawDeck(raw.deck),
+  };
+}

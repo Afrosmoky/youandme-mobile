@@ -15,6 +15,10 @@ export type RootStackParamList = {
   // Weekly ritual (P4): read-only ritual of the week.
   Ritual: undefined;
   CategoryPicker: undefined;
+  // Closed deck (P7): what the couple has unlocked, and what a credit buys.
+  Deck: undefined;
+  // Credit balance (P7). Reached from Home via the deck, or from the deck header.
+  Rewards: undefined;
   // sessionUlid is passed when a fresh session was just started; absent when
   // resuming or when Question fetches the active session itself.
   Question: { sessionUlid?: string } | undefined;

@@ -147,6 +147,38 @@ export const pl = {
     sessionHint: 'Wybierzcie kategorię i grajcie',
     memoriesTitle: 'Wspomnienia',
     memoriesHint: 'Wasze zapisane odpowiedzi',
+    deckTitle: 'Talia i nagrody',
+    deckHint: 'Odblokujcie kolejne pytania',
+  },
+
+  // P7. Credits become visible here for the first time — they had been growing
+  // silently since P5. Copy is a neutral placeholder pending Wiktoria (#36).
+  deck: {
+    headerTitle: 'Talia',
+    // "12 z 40 odblokowanych"
+    progress: (unlocked: number, total: number) =>
+      `${unlocked} z ${total} odblokowanych`,
+    complete: 'Cała talia odblokowana.',
+    unlockedBadge: 'Odblokowane',
+    lockedBadge: 'Zamknięte',
+    // The deck listing never carries question text — a locked card must not
+    // leak what you would be paying for.
+    hiddenBody: 'Treść odsłoni się w sesji',
+    noCategory: 'Bez kategorii',
+    unlockButton: 'Odblokuj (1 kredyt)',
+    unlockError: 'Nie udało się odblokować pytania.',
+    loadError: 'Nie udało się pobrać talii.',
+    empty: 'Talia jest pusta.',
+  },
+
+  rewards: {
+    headerTitle: 'Wasze nagrody',
+    creditsLabel: 'Kredyty',
+    creditsHint: 'Za kredyty odblokujecie zamknięte pytania.',
+    // "Reklamy dziś: 4 z 5"
+    adsToday: (remaining: number, cap: number) =>
+      `Reklamy dziś: ${remaining} z ${cap}`,
+    loadError: 'Nie udało się pobrać salda.',
   },
 
   ritual: {
