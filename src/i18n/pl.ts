@@ -218,8 +218,13 @@ export const pl = {
   // neutral, no card promise. `capReached` deliberately says nothing about how
   // many are left — the cap is a server-side rule, not a promise to the user.
   ads: {
-    thanksToast: 'Dzięki za obejrzenie!',
-    capReached: 'Na dziś to już wszystko. Wróć jutro.',
+    sectionTitle: 'Kredyt za reklamę',
+    watchButton: 'Obejrzyj reklamę po kredyt',
+    // From P7 the credit is granted server-side after the ad network confirms
+    // the view, so the copy promises it is coming — not that it arrived.
+    pending: 'Kredyt jest w drodze. Chwilę to zajmuje.',
+    refreshButton: 'Odśwież saldo',
+    capReached: 'Na dziś to już wszystko. Wróćcie jutro.',
     unavailable: 'Nie udało się wczytać reklamy. Spróbuj później.',
   },
 

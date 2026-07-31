@@ -1,20 +1,29 @@
+import { z } from 'zod';
 import { apiClient } from './client';
-import {
-  AdRewardResult,
-  mapRawAdReward,
-  rawAdRewardSchema,
-} from '../domain/types';
 
-// P6 rewarded-ad grant. POST /ad-reward adds credits for a watched rewarded
-// video. Unlike the share and rating rewards this one is repeatable, so there
-// is no one-time flag: the daily cap (5/day per couple) is enforced server-side
-// and reported back as `remaining_today`. Over the cap the call still returns
-// 200 with `granted: false` — a refusal, not an error.
+// P7 rewarded-ad flow, nonce-first. This file used to hold the P6 grant call,
+// where the CLIENT told the server "I watched an ad, pay me". That path is gone,
+// deliberately and permanently: it was trivially spoofable, and P7 makes credits
+// buy real cards. See ads.guard.test.ts, which fails if it ever comes back —
+// including if this comment starts naming the old function again, since the
+// guard allows itself no exceptions.
 //
-// The client is trusted here: P6 ships without Server-Side Verification (see
-// the P6 analysis, §5 and §8). Nothing is exploitable while credits stay
-// invisible, but SSV has to land before P7 opens the deck.
-export async function claimAdReward(): Promise<AdRewardResult> {
-  const res = await apiClient.post('/ad-reward');
-  return mapRawAdReward(rawAdRewardSchema.parse(res.data));
+// The server now pays only on the AdMob SSV webhook. The client's job shrinks
+// to asking for a nonce beforehand and handing it to the ad.
+const nonceSchema = z.object({
+  nonce: z.string(),
+});
+
+// POST /ad-reward/nonce — a one-shot token that authorises ONE ad view for this
+// couple. It authorises; it does not pay.
+//
+// The nonce is what binds the later webhook to a couple. Google's signature only
+// proves "this ad was really watched", not "by whom" — the client-supplied
+// customData could otherwise name someone else's couple, and a single signed
+// callback could be replayed for repeated grants. The server issues the nonce
+// against the auth token, so the couple is resolved server-side, and burns it on
+// first use.
+export async function requestAdRewardNonce(): Promise<string> {
+  const res = await apiClient.post('/ad-reward/nonce');
+  return nonceSchema.parse(res.data).nonce;
 }

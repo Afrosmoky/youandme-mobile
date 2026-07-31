@@ -4,9 +4,12 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useRewards } from '../queries/useRewards';
 import { useRedeemCode } from '../queries/useRedeemCode';
+import { useWatchAdForCredit } from '../queries/useWatchAdForCredit';
 import { parseApiError } from '../api/errors';
+import { AD_REWARD_ENABLED } from '../config/features';
 import { Card } from '../components/Card';
 import { GoldButton } from '../components/GoldButton';
+import { OutlineButton } from '../components/OutlineButton';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { SectionLabel } from '../components/SectionLabel';
 import { TextField } from '../components/TextField';
@@ -23,13 +26,24 @@ export function RewardsScreen({ navigation }: Props) {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const { data: rewards, isLoading, isError } = useRewards();
+  const {
+    data: rewards,
+    isLoading,
+    isError,
+    isFetching: refreshingBalance,
+    refetch: refetchRewards,
+  } = useRewards();
   const { mutate: redeem, isPending: redeeming } = useRedeemCode();
+  const { mutate: watchAd, isPending: watchingAd } = useWatchAdForCredit();
 
   // The code being typed is client state; only the result of sending it is
   // server state.
   const [code, setCode] = useState('');
   const [codeError, setCodeError] = useState<string | null>(null);
+  // "Credit on its way": purely a note to the user that a completed ad is
+  // awaiting the server's callback. It is not server state — nothing can be
+  // fetched to confirm it, which is exactly why it needs its own flag.
+  const [creditPending, setCreditPending] = useState(false);
 
   useEffect(() => {
     if (isError) {
@@ -78,6 +92,27 @@ export function RewardsScreen({ navigation }: Props) {
     });
   };
 
+  const onWatchAd = () => {
+    watchAd(undefined, {
+      onSuccess: outcome => {
+        if (outcome === 'earned') {
+          // Nothing was granted here — the hook already asked for a fresh
+          // balance, and this flag admits it may not reflect the credit yet.
+          setCreditPending(true);
+          return;
+        }
+        if (outcome === 'unavailable') {
+          Alert.alert(pl.appTitle, pl.ads.unavailable);
+        }
+        // 'dismissed' — the user closed the ad early. Nothing to say.
+      },
+      onError: () => {
+        // The nonce request failed, so no ad was shown and nothing is owed.
+        Alert.alert(pl.appTitle, pl.ads.unavailable);
+      },
+    });
+  };
+
   if (isLoading) {
     return (
       <View style={styles.centered}>
@@ -85,6 +120,10 @@ export function RewardsScreen({ navigation }: Props) {
       </View>
     );
   }
+
+  // The daily cap is enforced server-side; this only avoids offering an ad we
+  // already know will not be paid for.
+  const adsLeft = rewards ? rewards.ads.remainingToday > 0 : true;
 
   return (
     <ScreenContainer testID="rewards-screen">
@@ -100,6 +139,49 @@ export function RewardsScreen({ navigation }: Props) {
         <Text testID="rewards-ads-today" style={styles.adsToday}>
           {pl.rewards.adsToday(rewards.ads.remainingToday, rewards.ads.dailyCap)}
         </Text>
+      )}
+
+      {/*
+        Hidden entirely until SSV is live (see AD_REWARD_ENABLED). With no
+        public callback URL the server never learns the ad was watched, so the
+        credit never arrives — showing the button would hand testers a path
+        that looks like it works and silently does not.
+      */}
+      {AD_REWARD_ENABLED && (
+        <View testID="rewards-ad-section" style={styles.section}>
+          <Text style={styles.sectionTitle}>{pl.ads.sectionTitle}</Text>
+
+          {creditPending && (
+            <Text testID="rewards-credit-pending" style={styles.pending}>
+              {pl.ads.pending}
+            </Text>
+          )}
+
+          {adsLeft ? (
+            <OutlineButton
+              testID="rewards-watch-ad"
+              title={pl.ads.watchButton}
+              onPress={onWatchAd}
+              loading={watchingAd}
+              disabled={watchingAd}
+            />
+          ) : (
+            <Text testID="rewards-ads-cap" style={styles.capReached}>
+              {pl.ads.capReached}
+            </Text>
+          )}
+
+          {creditPending && (
+            <OutlineButton
+              testID="rewards-refresh-balance"
+              title={pl.ads.refreshButton}
+              onPress={() => refetchRewards()}
+              loading={refreshingBalance}
+              disabled={refreshingBalance}
+              style={styles.refreshButton}
+            />
+          )}
+        </View>
       )}
 
       <View style={styles.section}>
@@ -174,6 +256,20 @@ const createStyles = (theme: Theme) => {
       fontSize: typography.size.h3,
       color: colors.text.primary,
       marginBottom: spacing.lg,
+    },
+    pending: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.bodySm,
+      color: colors.gold.primary,
+      marginBottom: spacing.md,
+    },
+    capReached: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.bodySm,
+      color: colors.text.muted,
+    },
+    refreshButton: {
+      marginTop: spacing.md,
     },
   });
 };

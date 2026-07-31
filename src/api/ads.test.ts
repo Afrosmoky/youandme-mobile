@@ -1,5 +1,5 @@
 import type { AxiosResponse } from 'axios';
-import { claimAdReward } from './ads';
+import { requestAdRewardNonce } from './ads';
 import { apiClient } from './client';
 
 jest.mock('./client', () => ({
@@ -9,32 +9,33 @@ jest.mock('./client', () => ({
 const res = (data: unknown): AxiosResponse =>
   ({ data } as unknown as AxiosResponse);
 
-describe('claimAdReward', () => {
+describe('requestAdRewardNonce', () => {
   beforeEach(() => jest.clearAllMocks());
 
-  test('POSTs to /ad-reward and maps snake_case to camelCase', async () => {
-    jest.mocked(apiClient.post).mockResolvedValue(
-      res({ granted: true, credits_awarded: 1, remaining_today: 4 }),
-    );
+  test('POSTs to the nonce endpoint and returns the nonce', async () => {
+    jest.mocked(apiClient.post).mockResolvedValue(res({ nonce: 'n_abc123' }));
 
-    const result = await claimAdReward();
+    const nonce = await requestAdRewardNonce();
 
-    expect(apiClient.post).toHaveBeenCalledWith('/ad-reward');
-    expect(result).toEqual({
-      granted: true,
-      creditsAwarded: 1,
-      remainingToday: 4,
-    });
+    expect(apiClient.post).toHaveBeenCalledWith('/ad-reward/nonce');
+    expect(nonce).toBe('n_abc123');
   });
 
-  test('reads a refusal once the daily cap is reached', async () => {
-    jest.mocked(apiClient.post).mockResolvedValue(
-      res({ granted: false, credits_awarded: 0, remaining_today: 0 }),
-    );
+  // The request carries no body: the couple is resolved server-side from the
+  // auth token, never named by the client. That is the whole point of binding
+  // the reward to a nonce instead of to client-supplied data.
+  test('sends no payload', async () => {
+    jest.mocked(apiClient.post).mockResolvedValue(res({ nonce: 'n_abc123' }));
 
-    const result = await claimAdReward();
+    await requestAdRewardNonce();
 
-    expect(result.granted).toBe(false);
-    expect(result.remainingToday).toBe(0);
+    expect(apiClient.post).toHaveBeenCalledWith('/ad-reward/nonce');
+    expect(jest.mocked(apiClient.post).mock.calls[0]).toHaveLength(1);
+  });
+
+  test('rejects a response without a nonce rather than showing an ad', async () => {
+    jest.mocked(apiClient.post).mockResolvedValue(res({}));
+
+    await expect(requestAdRewardNonce()).rejects.toBeDefined();
   });
 });

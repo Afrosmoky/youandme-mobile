@@ -322,30 +322,10 @@ export function mapRawWeeklyRitual(
   };
 }
 
-// ---------------------------------------------------------------------------
-// Ad reward (P6)
-// ---------------------------------------------------------------------------
-export const rawAdRewardSchema = z.object({
-  granted: z.boolean(),
-  credits_awarded: z.number(),
-  remaining_today: z.number(),
-});
-
-export type AdRewardResult = {
-  granted: boolean;
-  creditsAwarded: number;
-  remainingToday: number;
-};
-
-export function mapRawAdReward(
-  raw: z.infer<typeof rawAdRewardSchema>,
-): AdRewardResult {
-  return {
-    granted: raw.granted,
-    creditsAwarded: raw.credits_awarded,
-    remainingToday: raw.remaining_today,
-  };
-}
+// The P6 ad-reward response shape used to live here. It described what the
+// client got back when it granted itself credits; P7 moved the grant to the SSV
+// webhook, so there is no such response to model any more. What the ad costs and
+// how many are left today now reads off GET /rewards (`Rewards.ads`).
 
 // ---------------------------------------------------------------------------
 // Deck (P7) — the closed deck and what this couple has unlocked

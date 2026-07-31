@@ -26,8 +26,6 @@ import { GoldButton } from '../components/GoldButton';
 import { OutlineButton } from '../components/OutlineButton';
 import { claimShareReward } from '../api/share';
 import { claimRatingReward } from '../api/rating';
-import { claimAdReward } from '../api/ads';
-import { showRewardedAd } from '../ads/rewardedAd';
 import { parseApiError, FieldErrors } from '../api/errors';
 import { validateNickname } from '../domain/validation';
 import { Theme, useTheme } from '../theme';
@@ -83,9 +81,6 @@ export function ProfileScreen({ navigation }: Props) {
   const [passwordFieldErrors, setPasswordFieldErrors] = useState<FieldErrors>(
     {},
   );
-
-  // The rewarded ad is loaded on tap, so the button carries the wait itself.
-  const [watchingAd, setWatchingAd] = useState(false);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -225,37 +220,6 @@ export function ProfileScreen({ navigation }: Props) {
       Alert.alert(pl.appTitle, pl.rating.thanksToast);
     } catch {
       // Best-effort and idempotent server-side; nothing local to correct.
-    }
-  };
-
-  // Shows a rewarded video and claims credits only once the reward is actually
-  // earned. Note the asymmetry with onRate above: the two sit side by side and
-  // look inconsistent, but they are opposites on purpose. Rating has no signal
-  // saying the user did anything, so it grants on the gesture; a rewarded ad
-  // does (EARNED_REWARD), so it grants on the result — the same reasoning that
-  // makes onShare wait for sharedAction.
-  const onWatchAd = async () => {
-    setWatchingAd(true);
-    try {
-      const outcome = await showRewardedAd();
-      if (outcome === 'unavailable') {
-        Alert.alert(pl.appTitle, pl.ads.unavailable);
-        return;
-      }
-      if (outcome !== 'earned') {
-        // Closed early — no reward, and nothing worth saying about it.
-        return;
-      }
-      const result = await claimAdReward();
-      Alert.alert(
-        pl.appTitle,
-        result.granted ? pl.ads.thanksToast : pl.ads.capReached,
-      );
-    } catch {
-      // Ad machinery or the claim call failed; the grant is server-owned, so
-      // there is nothing local to correct.
-    } finally {
-      setWatchingAd(false);
     }
   };
 
@@ -442,14 +406,6 @@ export function ProfileScreen({ navigation }: Props) {
         testID="profile-rate"
         title={pl.profile.rateApp}
         onPress={onRate}
-        style={styles.rateButton}
-      />
-
-      <OutlineButton
-        testID="profile-watch-ad"
-        title={pl.profile.watchAd}
-        onPress={onWatchAd}
-        loading={watchingAd}
         style={styles.rateButton}
       />
 

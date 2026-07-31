@@ -14,8 +14,6 @@ import {
 import * as StoreReview from 'react-native-store-review';
 import {claimShareReward} from '../src/api/share';
 import {claimRatingReward} from '../src/api/rating';
-import {claimAdReward} from '../src/api/ads';
-import {showRewardedAd} from '../src/ads/rewardedAd';
 import {useAuth} from '../src/auth/AuthContext';
 import type {RootStackParamList} from '../src/navigation/types';
 import type {Couple, User} from '../src/domain/types';
@@ -29,8 +27,6 @@ jest.mock('../src/api/profile', () => ({
 }));
 jest.mock('../src/api/share', () => ({claimShareReward: jest.fn()}));
 jest.mock('../src/api/rating', () => ({claimRatingReward: jest.fn()}));
-jest.mock('../src/api/ads', () => ({claimAdReward: jest.fn()}));
-jest.mock('../src/ads/rewardedAd', () => ({showRewardedAd: jest.fn()}));
 jest.mock('../src/auth/AuthContext', () => ({useAuth: jest.fn()}));
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
@@ -436,66 +432,14 @@ describe('ProfileScreen', () => {
     expect(Alert.alert).not.toHaveBeenCalled();
   });
 
-  test('watching an ad to the reward claims the credits', async () => {
-    jest.mocked(showRewardedAd).mockResolvedValue('earned');
-    jest.mocked(claimAdReward).mockResolvedValue({
-      granted: true,
-      creditsAwarded: 1,
-      remainingToday: 4,
-    });
-
+  // The rewarded ad moved to RewardsScreen in P7: the action and the credit it
+  // produces now sit on the same screen. Share and rating stay here.
+  test('no longer offers the rewarded ad', async () => {
     renderWithQueryClient(<ProfileScreen {...makeProps()} />);
-    fireEvent.press(await screen.findByTestId('profile-watch-ad'));
+    await screen.findByDisplayValue('ola_test');
 
-    await waitFor(() => expect(showRewardedAd).toHaveBeenCalled());
-    await waitFor(() => expect(claimAdReward).toHaveBeenCalled());
-    expect(Alert.alert).toHaveBeenCalledWith(pl.appTitle, pl.ads.thanksToast);
-  });
-
-  // The mirror image of onRate: here a "did they watch it" signal exists, so
-  // the grant is withheld when it says no.
-  test('closing the ad early does not claim the credits', async () => {
-    jest.mocked(showRewardedAd).mockResolvedValue('dismissed');
-
-    renderWithQueryClient(<ProfileScreen {...makeProps()} />);
-    fireEvent.press(await screen.findByTestId('profile-watch-ad'));
-
-    await waitFor(() => expect(showRewardedAd).toHaveBeenCalled());
-    expect(claimAdReward).not.toHaveBeenCalled();
-    expect(Alert.alert).not.toHaveBeenCalled();
-  });
-
-  test('reports an unavailable ad and claims nothing', async () => {
-    jest.mocked(showRewardedAd).mockResolvedValue('unavailable');
-
-    renderWithQueryClient(<ProfileScreen {...makeProps()} />);
-    fireEvent.press(await screen.findByTestId('profile-watch-ad'));
-
-    await waitFor(() =>
-      expect(Alert.alert).toHaveBeenCalledWith(
-        pl.appTitle,
-        pl.ads.unavailable,
-      ),
-    );
-    expect(claimAdReward).not.toHaveBeenCalled();
-  });
-
-  test('shows the cap message when the server refuses the grant', async () => {
-    jest.mocked(showRewardedAd).mockResolvedValue('earned');
-    jest.mocked(claimAdReward).mockResolvedValue({
-      granted: false,
-      creditsAwarded: 0,
-      remainingToday: 0,
-    });
-
-    renderWithQueryClient(<ProfileScreen {...makeProps()} />);
-    fireEvent.press(await screen.findByTestId('profile-watch-ad'));
-
-    await waitFor(() =>
-      expect(Alert.alert).toHaveBeenCalledWith(
-        pl.appTitle,
-        pl.ads.capReached,
-      ),
-    );
+    expect(screen.queryByTestId('profile-watch-ad')).toBeNull();
+    expect(screen.getByTestId('profile-share')).toBeOnTheScreen();
+    expect(screen.getByTestId('profile-rate')).toBeOnTheScreen();
   });
 });

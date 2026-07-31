@@ -6,6 +6,9 @@ import {
 } from 'react-native-google-mobile-ads';
 import { showRewardedAd } from './rewardedAd';
 
+// Every ad request carries a server-issued nonce from P7 on.
+const NONCE = 'n_abc123';
+
 type Listener = () => void;
 
 // Stands in for the native ad object: records the listeners rewardedAd.ts
@@ -50,14 +53,19 @@ describe('showRewardedAd', () => {
     jest.useRealTimers();
   });
 
-  test('requests the test ad unit with non-personalized ads only', async () => {
+  test('requests the test ad unit with the nonce as SSV custom data', async () => {
     const ad = stubAd();
 
-    const outcome = showRewardedAd();
+    const outcome = showRewardedAd(NONCE);
 
     expect(RewardedAd.createForAdRequest).toHaveBeenCalledWith(
       TestIds.REWARDED,
-      { requestNonPersonalizedAdsOnly: true },
+      {
+        requestNonPersonalizedAdsOnly: true,
+        // What the SSV callback echoes back to our backend — without it the
+        // view could never be attributed to a couple, so it would never be paid.
+        serverSideVerificationOptions: { customData: NONCE },
+      },
     );
 
     // Settle the pending promise so the test leaves nothing hanging.
@@ -68,7 +76,7 @@ describe('showRewardedAd', () => {
   test('shows the ad once loaded and resolves earned on the reward', async () => {
     const ad = stubAd();
 
-    const outcome = showRewardedAd();
+    const outcome = showRewardedAd(NONCE);
     ad.emit(RewardedAdEventType.LOADED);
     expect(ad.show).toHaveBeenCalled();
 
@@ -80,7 +88,7 @@ describe('showRewardedAd', () => {
   test('resolves dismissed when the ad closes without a reward', async () => {
     const ad = stubAd();
 
-    const outcome = showRewardedAd();
+    const outcome = showRewardedAd(NONCE);
     ad.emit(RewardedAdEventType.LOADED);
     ad.emit(AdEventType.CLOSED);
 
@@ -91,7 +99,7 @@ describe('showRewardedAd', () => {
   test('keeps the earned outcome when close follows the reward', async () => {
     const ad = stubAd();
 
-    const outcome = showRewardedAd();
+    const outcome = showRewardedAd(NONCE);
     ad.emit(RewardedAdEventType.LOADED);
     ad.emit(RewardedAdEventType.EARNED_REWARD);
     ad.emit(AdEventType.CLOSED);
@@ -102,7 +110,7 @@ describe('showRewardedAd', () => {
   test('resolves unavailable on a load error (no fill)', async () => {
     const ad = stubAd();
 
-    const outcome = showRewardedAd();
+    const outcome = showRewardedAd(NONCE);
     ad.emit(AdEventType.ERROR);
 
     await expect(outcome).resolves.toBe('unavailable');
@@ -112,7 +120,7 @@ describe('showRewardedAd', () => {
   test('resolves unavailable when the network never answers', async () => {
     stubAd();
 
-    const outcome = showRewardedAd();
+    const outcome = showRewardedAd(NONCE);
     jest.advanceTimersByTime(15_000);
 
     await expect(outcome).resolves.toBe('unavailable');
@@ -121,7 +129,7 @@ describe('showRewardedAd', () => {
   test('unsubscribes every listener once settled', async () => {
     const ad = stubAd();
 
-    const outcome = showRewardedAd();
+    const outcome = showRewardedAd(NONCE);
     ad.emit(RewardedAdEventType.LOADED);
     ad.emit(RewardedAdEventType.EARNED_REWARD);
     await outcome;

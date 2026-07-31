@@ -16,14 +16,26 @@ const AD_UNIT_ID = TestIds.REWARDED;
 
 // Non-personalized ads only: this sidesteps ATT (iOS) and UMP consent, which is
 // a separate piece of work for launch. No consent flow ships in P6.
-const REQUEST_OPTIONS = { requestNonPersonalizedAdsOnly: true };
+//
+// Built per call rather than held as a module constant, because from P7 every
+// request carries its own nonce.
+const requestOptions = (nonce: string) => ({
+  requestNonPersonalizedAdsOnly: true,
+  // AdMob echoes customData back to our SSV webhook, which is how the server
+  // learns which couple watched. Only the server can mint a nonce and it burns
+  // on first use, so a tampered client cannot credit someone else's couple and
+  // a replayed callback cannot pay twice.
+  serverSideVerificationOptions: { customData: nonce },
+});
 
 // A silent ad network would otherwise leave the button spinning forever. AdMob
 // does emit ERROR on no-fill, so this is a backstop, not the usual path.
 const LOAD_TIMEOUT_MS = 15_000;
 
 export type RewardedAdOutcome =
-  // The user watched far enough to earn the reward.
+  // The user watched far enough to earn the reward. From P7 this means only
+  // "the ad completed" — no credit is granted here; the server pays when the
+  // SSV callback carrying our nonce reaches it.
   | 'earned'
   // The ad showed but the user closed it early — no reward.
   | 'dismissed'
@@ -42,10 +54,14 @@ export type RewardedAdOutcome =
  * user dismisses the ad, and the relative order of the two events differs
  * between iOS and Android — keying off CLOSED would make the outcome depend on
  * that ordering.
+ *
+ * The nonce must come from the server (see requestAdRewardNonce); it travels
+ * with the ad request and comes back to our backend in the SSV callback. An ad
+ * shown without one would be unattributable and would never be paid for.
  */
-export function showRewardedAd(): Promise<RewardedAdOutcome> {
+export function showRewardedAd(nonce: string): Promise<RewardedAdOutcome> {
   return new Promise(resolve => {
-    const ad = RewardedAd.createForAdRequest(AD_UNIT_ID, REQUEST_OPTIONS);
+    const ad = RewardedAd.createForAdRequest(AD_UNIT_ID, requestOptions(nonce));
 
     const unsubscribes: Array<() => void> = [];
     let settled = false;
