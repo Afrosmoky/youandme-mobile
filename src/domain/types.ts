@@ -143,6 +143,11 @@ export const rawQuestionSchema = z.object({
   // default because questions embedded in memories (rawMemorySchema) never carry
   // it — without the default those payloads would fail to parse.
   liked: z.boolean().optional().default(false),
+  // P7: the question comes from the closed deck and this couple unlocked it.
+  // Optional for the same reason as `liked`, and it matters more here: this
+  // schema is shared by memories and the daily card, and the backend only sends
+  // is_locked on /questions/next. A required field would break both.
+  is_locked: z.boolean().optional().default(false),
 });
 
 export type Question = {
@@ -152,6 +157,7 @@ export type Question = {
   category: CategoryRef | null;
   tags: string[];
   liked: boolean;
+  isLocked: boolean;
 };
 
 export function mapRawQuestion(raw: z.infer<typeof rawQuestionSchema>): Question {
@@ -162,6 +168,7 @@ export function mapRawQuestion(raw: z.infer<typeof rawQuestionSchema>): Question
     category: raw.category,
     tags: raw.tags,
     liked: raw.liked,
+    isLocked: raw.is_locked,
   };
 }
 

@@ -48,6 +48,8 @@ describe('fetchNextQuestion', () => {
       tags: ['niespodzianki'],
       // No `liked` in the payload → defaults to false (P5 Slice 1b).
       liked: false,
+      // Same for `is_locked` (P7): absent means a free question.
+      isLocked: false,
     });
     expect(result.session?.currentIndex).toBe(5);
     expect(result.sessionComplete).toBe(false);
@@ -65,6 +67,20 @@ describe('fetchNextQuestion', () => {
     const result = await fetchNextQuestion();
 
     expect(result.question?.liked).toBe(true);
+  });
+
+  test('maps is_locked to isLocked for an unlocked deck card', async () => {
+    jest.mocked(apiClient.get).mockResolvedValue(
+      res({
+        question: { ...rawQuestion, is_locked: true },
+        session: rawSession,
+        session_complete: false,
+      }),
+    );
+
+    const result = await fetchNextQuestion();
+
+    expect(result.question?.isLocked).toBe(true);
   });
 
   test('returns a null question when the session is complete', async () => {

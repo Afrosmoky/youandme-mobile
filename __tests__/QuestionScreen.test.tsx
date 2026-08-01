@@ -45,6 +45,7 @@ const question = {
   category: {slug: 'na_poznanie', name: 'Na poznanie'},
   tags: [],
   liked: false,
+  isLocked: false,
 };
 
 const session = {
@@ -171,6 +172,30 @@ describe('QuestionScreen', () => {
   // on exactly [Home]: [Home, CategoryPicker, Question] unwinds to the existing
   // Home (replace would leave [Home, CategoryPicker, Home] — a hub with a back
   // arrow), and the resume stack [Question] gets a Home created for it.
+  // Only cards bought with a credit carry the mark; the 60 free ones must not,
+  // or it stops meaning anything.
+  test('marks a card the couple unlocked with a credit', async () => {
+    jest.mocked(fetchNextQuestion).mockResolvedValue({
+      question: {...question, isLocked: true},
+      session,
+      sessionComplete: false,
+    });
+
+    renderWithQueryClient(<QuestionScreen {...makeProps()} />);
+    await screen.findByText(question.body);
+
+    expect(screen.getByTestId('question-unlocked')).toHaveTextContent(
+      pl.question.unlockedBadge,
+    );
+  });
+
+  test('leaves a free question unmarked', async () => {
+    renderWithQueryClient(<QuestionScreen {...makeProps()} />);
+    await screen.findByText(question.body);
+
+    expect(screen.queryByTestId('question-unlocked')).toBeNull();
+  });
+
   test('a complete session ends it and returns to the hub', async () => {
     jest
       .mocked(fetchNextQuestion)

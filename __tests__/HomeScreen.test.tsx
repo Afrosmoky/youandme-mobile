@@ -22,6 +22,7 @@ const dailyCard: DailyCard = {
     category: null,
     tags: [],
     liked: false,
+    isLocked: false,
   },
   answeredToday: false,
   streakCurrent: 3,

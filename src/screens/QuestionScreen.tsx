@@ -23,6 +23,7 @@ import { parseApiError } from '../api/errors';
 import { useSaveMemory } from '../queries/useSaveMemory';
 import { GameSession, Question } from '../domain/types';
 import { Theme, useTheme } from '../theme';
+import { Badge } from '../components/Badge';
 import { SectionLabel } from '../components/SectionLabel';
 import { GoldButton } from '../components/GoldButton';
 import { OutlineButton } from '../components/OutlineButton';
@@ -278,6 +279,16 @@ export function QuestionScreen({ navigation }: Props) {
         </Text>
       )}
 
+      {/*
+        Only cards bought with a credit are marked. The 60 free questions get
+        nothing — a badge on every card would say nothing at all.
+      */}
+      {question?.isLocked && (
+        <Badge testID="question-unlocked" style={styles.unlockedBadge}>
+          {pl.question.unlockedBadge}
+        </Badge>
+      )}
+
       <View style={styles.questionRow}>
         <Text testID="question-body" style={styles.questionBody}>
           {question?.body}
@@ -378,6 +389,9 @@ const createStyles = (theme: Theme) => {
       fontFamily: typography.family.body,
       fontSize: typography.size.bodySm,
       color: colors.burgundy.accent,
+      marginBottom: spacing.md,
+    },
+    unlockedBadge: {
       marginBottom: spacing.md,
     },
     questionRow: {

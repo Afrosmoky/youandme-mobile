@@ -113,6 +113,10 @@ export const pl = {
     submitButton: 'Zapisz wspomnienie',
     skipButton: 'Pomiń',
     endButton: 'Zakończ',
+    // P7: marks a card the couple unlocked with a credit. Working look — an
+    // open padlock and one word. Both the glyph and the word live here, so
+    // swapping them after Wiktoria's sign-off (#36) is a one-line change.
+    unlockedBadge: '🔓 Odblokowane',
     sessionComplete: 'Skończyłeś tę talię. Wybierz kolejną kategorię.',
     sessionNotFound: 'Sesja wygasła. Wybierz kategorię ponownie.',
     loadError: 'Nie udało się pobrać pytania.',

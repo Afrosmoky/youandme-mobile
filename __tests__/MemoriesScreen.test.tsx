@@ -23,6 +23,7 @@ const memory: Memory = {
     category: {slug: 'na_poznanie', name: 'Na poznanie'},
     tags: [],
     liked: false,
+    isLocked: false,
   },
   answerA: 'Świetny żart w pracy.',
   answerB: null,
