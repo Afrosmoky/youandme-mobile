@@ -441,3 +441,60 @@ export function mapRawUnlockResult(
     deck: mapRawDeck(raw.deck),
   };
 }
+
+// ---------------------------------------------------------------------------
+// Progress map (P8)
+// ---------------------------------------------------------------------------
+
+// A milestone on the couple's journey. `name` is always present, including for
+// locked ones: the map shows what is still ahead, so the copy is never hidden.
+export const rawMilestoneSchema = z.object({
+  slug: z.string(),
+  name: z.string(),
+  threshold: z.number(),
+  ordering: z.number(),
+  unlocked: z.boolean(),
+  unlocked_at: z.string().nullable(),
+});
+
+export type Milestone = {
+  slug: string;
+  name: string;
+  threshold: number;
+  ordering: number;
+  unlocked: boolean;
+  unlockedAt: string | null;
+};
+
+export const rawProgressSchema = z.object({
+  total_played: z.number(),
+  // Lowest threshold above the counter — null once every milestone is unlocked.
+  // Note this looks FORWARD rather than meaning "first not unlocked": the
+  // backend defines it as min(threshold > total), which is what "N cards to go"
+  // needs and what stays correct if `ordering` and `threshold` ever disagree.
+  next_threshold: z.number().nullable(),
+  milestones: z.array(rawMilestoneSchema),
+});
+
+export type Progress = {
+  totalPlayed: number;
+  nextThreshold: number | null;
+  milestones: Milestone[];
+};
+
+export function mapRawProgress(
+  raw: z.infer<typeof rawProgressSchema>,
+): Progress {
+  return {
+    totalPlayed: raw.total_played,
+    nextThreshold: raw.next_threshold,
+    milestones: raw.milestones.map(milestone => ({
+      slug: milestone.slug,
+      name: milestone.name,
+      threshold: milestone.threshold,
+      ordering: milestone.ordering,
+      unlocked: milestone.unlocked,
+      unlockedAt: milestone.unlocked_at,
+    })),
+  };
+}

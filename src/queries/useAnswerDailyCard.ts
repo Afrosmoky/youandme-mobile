@@ -16,6 +16,11 @@ export function useAnswerDailyCard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.dailyCard });
       queryClient.invalidateQueries({ queryKey: queryKeys.memories });
+      // P8: the daily card counts towards the progress map too. The backend
+      // listens for "memory created", and answering the daily card creates one
+      // (origin=daily) exactly as a session answer does — so both save paths
+      // move the map, and both have to invalidate it.
+      queryClient.invalidateQueries({ queryKey: queryKeys.progress });
     },
   });
 }

@@ -11,4 +11,6 @@ export const queryKeys = {
   // opens a card (deck), so anything touching one touches the other.
   deck: ['deck'] as const,
   rewards: ['rewards'] as const,
+  // P8. Moves whenever a card is played, so both save paths invalidate it.
+  progress: ['progress'] as const,
 };

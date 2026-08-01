@@ -19,6 +19,9 @@ export function useSaveMemory() {
     mutationFn: (input: CreateMemoryInput) => createMemory(input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.memories });
+      // P8: a saved memory is a played card, and the backend counts cards to
+      // unlock milestones. The map may have moved.
+      queryClient.invalidateQueries({ queryKey: queryKeys.progress });
     },
   });
 }

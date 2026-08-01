@@ -40,4 +40,35 @@ describe('useAnswerDailyCard', () => {
       });
     });
   });
+
+  // The daily card counts as a played card, so it moves the progress map just
+  // like a session answer does. Easy to overlook, since the map lives nowhere
+  // near this flow.
+  test('invalidates the progress map too', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {retry: false, gcTime: Infinity},
+        mutations: {retry: false, gcTime: Infinity},
+      },
+    });
+    const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+    jest.mocked(answerDailyCard).mockResolvedValue(result);
+
+    const wrapper = ({children}: {children: ReactNode}) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+    const {result: hook} = renderHook(() => useAnswerDailyCard(), {wrapper});
+
+    await hook.current.mutateAsync({
+      questionUlid: 'q_01',
+      answerA: 'odpowiedź',
+      answerB: null,
+    });
+
+    await waitFor(() =>
+      expect(invalidateSpy).toHaveBeenCalledWith({
+        queryKey: queryKeys.progress,
+      }),
+    );
+  });
 });
