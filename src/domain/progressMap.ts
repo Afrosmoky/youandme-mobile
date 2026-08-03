@@ -65,3 +65,37 @@ export function cardsToNext(progress: Progress): number | null {
   }
   return Math.max(0, progress.nextThreshold - progress.totalPlayed);
 }
+
+// Slugs of everything already unlocked — the whole state the celebration
+// detector has to remember between two readings of GET /progress. Slugs, not
+// the milestones themselves: `unlocked_at` and even `name` may be rewritten
+// server-side (the copy is still Wiktoria's to finish), and a changed word must
+// not read as a new milestone.
+export function unlockedSlugs(progress: Progress): string[] {
+  return progress.milestones.filter(m => m.unlocked).map(m => m.slug);
+}
+
+// The milestone worth celebrating in `progress` given what was already unlocked
+// in `previous`, or null when nothing crossed over.
+//
+// NOT truncated to MAP_NODE_COUNT: the map can only draw seven nodes, but an
+// eighth unlock is still real and its name still reads fine in a modal. Better
+// to celebrate something the artwork cannot show than to swallow it silently.
+//
+// With several at once — one card crossing two thresholds, or a backend that
+// backfills — the furthest by `ordering` wins: it is the one that says how far
+// the couple has actually come, and the earlier ones are implied by it.
+export function newlyUnlockedMilestone(
+  previous: ReadonlySet<string>,
+  progress: Progress,
+): Milestone | null {
+  const fresh = progress.milestones.filter(
+    m => m.unlocked && !previous.has(m.slug),
+  );
+  if (fresh.length === 0) {
+    return null;
+  }
+  return fresh.reduce((furthest, m) =>
+    m.ordering > furthest.ordering ? m : furthest,
+  );
+}

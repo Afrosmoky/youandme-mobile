@@ -1,4 +1,10 @@
-import { cardsToNext, mapNodes, segmentStates } from './progressMap';
+import {
+  cardsToNext,
+  mapNodes,
+  newlyUnlockedMilestone,
+  segmentStates,
+  unlockedSlugs,
+} from './progressMap';
 import { Milestone, Progress } from './types';
 
 const milestone = (
@@ -186,5 +192,92 @@ describe('cardsToNext', () => {
   // backend unlocking; "jeszcze -3 karty" would be nonsense.
   test('never goes negative', () => {
     expect(cardsToNext({...progress, totalPlayed: 160})).toBe(0);
+  });
+});
+
+describe('unlockedSlugs', () => {
+  test('lists only what is unlocked', () => {
+    expect(unlockedSlugs(progress)).toEqual(['m1', 'm2', 'm3', 'm4']);
+  });
+
+  test('is empty for a fresh couple', () => {
+    const fresh: Progress = {
+      totalPlayed: 0,
+      nextThreshold: 10,
+      milestones: progress.milestones.map(m => ({
+        ...m,
+        unlocked: false,
+        unlockedAt: null,
+      })),
+    };
+
+    expect(unlockedSlugs(fresh)).toEqual([]);
+  });
+});
+
+describe('newlyUnlockedMilestone', () => {
+  const seen = new Set(unlockedSlugs(progress));
+
+  test('finds the milestone that crossed over', () => {
+    const after: Progress = {
+      ...progress,
+      totalPlayed: 150,
+      nextThreshold: 250,
+      milestones: progress.milestones.map(m =>
+        m.slug === 'm5' ? {...m, unlocked: true} : m,
+      ),
+    };
+
+    expect(newlyUnlockedMilestone(seen, after)?.slug).toBe('m5');
+  });
+
+  test('is null when nothing changed', () => {
+    expect(newlyUnlockedMilestone(seen, progress)).toBeNull();
+  });
+
+  // The whole point of the diff: a couple arriving with four milestones behind
+  // them has nothing to celebrate, only a baseline to record.
+  test('is null against an identical baseline, however much is unlocked', () => {
+    expect(newlyUnlockedMilestone(new Set(['m1']), progress)?.slug).toBe('m4');
+    expect(newlyUnlockedMilestone(seen, progress)).toBeNull();
+  });
+
+  // One card can cross two thresholds, and a backend backfill can flip several
+  // at once. The furthest one is the one that says how far they have come.
+  test('picks the furthest when several appear at once', () => {
+    const after: Progress = {
+      ...progress,
+      milestones: progress.milestones.map(m =>
+        m.slug === 'm5' || m.slug === 'm6' ? {...m, unlocked: true} : m,
+      ),
+    };
+
+    expect(newlyUnlockedMilestone(seen, after)?.slug).toBe('m6');
+  });
+
+  // Ordering, not array position: the backend is free to return them in any
+  // order, and mapNodes already refuses to trust the array for the same reason.
+  test('picks the furthest by ordering, not by position', () => {
+    const after: Progress = {
+      ...progress,
+      milestones: [
+        {...progress.milestones[5], unlocked: true},
+        {...progress.milestones[4], unlocked: true},
+        ...progress.milestones.slice(0, 4),
+      ],
+    };
+
+    expect(newlyUnlockedMilestone(seen, after)?.slug).toBe('m6');
+  });
+
+  // A milestone past the seventh has no node on the map, but it is still a real
+  // unlock and its name still reads fine in a modal.
+  test('celebrates a milestone the artwork cannot draw', () => {
+    const after: Progress = {
+      ...progress,
+      milestones: [...progress.milestones, milestone(8, 600, true)],
+    };
+
+    expect(newlyUnlockedMilestone(seen, after)?.slug).toBe('m8');
   });
 });

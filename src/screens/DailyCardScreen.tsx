@@ -14,6 +14,7 @@ import { RootStackParamList } from '../navigation/types';
 import { useDailyCard } from '../queries/useDailyCard';
 import { useAnswerDailyCard } from '../queries/useAnswerDailyCard';
 import { useLikeQuestion } from '../queries/useLikeQuestion';
+import { useMilestoneCelebration } from '../queries/useMilestoneCelebration';
 import { queryKeys } from '../queries/queryKeys';
 import { parseApiError } from '../api/errors';
 import { isStreakMilestone } from '../domain/streak';
@@ -40,6 +41,11 @@ export function DailyCardScreen({ navigation }: Props) {
   // Streak that triggered a celebration (null = no modal). The modal covers the
   // foreground case; notifyStreakMilestone self-guards so it never doubles up.
   const [celebrateStreak, setCelebrateStreak] = useState<number | null>(null);
+  // P8: the daily card counts towards the progress map, so answering here can
+  // unlock a milestone. The hook watches the progress refetch that
+  // useAnswerDailyCard triggers; it fires only on an unlock seen from this
+  // mount, never on what was already unlocked when the screen opened.
+  const { milestone, dismiss: dismissMilestone } = useMilestoneCelebration();
 
   // Answered state is server truth: after a successful answer the daily card
   // query is invalidated (see useAnswerDailyCard) and answeredToday flips true.
@@ -107,6 +113,31 @@ export function DailyCardScreen({ navigation }: Props) {
     );
   };
 
+  // One modal slot, two occasions. A single answer can land on both a streak
+  // milestone and a map milestone, and two RN Modals would stack on top of each
+  // other. The streak goes first — it is what the couple just did — and
+  // dismissing it uncovers the map milestone instead of dropping it.
+  const celebration =
+    celebrateStreak !== null
+      ? {
+          title: pl.celebration.streakTitle(celebrateStreak),
+          body: pl.celebration.streakBody,
+        }
+      : milestone
+      ? {
+          title: pl.celebration.milestoneTitle,
+          body: pl.celebration.milestoneBody(milestone.name),
+        }
+      : null;
+
+  const onDismissCelebration = () => {
+    if (celebrateStreak !== null) {
+      setCelebrateStreak(null);
+      return;
+    }
+    dismissMilestone();
+  };
+
   if (isLoading) {
     return (
       <View style={styles.centered}>
@@ -166,9 +197,10 @@ export function DailyCardScreen({ navigation }: Props) {
       )}
 
       <Celebration
-        visible={celebrateStreak !== null}
-        streak={celebrateStreak ?? 0}
-        onDismiss={() => setCelebrateStreak(null)}
+        visible={celebration !== null}
+        title={celebration?.title ?? ''}
+        body={celebration?.body ?? ''}
+        onDismiss={onDismissCelebration}
       />
     </ScreenContainer>
   );

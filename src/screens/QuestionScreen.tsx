@@ -21,6 +21,7 @@ import {
 import { likeQuestion, unlikeQuestion } from '../api/likes';
 import { parseApiError } from '../api/errors';
 import { useSaveMemory } from '../queries/useSaveMemory';
+import { useMilestoneCelebration } from '../queries/useMilestoneCelebration';
 import { GameSession, Question } from '../domain/types';
 import { Theme, useTheme } from '../theme';
 import { Badge } from '../components/Badge';
@@ -28,6 +29,7 @@ import { SectionLabel } from '../components/SectionLabel';
 import { GoldButton } from '../components/GoldButton';
 import { OutlineButton } from '../components/OutlineButton';
 import { LikeHeart } from '../components/LikeHeart';
+import { Celebration } from '../components/Celebration';
 import { pl } from '../i18n/pl';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Question'>;
@@ -50,6 +52,12 @@ export function QuestionScreen({ navigation }: Props) {
   // Saving a memory also invalidates the memories list (see useSaveMemory). The
   // local `submitting` flag still gates both save and skip identically.
   const saveMemory = useSaveMemory();
+  // P8: a session card counts towards the progress map, so a save here can
+  // unlock a milestone. The hook diffs the progress refetch that useSaveMemory
+  // triggers, and only fires for an unlock seen from this mount — a session
+  // opened by a couple who already has milestones behind them celebrates
+  // nothing until they actually cross the next threshold.
+  const { milestone, dismiss: dismissMilestone } = useMilestoneCelebration();
 
   // Ends the current session and returns to the hub. Tolerant of a missing
   // session (e.g. it expired server-side) — the destination is the same.
@@ -336,6 +344,13 @@ export function QuestionScreen({ navigation }: Props) {
         title={pl.question.skipButton}
         onPress={onSkip}
         disabled={submitting}
+      />
+
+      <Celebration
+        visible={milestone !== null}
+        title={pl.celebration.milestoneTitle}
+        body={milestone ? pl.celebration.milestoneBody(milestone.name) : ''}
+        onDismiss={dismissMilestone}
       />
     </ScrollView>
   );

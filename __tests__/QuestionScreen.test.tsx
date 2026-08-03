@@ -3,6 +3,7 @@ import {Alert} from 'react-native';
 import axios from 'axios';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -19,7 +20,9 @@ import {
   skipCurrentQuestion,
 } from '../src/api/sessions';
 import {likeQuestion, unlikeQuestion} from '../src/api/likes';
+import {getProgress} from '../src/api/progress';
 import {queryKeys} from '../src/queries/queryKeys';
+import type {Milestone, Progress} from '../src/domain/types';
 import type {RootStackParamList} from '../src/navigation/types';
 import {pl} from '../src/i18n/pl';
 
@@ -34,6 +37,9 @@ jest.mock('../src/api/likes', () => ({
   likeQuestion: jest.fn(),
   unlikeQuestion: jest.fn(),
 }));
+// A saved session card counts towards the progress map (P8), so the screen
+// watches it for a milestone unlocked mid-session.
+jest.mock('../src/api/progress', () => ({getProgress: jest.fn()}));
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Question'>;
 type RenderProp = (p: object) => React.ReactElement;
@@ -69,6 +75,30 @@ const memory = {
   playerBName: null,
   origin: 'session',
   answeredAt: '2026-06-15T20:18:00Z',
+};
+
+const milestone = (ordering: number, unlocked: boolean): Milestone => ({
+  slug: `ms${ordering}`,
+  name: `Kamień ${ordering}`,
+  threshold: ordering * 50,
+  ordering,
+  unlocked,
+  unlockedAt: unlocked ? '2026-07-20T18:30:00.000Z' : null,
+});
+
+// One milestone behind them, the second still ahead.
+const progressBefore: Progress = {
+  totalPlayed: 60,
+  nextThreshold: 100,
+  milestones: [milestone(1, true), milestone(2, false)],
+};
+
+// What the refetch after the save brings back — the second crossed over.
+const progressAfter: Progress = {
+  ...progressBefore,
+  totalPlayed: 100,
+  nextThreshold: null,
+  milestones: [milestone(1, true), milestone(2, true)],
 };
 
 function makeProps(): Props {
@@ -111,6 +141,7 @@ describe('QuestionScreen', () => {
     jest.mocked(endSession).mockResolvedValue(undefined);
     jest.mocked(likeQuestion).mockResolvedValue({liked: true});
     jest.mocked(unlikeQuestion).mockResolvedValue({liked: false});
+    jest.mocked(getProgress).mockResolvedValue(progressBefore);
     jest.mocked(axios.isAxiosError).mockReturnValue(false);
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   });
@@ -347,6 +378,40 @@ describe('QuestionScreen', () => {
     await waitFor(() =>
       expect(screen.getByTestId('question-like')).toHaveTextContent('♡︎'),
     );
+  });
+
+  test('a milestone unlocked by the saved card celebrates it', async () => {
+    // Mount reads the map as it was; the save invalidates it (see useSaveMemory)
+    // and the refetch brings the unlock.
+    jest
+      .mocked(getProgress)
+      .mockResolvedValueOnce(progressBefore)
+      .mockResolvedValue(progressAfter);
+
+    renderWithQueryClient(<QuestionScreen {...makeProps()} />);
+    await screen.findByText(question.body);
+
+    fireEvent.changeText(screen.getByTestId('question-answer-input'), 'Mój żart');
+    fireEvent.press(screen.getByTestId('question-submit'));
+
+    expect(
+      await screen.findByText(pl.celebration.milestoneBody('Kamień 2')),
+    ).toBeOnTheScreen();
+  });
+
+  // Opening a session mid-journey reads a map that already has unlocks on it.
+  // That is the baseline, not news.
+  test('milestones already behind them are not celebrated on entry', async () => {
+    jest.mocked(getProgress).mockResolvedValue(progressAfter);
+
+    renderWithQueryClient(<QuestionScreen {...makeProps()} />);
+    await screen.findByText(question.body);
+
+    await waitFor(() => expect(getProgress).toHaveBeenCalled());
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
+    expect(screen.queryByTestId('celebration')).toBeNull();
   });
 
   test('saving a memory invalidates the cached memories list', async () => {

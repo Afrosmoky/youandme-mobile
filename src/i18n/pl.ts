@@ -263,10 +263,17 @@ export const pl = {
     staleRefreshing: 'Karta była nieaktualna — odświeżamy.',
   },
 
+  // Two things get celebrated in the same modal frame: a streak of days (P4)
+  // and a milestone on the progress map (P8). The keys say which is which — the
+  // component itself no longer knows.
   celebration: {
     // "7 dni z rzędu!"
-    title: (days: number) => `${days} dni z rzędu!`,
-    body: 'Wasza seria rośnie. Tak trzymać!',
+    streakTitle: (days: number) => `${days} dni z rzędu!`,
+    streakBody: 'Wasza seria rośnie. Tak trzymać!',
+    milestoneTitle: 'Nowy kamień milowy!',
+    // Nazwa kamienia przychodzi z API — front jej nie wymyśla.
+    milestoneBody: (name: string) =>
+      `Odblokowaliście: ${name}. Wasza mapa właśnie urosła.`,
     dismiss: 'Super',
   },
 
@@ -282,5 +289,10 @@ export const pl = {
     ritualReminderTitle: 'Rytuał tygodnia',
     ritualReminderBody:
       'Wyzwanie tygodnia — sprawdźcie wasz rytuał na ten tydzień.',
+    // Osobny kanał Androida dla kamieni z mapy postępów — patrz notifee.ts.
+    progressChannelName: 'Kamienie milowe',
+    progressMilestoneTitle: 'Nowy kamień milowy!',
+    progressMilestoneBody: (name: string) =>
+      `Odblokowaliście: ${name}. Zajrzyjcie na mapę.`,
   },
 } as const;

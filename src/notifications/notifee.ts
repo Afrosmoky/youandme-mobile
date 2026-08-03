@@ -10,6 +10,12 @@ import { pl } from '../i18n/pl';
 // calls are mockable in one place.
 
 const CHANNEL_ID = 'daily-card';
+// Progress-map milestones get their own Android channel. The daily-card channel
+// carries a nudge that arrives every single day, and a couple who mutes it must
+// not also lose the handful of "you unlocked something" messages a whole MVP
+// has to offer — on Android muting is per channel, so the split is the only way
+// to keep those separable.
+const PROGRESS_CHANNEL_ID = 'progress-milestones';
 const DAILY_REMINDER_ID = 'daily-card-reminder';
 const STREAK_WARNING_ID = 'streak-warning';
 const RITUAL_REMINDER_ID = 'weekly-ritual-reminder';
@@ -24,6 +30,14 @@ async function ensureChannel(): Promise<string> {
   return notifee.createChannel({
     id: CHANNEL_ID,
     name: pl.notifications.channelName,
+    importance: AndroidImportance.HIGH,
+  });
+}
+
+async function ensureProgressChannel(): Promise<string> {
+  return notifee.createChannel({
+    id: PROGRESS_CHANNEL_ID,
+    name: pl.notifications.progressChannelName,
     importance: AndroidImportance.HIGH,
   });
 }
@@ -130,6 +144,22 @@ export async function notifyStreakMilestone(streak: number): Promise<void> {
   await notifee.displayNotification({
     title: pl.notifications.milestoneTitle,
     body: pl.notifications.milestoneBody(streak),
+    android: { channelId },
+  });
+}
+
+// A milestone unlocked on the progress map (P8). Same shape as the streak one:
+// silent on the foreground, where the Celebration modal is already saying it,
+// and named after the milestone rather than counting anything — the front never
+// decides what was unlocked, it only repeats what GET /progress reported.
+export async function notifyProgressMilestone(name: string): Promise<void> {
+  if (AppState.currentState === 'active') {
+    return;
+  }
+  const channelId = await ensureProgressChannel();
+  await notifee.displayNotification({
+    title: pl.notifications.progressMilestoneTitle,
+    body: pl.notifications.progressMilestoneBody(name),
     android: { channelId },
   });
 }

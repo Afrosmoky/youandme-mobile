@@ -6,7 +6,14 @@ import {renderWithQueryClient} from '../src/test/renderWithQueryClient';
 import {DailyCardScreen} from '../src/screens/DailyCardScreen';
 import {getDailyCard, answerDailyCard} from '../src/api/dailyCard';
 import {likeQuestion} from '../src/api/likes';
-import type {DailyCard, Couple, Memory} from '../src/domain/types';
+import {getProgress} from '../src/api/progress';
+import type {
+  DailyCard,
+  Couple,
+  Memory,
+  Milestone,
+  Progress,
+} from '../src/domain/types';
 import type {RootStackParamList} from '../src/navigation/types';
 import {pl} from '../src/i18n/pl';
 
@@ -18,6 +25,8 @@ jest.mock('../src/api/likes', () => ({
   likeQuestion: jest.fn(),
   unlikeQuestion: jest.fn(),
 }));
+// The daily card counts towards the progress map (P8), so the screen reads it.
+jest.mock('../src/api/progress', () => ({getProgress: jest.fn()}));
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DailyCard'>;
 
@@ -49,6 +58,30 @@ const couple = (streakCurrent: number): Couple => ({
 
 const memory = {ulid: 'm_01'} as unknown as Memory;
 
+const milestone = (ordering: number, unlocked: boolean): Milestone => ({
+  slug: `ms${ordering}`,
+  name: `Kamień ${ordering}`,
+  threshold: ordering * 50,
+  ordering,
+  unlocked,
+  unlockedAt: unlocked ? '2026-07-20T18:30:00.000Z' : null,
+});
+
+// One milestone behind them, the second still ahead.
+const progressBefore: Progress = {
+  totalPlayed: 60,
+  nextThreshold: 100,
+  milestones: [milestone(1, true), milestone(2, false)],
+};
+
+// What the refetch after the answer brings back — the second crossed over.
+const progressAfter: Progress = {
+  ...progressBefore,
+  totalPlayed: 100,
+  nextThreshold: null,
+  milestones: [milestone(1, true), milestone(2, true)],
+};
+
 function makeProps(): Props {
   return {
     navigation: {navigate: jest.fn(), setOptions: jest.fn(), goBack: jest.fn()},
@@ -60,6 +93,7 @@ describe('DailyCardScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.mocked(getDailyCard).mockResolvedValue(card);
+    jest.mocked(getProgress).mockResolvedValue(progressBefore);
     jest.mocked(axios.isAxiosError).mockReturnValue(false);
   });
 
@@ -171,6 +205,9 @@ describe('DailyCardScreen', () => {
     fireEvent.press(screen.getByTestId('daily-card-submit'));
 
     expect(await screen.findByTestId('celebration')).toBeOnTheScreen();
+    // The copy is asserted too: the modal frame is now shared with the progress
+    // map's milestone, and only the words say which occasion this is.
+    expect(screen.getByText(pl.celebration.streakTitle(7))).toBeOnTheScreen();
   });
 
   test('a non-milestone streak (7 → 8) does not celebrate', async () => {
@@ -185,5 +222,69 @@ describe('DailyCardScreen', () => {
 
     await waitFor(() => expect(answerDailyCard).toHaveBeenCalled());
     expect(screen.queryByTestId('celebration')).toBeNull();
+  });
+
+  test('a milestone unlocked by the answer celebrates it', async () => {
+    jest.mocked(answerDailyCard).mockResolvedValue({memory, couple: couple(6)});
+    // Mount reads the map as it was; the answer invalidates it and the refetch
+    // brings the unlock.
+    jest
+      .mocked(getProgress)
+      .mockResolvedValueOnce(progressBefore)
+      .mockResolvedValue(progressAfter);
+
+    renderWithQueryClient(<DailyCardScreen {...makeProps()} />);
+    fireEvent.changeText(
+      await screen.findByTestId('daily-card-input'),
+      'odpowiedź',
+    );
+    fireEvent.press(screen.getByTestId('daily-card-submit'));
+
+    expect(
+      await screen.findByText(pl.celebration.milestoneBody('Kamień 2')),
+    ).toBeOnTheScreen();
+  });
+
+  // The unlock that was already there when the screen opened is history, not
+  // news — a couple must not be congratulated for it on every entry.
+  test('milestones already behind them are not celebrated on entry', async () => {
+    jest.mocked(getProgress).mockResolvedValue(progressAfter);
+
+    renderWithQueryClient(<DailyCardScreen {...makeProps()} />);
+
+    await screen.findByTestId('daily-card-input');
+    await waitFor(() => expect(getProgress).toHaveBeenCalled());
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
+    expect(screen.queryByTestId('celebration')).toBeNull();
+  });
+
+  // One answer, two occasions: both go through the single modal slot, streak
+  // first, and dismissing it uncovers the milestone rather than dropping it.
+  test('a streak and a milestone at once queue instead of stacking', async () => {
+    jest.mocked(answerDailyCard).mockResolvedValue({memory, couple: couple(7)});
+    jest
+      .mocked(getProgress)
+      .mockResolvedValueOnce(progressBefore)
+      .mockResolvedValue(progressAfter);
+
+    renderWithQueryClient(<DailyCardScreen {...makeProps()} />);
+    fireEvent.changeText(
+      await screen.findByTestId('daily-card-input'),
+      'odpowiedź',
+    );
+    fireEvent.press(screen.getByTestId('daily-card-submit'));
+
+    expect(
+      await screen.findByText(pl.celebration.streakTitle(7)),
+    ).toBeOnTheScreen();
+    expect(screen.queryByText(pl.celebration.milestoneBody('Kamień 2'))).toBeNull();
+
+    fireEvent.press(screen.getByTestId('celebration-dismiss'));
+
+    expect(
+      await screen.findByText(pl.celebration.milestoneBody('Kamień 2')),
+    ).toBeOnTheScreen();
   });
 });
