@@ -107,6 +107,14 @@ describe('HomeScreen', () => {
     expect(navigate).toHaveBeenCalledWith('Deck');
   });
 
+  test('the progress tile navigates to the map', async () => {
+    renderWithQueryClient(<HomeScreen {...makeProps()} />);
+
+    fireEvent.press(await screen.findByTestId('home-progress'));
+
+    expect(navigate).toHaveBeenCalledWith('ProgressMap');
+  });
+
   test('shows the ritual tile with title and day counter, and navigates', async () => {
     renderWithQueryClient(<HomeScreen {...makeProps()} />);
 

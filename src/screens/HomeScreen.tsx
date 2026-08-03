@@ -118,6 +118,14 @@ export function HomeScreen({ navigation }: Props) {
       </Card>
 
       <Card
+        testID="home-progress"
+        onPress={() => navigation.navigate('ProgressMap')}
+        style={styles.tile}>
+        <Text style={styles.tileTitle}>{pl.home.progressTitle}</Text>
+        <Text style={styles.tileHint}>{pl.home.progressHint}</Text>
+      </Card>
+
+      <Card
         testID="home-memories"
         onPress={() => navigation.navigate('Memories')}
         style={styles.tile}>

@@ -1,0 +1,168 @@
+{
+  "viewBox": [
+    0,
+    0,
+    390,
+    880
+  ],
+  "palette": {
+    "bgBase": "#16161a",
+    "surface": "#1e1e23",
+    "elevated": "#26262c",
+    "gold": "#f0cd68",
+    "goldDark": "#b08d2e",
+    "goldRim": "#6e5a24",
+    "goldLine": "#3a3020",
+    "line": "#2a2a30",
+    "muted": "#7e7e86",
+    "burgundy": "#7e1e2b",
+    "goldLight": "#f4d67a"
+  },
+  "nodeRadius": {
+    "unlocked": 26,
+    "current": 28,
+    "currentHalo": [
+      35,
+      44
+    ],
+    "locked": 23,
+    "hit": 30
+  },
+  "labelAnchor": "wezly na x=56 -> tekst wyrownany do lewej od x=100; wezly na x=334 -> tekst do prawej do x=290; baseline ~ y",
+  "nodes": [
+    {
+      "id": 1,
+      "x": 56,
+      "y": 60,
+      "side": "left",
+      "state": "unlocked",
+      "label": {
+        "x": 100,
+        "y": 60,
+        "align": "left"
+      },
+      "badge": null
+    },
+    {
+      "id": 2,
+      "x": 334,
+      "y": 178,
+      "side": "right",
+      "state": "unlocked",
+      "label": {
+        "x": 290,
+        "y": 178,
+        "align": "right"
+      },
+      "badge": null
+    },
+    {
+      "id": 3,
+      "x": 56,
+      "y": 296,
+      "side": "left",
+      "state": "unlocked",
+      "label": {
+        "x": 100,
+        "y": 296,
+        "align": "left"
+      },
+      "badge": null
+    },
+    {
+      "id": 4,
+      "x": 334,
+      "y": 414,
+      "side": "right",
+      "state": "unlocked",
+      "label": {
+        "x": 290,
+        "y": 414,
+        "align": "right"
+      },
+      "badge": null
+    },
+    {
+      "id": 5,
+      "x": 56,
+      "y": 532,
+      "side": "left",
+      "state": "current",
+      "label": {
+        "x": 100,
+        "y": 532,
+        "align": "left"
+      },
+      "badge": {
+        "x": 35,
+        "y": 566,
+        "w": 42,
+        "h": 16
+      }
+    },
+    {
+      "id": 6,
+      "x": 334,
+      "y": 650,
+      "side": "right",
+      "state": "locked",
+      "label": {
+        "x": 290,
+        "y": 650,
+        "align": "right"
+      },
+      "badge": null
+    },
+    {
+      "id": 7,
+      "x": 56,
+      "y": 768,
+      "side": "left",
+      "state": "locked",
+      "label": {
+        "x": 100,
+        "y": 768,
+        "align": "left"
+      },
+      "badge": null
+    }
+  ],
+  "segments": [
+    {
+      "id": "trail-segment-1",
+      "from": 1,
+      "to": 2,
+      "state": "done"
+    },
+    {
+      "id": "trail-segment-2",
+      "from": 2,
+      "to": 3,
+      "state": "done"
+    },
+    {
+      "id": "trail-segment-3",
+      "from": 3,
+      "to": 4,
+      "state": "done"
+    },
+    {
+      "id": "trail-segment-4",
+      "from": 4,
+      "to": 5,
+      "state": "active"
+    },
+    {
+      "id": "trail-segment-5",
+      "from": 5,
+      "to": 6,
+      "state": "todo"
+    },
+    {
+      "id": "trail-segment-6",
+      "from": 6,
+      "to": 7,
+      "state": "todo"
+    }
+  ]
+}

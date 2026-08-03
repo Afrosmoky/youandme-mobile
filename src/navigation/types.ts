@@ -19,6 +19,8 @@ export type RootStackParamList = {
   Deck: undefined;
   // Credit balance (P7). Reached from Home via the deck, or from the deck header.
   Rewards: undefined;
+  // Progress map (P8): milestones unlocked by the number of cards played.
+  ProgressMap: undefined;
   // sessionUlid is passed when a fresh session was just started; absent when
   // resuming or when Question fetches the active session itself.
   Question: { sessionUlid?: string } | undefined;

@@ -14,6 +14,7 @@ import { RitualScreen } from '../screens/RitualScreen';
 import { CategoryPickerScreen } from '../screens/CategoryPickerScreen';
 import { DeckScreen } from '../screens/DeckScreen';
 import { RewardsScreen } from '../screens/RewardsScreen';
+import { ProgressMapScreen } from '../screens/ProgressMapScreen';
 import { QuestionScreen } from '../screens/QuestionScreen';
 import { MemoriesScreen } from '../screens/MemoriesScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
@@ -104,6 +105,11 @@ export function RootNavigator() {
             name="Rewards"
             component={RewardsScreen}
             options={{ title: pl.rewards.headerTitle }}
+          />
+          <Stack.Screen
+            name="ProgressMap"
+            component={ProgressMapScreen}
+            options={{ title: pl.progress.headerTitle }}
           />
           <Stack.Screen
             name="Memories"

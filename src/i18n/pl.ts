@@ -153,6 +153,23 @@ export const pl = {
     memoriesHint: 'Wasze zapisane odpowiedzi',
     deckTitle: 'Talia i nagrody',
     deckHint: 'Odblokujcie kolejne pytania',
+    progressTitle: 'Wasza mapa',
+    progressHint: 'Zobaczcie, jak daleko zaszliście',
+  },
+
+  // P8 progress map. Milestone names come from the backend; only the framing
+  // is here. Copy is a working placeholder pending Wiktoria (#36).
+  progress: {
+    headerTitle: 'Mapa postępów',
+    // "50 KART" — the badge under a milestone name.
+    cards: (count: number) => `${count} kart`,
+    // "120 / 150 · jeszcze 30" under the milestone being worked towards.
+    remaining: (played: number, threshold: number, left: number) =>
+      `${played} / ${threshold} · jeszcze ${left}`,
+    nowBadge: 'TERAZ',
+    // Shown instead of the map when the backend has no milestones seeded.
+    empty: 'Mapa pojawi się, gdy zagracie pierwsze karty.',
+    loadError: 'Nie udało się pobrać mapy postępów.',
   },
 
   // P7. Credits become visible here for the first time — they had been growing
