@@ -17,6 +17,18 @@ end
 target 'YouandmeMobile' do
   config = use_native_modules!
 
+  # Firebase Messaging (P9) brings Swift pods, and a Swift pod cannot import a
+  # static-library dependency that ships no module map. FirebaseCoreInternal
+  # depends on GoogleUtilities, so GoogleUtilities has to generate one, or
+  # `pod install` refuses to integrate at all.
+  #
+  # Named pod by named pod, deliberately: `use_modular_headers!` would hand
+  # module maps to every pod in the project (AdMob, Google Sign-In, notifee,
+  # svg, screens), and `use_frameworks!` — what rnfirebase.io recommends —
+  # would rebuild all of them as frameworks. Both are large changes to how the
+  # whole app links, made to satisfy one dependency edge.
+  pod 'GoogleUtilities', :modular_headers => true
+
   use_react_native!(
     :path => config[:reactNativePath],
     # An absolute path to your application root.
