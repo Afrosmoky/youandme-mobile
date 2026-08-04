@@ -17,6 +17,7 @@ import { RewardsScreen } from '../screens/RewardsScreen';
 import { ProgressMapScreen } from '../screens/ProgressMapScreen';
 import { QuestionScreen } from '../screens/QuestionScreen';
 import { MemoriesScreen } from '../screens/MemoriesScreen';
+import { MemoryCardScreen } from '../screens/MemoryCardScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { pl } from '../i18n/pl';
 
@@ -115,6 +116,11 @@ export function RootNavigator() {
             name="Memories"
             component={MemoriesScreen}
             options={{ title: pl.memories.headerTitle }}
+          />
+          <Stack.Screen
+            name="MemoryCard"
+            component={MemoryCardScreen}
+            options={{ title: pl.memoryCard.headerTitle }}
           />
           <Stack.Screen
             name="Profile"

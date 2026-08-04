@@ -23,6 +23,9 @@ type Props = {
   // false renders the value as plain read-only text (no input box), matching the
   // read-only fields in the profile mockup (e-mail, locale).
   editable?: boolean;
+  // Grows the field into a paragraph box (P9: editing a saved answer, which is
+  // prose rather than a single line).
+  multiline?: boolean;
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   keyboardType?: KeyboardTypeOptions;
   style?: StyleProp<ViewStyle>;
@@ -39,6 +42,7 @@ export function TextField({
   hint,
   placeholder,
   editable = true,
+  multiline,
   autoCapitalize,
   keyboardType,
   style,
@@ -52,11 +56,13 @@ export function TextField({
       {editable ? (
         <TextInput
           testID={testID}
-          style={styles.input}
+          style={[styles.input, multiline && styles.multiline]}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
           placeholderTextColor={theme.colors.text.muted}
+          multiline={multiline}
+          textAlignVertical={multiline ? 'top' : undefined}
           autoCapitalize={autoCapitalize}
           autoCorrect={false}
           keyboardType={keyboardType}
@@ -94,6 +100,9 @@ const createStyles = (theme: Theme) => {
       fontFamily: typography.family.body,
       fontSize: typography.size.body,
       color: colors.text.primary,
+    },
+    multiline: {
+      minHeight: 120,
     },
     readonly: {
       fontFamily: typography.family.body,

@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -11,9 +11,11 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useMemories } from '../queries/useMemories';
+import { useSetMemoryFavorite } from '../queries/useSetMemoryFavorite';
 import { Card } from '../components/Card';
 import { SectionLabel } from '../components/SectionLabel';
 import { Badge } from '../components/Badge';
+import { LikeHeart } from '../components/LikeHeart';
 import { Theme, useTheme } from '../theme';
 import { pl } from '../i18n/pl';
 
@@ -47,6 +49,9 @@ function originLabel(origin: string): string {
 export function MemoriesScreen({ navigation }: Props) {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  // The filter is a query of its own, not a client-side filter: the server
+  // narrows the same list, so paging keeps working past the first page.
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
   const {
     data,
     isLoading,
@@ -56,7 +61,8 @@ export function MemoriesScreen({ navigation }: Props) {
     isFetchingNextPage,
     fetchNextPage,
     refetch,
-  } = useMemories();
+  } = useMemories(favoritesOnly);
+  const favorite = useSetMemoryFavorite();
 
   // Flatten the paginated cache into a single newest-first list for the FlatList.
   const memories = data?.pages.flatMap(page => page.memories) ?? [];
@@ -77,6 +83,18 @@ export function MemoriesScreen({ navigation }: Props) {
     if (hasNextPage && !isFetchingNextPage) {
       fetchNextPage();
     }
+  };
+
+  // The heart writes through the cache optimistically (see useSetMemoryFavorite),
+  // so the tap lands immediately; a failure rolls it back and says so.
+  const onToggleFavorite = (ulid: string, isFavorite: boolean) => {
+    if (favorite.isPending) {
+      return;
+    }
+    favorite.mutate(
+      { ulid, favorite: !isFavorite },
+      { onError: () => Alert.alert(pl.appTitle, pl.memories.favoriteError) },
+    );
   };
 
   useLayoutEffect(() => {
@@ -128,11 +146,29 @@ export function MemoriesScreen({ navigation }: Props) {
           />
         ) : null
       }
+      ListHeaderComponent={
+        <TouchableOpacity
+          testID="memories-favorites-filter"
+          style={styles.filter}
+          onPress={() => setFavoritesOnly(current => !current)}>
+          <Text
+            style={[styles.filterText, favoritesOnly && styles.filterTextOn]}>
+            {favoritesOnly ? pl.memories.allFilter : pl.memories.favoritesFilter}
+          </Text>
+        </TouchableOpacity>
+      }
       ListEmptyComponent={
-        <Text style={styles.emptyText}>{pl.memories.empty}</Text>
+        <Text style={styles.emptyText}>
+          {favoritesOnly ? pl.memories.emptyFavorites : pl.memories.empty}
+        </Text>
       }
       renderItem={({ item }) => (
-        <Card testID={`memory-item-${item.ulid}`} style={styles.card}>
+        <Card
+          testID={`memory-item-${item.ulid}`}
+          onPress={() =>
+            navigation.navigate('MemoryCard', { memoryUlid: item.ulid })
+          }
+          style={styles.card}>
           <View style={styles.cardHeader}>
             <View style={styles.categorySlot}>
               {item.question.category && (
@@ -142,6 +178,12 @@ export function MemoriesScreen({ navigation }: Props) {
             <Badge testID={`memory-origin-${item.ulid}`}>
               {originLabel(item.origin)}
             </Badge>
+            <LikeHeart
+              testID={`memory-favorite-${item.ulid}`}
+              liked={item.isFavorite}
+              onToggle={() => onToggleFavorite(item.ulid, item.isFavorite)}
+              disabled={favorite.isPending}
+            />
           </View>
 
           <Text style={styles.question}>{item.question.body}</Text>
@@ -202,6 +244,20 @@ const createStyles = (theme: Theme) => {
     },
     card: {
       marginBottom: spacing.md,
+    },
+    // Provisional filter control pending the style guide (#36): a gold text
+    // toggle over the list, not a segmented control we would have to restyle.
+    filter: {
+      alignSelf: 'flex-end',
+      paddingBottom: spacing.md,
+    },
+    filterText: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.bodySm,
+      color: colors.text.muted,
+    },
+    filterTextOn: {
+      color: colors.gold.primary,
     },
     cardHeader: {
       flexDirection: 'row',

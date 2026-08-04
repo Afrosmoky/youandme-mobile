@@ -128,7 +128,12 @@ export const pl = {
     headerTitle: 'Wspomnienia',
     logout: 'Wyloguj',
     empty: 'Nie masz jeszcze żadnych wspomnień.',
+    // Osobny pusty stan dla filtra — „nie masz wspomnień" byłoby nieprawdą.
+    emptyFavorites: 'Nie macie jeszcze ulubionych wspomnień.',
     loadError: 'Nie udało się pobrać wspomnień.',
+    favoritesFilter: 'Tylko ulubione',
+    allFilter: 'Wszystkie',
+    favoriteError: 'Nie udało się zmienić ulubionych.',
     // "Odpowiedź Ola"
     player: (name: string) => `Odpowiedź ${name}`,
     origin: {
@@ -136,6 +141,28 @@ export const pl = {
       daily: 'Karta dnia',
       challenge: 'Wyzwanie',
     },
+  },
+
+  // Ekran szczegółu wspomnienia (P9): re-open z listy, edycja, usuwanie, serce,
+  // a docelowo cel deep-linku z pusha rocznicy.
+  memoryCard: {
+    headerTitle: 'Wspomnienie',
+    loadError: 'Nie udało się otworzyć wspomnienia.',
+    edit: 'Edytuj',
+    cancel: 'Anuluj',
+    save: 'Zapisz zmiany',
+    saveError: 'Nie udało się zapisać zmian.',
+    emptyAnswer: 'Odpowiedź nie może być pusta.',
+    // Etykiety pól w trybie edycji: nick gracza, gdy jest znany.
+    answerLabel: (name: string) => `Odpowiedź ${name}`,
+    partnerAnswerLabel: 'Odpowiedź partnera',
+    // Pole partnera można wyczyścić — backend przyjmuje pustą odpowiedź jako brak.
+    partnerHint: 'Puste pole = brak odpowiedzi partnera.',
+    delete: 'Usuń wspomnienie',
+    deleteTitle: 'Usunąć wspomnienie?',
+    deleteMessage: 'Zniknie z listy wspomnień. Tej operacji nie cofniesz.',
+    deleteConfirm: 'Usuń',
+    deleteError: 'Nie udało się usunąć wspomnienia.',
   },
 
   home: {

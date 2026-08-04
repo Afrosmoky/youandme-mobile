@@ -71,6 +71,7 @@ const memory = {
   question,
   answerA: 'Mój żart',
   answerB: null,
+  isFavorite: false,
   playerAName: 'ola',
   playerBName: null,
   origin: 'session',

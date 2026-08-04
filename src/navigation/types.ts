@@ -25,5 +25,8 @@ export type RootStackParamList = {
   // resuming or when Question fetches the active session itself.
   Question: { sessionUlid?: string } | undefined;
   Memories: undefined;
+  // One memory in full (P9): re-opened from the list, and — once FCM lands in
+  // slice 2 — the target of the anniversary push, which carries only the ulid.
+  MemoryCard: { memoryUlid: string };
   Profile: undefined;
 };

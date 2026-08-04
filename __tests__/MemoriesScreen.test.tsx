@@ -1,15 +1,18 @@
 import React from 'react';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
-import {fireEvent, screen, waitFor} from '@testing-library/react-native';
+import {act, fireEvent, screen, waitFor} from '@testing-library/react-native';
 import {renderWithQueryClient} from '../src/test/renderWithQueryClient';
 import {MemoriesScreen} from '../src/screens/MemoriesScreen';
-import {listMemories} from '../src/api/memories';
+import {listMemories, setMemoryFavorite} from '../src/api/memories';
 import {useAuth} from '../src/auth/AuthContext';
 import type {RootStackParamList} from '../src/navigation/types';
 import type {Memory} from '../src/domain/types';
 import {pl} from '../src/i18n/pl';
 
-jest.mock('../src/api/memories', () => ({listMemories: jest.fn()}));
+jest.mock('../src/api/memories', () => ({
+  listMemories: jest.fn(),
+  setMemoryFavorite: jest.fn(),
+}));
 jest.mock('../src/auth/AuthContext', () => ({useAuth: jest.fn()}));
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Memories'>;
@@ -27,6 +30,7 @@ const memory: Memory = {
   },
   answerA: 'Świetny żart w pracy.',
   answerB: null,
+  isFavorite: false,
   playerAName: 'ola',
   playerBName: null,
   origin: 'session',
@@ -150,5 +154,101 @@ describe('MemoriesScreen', () => {
     fireEvent(screen.getByTestId('memories-list'), 'refresh');
 
     await waitFor(() => expect(listMemories).toHaveBeenCalledTimes(2));
+  });
+
+  test('tapping a card opens it in full', async () => {
+    const props = makeProps();
+    jest
+      .mocked(listMemories)
+      .mockResolvedValue({memories: [memory], nextCursor: null, prevCursor: null});
+
+    renderWithQueryClient(<MemoriesScreen {...props} />);
+    fireEvent.press(await screen.findByTestId('memory-item-m_01'));
+
+    expect(props.navigation.navigate).toHaveBeenCalledWith('MemoryCard', {
+      memoryUlid: 'm_01',
+    });
+  });
+
+  test('the heart on a card hearts that memory', async () => {
+    jest
+      .mocked(listMemories)
+      .mockResolvedValue({memories: [memory], nextCursor: null, prevCursor: null});
+    jest
+      .mocked(setMemoryFavorite)
+      .mockResolvedValue({...memory, isFavorite: true});
+
+    renderWithQueryClient(<MemoriesScreen {...makeProps()} />);
+    const heart = await screen.findByTestId('memory-favorite-m_01');
+    expect(heart).toHaveTextContent('♡︎');
+
+    fireEvent.press(heart);
+
+    // Flips before the request settles (optimistic), and stays hearted after.
+    await waitFor(() =>
+      expect(screen.getByTestId('memory-favorite-m_01')).toHaveTextContent('♥︎'),
+    );
+    expect(setMemoryFavorite).toHaveBeenCalledWith('m_01', true);
+    await act(async () => {
+      await Promise.resolve();
+    });
+  });
+
+  test('a rejected heart rolls back', async () => {
+    jest
+      .mocked(listMemories)
+      .mockResolvedValue({memories: [memory], nextCursor: null, prevCursor: null});
+    jest.mocked(setMemoryFavorite).mockRejectedValue(new Error('network'));
+
+    renderWithQueryClient(<MemoriesScreen {...makeProps()} />);
+    fireEvent.press(await screen.findByTestId('memory-favorite-m_01'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('memory-favorite-m_01')).toHaveTextContent('♡︎'),
+    );
+  });
+
+  // The filter is a separate query, not a client-side filter of one list.
+  test('the favourites filter asks the server for the narrowed list', async () => {
+    jest
+      .mocked(listMemories)
+      .mockResolvedValue({memories: [memory], nextCursor: null, prevCursor: null});
+
+    renderWithQueryClient(<MemoriesScreen {...makeProps()} />);
+    await screen.findByText(memory.answerA);
+    expect(listMemories).toHaveBeenCalledWith({
+      cursor: undefined,
+      favoritesOnly: false,
+    });
+
+    fireEvent.press(screen.getByTestId('memories-favorites-filter'));
+
+    await waitFor(() =>
+      expect(listMemories).toHaveBeenCalledWith({
+        cursor: undefined,
+        favoritesOnly: true,
+      }),
+    );
+  });
+
+  test('the filtered list has an empty state of its own', async () => {
+    jest
+      .mocked(listMemories)
+      .mockResolvedValueOnce({
+        memories: [memory],
+        nextCursor: null,
+        prevCursor: null,
+      })
+      .mockResolvedValue({memories: [], nextCursor: null, prevCursor: null});
+
+    renderWithQueryClient(<MemoriesScreen {...makeProps()} />);
+    await screen.findByText(memory.answerA);
+
+    fireEvent.press(screen.getByTestId('memories-favorites-filter'));
+
+    expect(
+      await screen.findByText(pl.memories.emptyFavorites),
+    ).toBeOnTheScreen();
+    expect(screen.queryByText(pl.memories.empty)).toBeNull();
   });
 });

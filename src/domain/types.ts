@@ -228,6 +228,10 @@ export const rawMemorySchema = z.object({
   player_a_name: z.string(),
   player_b_name: z.string().nullable(),
   origin: z.string(),
+  // P9: hearted by the couple. Optional with a false default for the same reason
+  // as `liked` on the question — one schema serves every payload that carries a
+  // memory, and a required field would break the moment one of them predates it.
+  is_favorite: z.boolean().optional().default(false),
   answered_at: z.string(),
 });
 
@@ -239,6 +243,7 @@ export type Memory = {
   playerAName: string;
   playerBName: string | null;
   origin: string;
+  isFavorite: boolean;
   answeredAt: string;
 };
 
@@ -251,6 +256,7 @@ export function mapRawMemory(raw: z.infer<typeof rawMemorySchema>): Memory {
     playerAName: raw.player_a_name,
     playerBName: raw.player_b_name,
     origin: raw.origin,
+    isFavorite: raw.is_favorite,
     answeredAt: raw.answered_at,
   };
 }
