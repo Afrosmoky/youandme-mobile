@@ -16,6 +16,17 @@ const CHANNEL_ID = 'daily-card';
 // has to offer — on Android muting is per channel, so the split is the only way
 // to keep those separable.
 const PROGRESS_CHANNEL_ID = 'progress-milestones';
+// Server-sent pushes (P9) get channels of their own too, for the same reason as
+// the milestones one: on Android muting is per channel, and a couple tired of
+// anniversary reminders must be able to switch those off without also losing
+// the message that says their credit arrived.
+const PUSH_CHANNELS = {
+  memories: { id: 'memories', name: pl.notifications.memoriesChannelName },
+  rewards: { id: 'rewards', name: pl.notifications.rewardsChannelName },
+} as const;
+
+export type PushChannel = keyof typeof PUSH_CHANNELS;
+
 const DAILY_REMINDER_ID = 'daily-card-reminder';
 const STREAK_WARNING_ID = 'streak-warning';
 const RITUAL_REMINDER_ID = 'weekly-ritual-reminder';
@@ -145,6 +156,32 @@ export async function notifyStreakMilestone(streak: number): Promise<void> {
     title: pl.notifications.milestoneTitle,
     body: pl.notifications.milestoneBody(streak),
     android: { channelId },
+  });
+}
+
+// Renders a notification the SERVER sent (P9). FCM delivers our pushes
+// data-only, so nothing appears on the phone unless we draw it — this is that
+// step, for the foreground and background handlers alike.
+//
+// The data rides along on the notification so a press can be routed by the same
+// payload that produced it; pressAction is what makes Android open the app at
+// all when the notification is tapped.
+export async function displayServerPush(
+  channel: PushChannel,
+  title: string,
+  body: string,
+  data: Record<string, string>,
+): Promise<void> {
+  const channelId = await notifee.createChannel({
+    id: PUSH_CHANNELS[channel].id,
+    name: PUSH_CHANNELS[channel].name,
+    importance: AndroidImportance.HIGH,
+  });
+  await notifee.displayNotification({
+    title,
+    body,
+    data,
+    android: { channelId, pressAction: { id: 'default' } },
   });
 }
 

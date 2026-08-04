@@ -4,6 +4,7 @@ import { LinkingOptions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from './types';
 import { useAuth } from '../auth/AuthContext';
+import { usePushRegistration } from '../notifications/usePushRegistration';
 import { AuthScreen } from '../screens/AuthScreen';
 import { ForgotPasswordScreen } from '../screens/ForgotPasswordScreen';
 import { ResetPasswordScreen } from '../screens/ResetPasswordScreen';
@@ -36,6 +37,10 @@ export const linking: LinkingOptions<RootStackParamList> = {
 
 export function RootNavigator() {
   const { token, loading } = useAuth();
+
+  // P9: tell the backend where to push, for as long as there is a session to
+  // push about. Hooks run before the early return below on purpose.
+  usePushRegistration(token != null);
 
   if (loading) {
     return (

@@ -3,6 +3,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useAuth } from '../auth/AuthContext';
+import { takePendingMemoryUlid } from '../navigation/navigationRef';
 import { getActiveSession } from '../api/sessions';
 import { GlowBackground } from '../components/GlowBackground';
 import { Logo } from '../components/Logo';
@@ -22,6 +23,20 @@ export function BootstrapScreen({ navigation }: Props) {
 
   useEffect(() => {
     let active = true;
+    // A notification pressed before this stack existed (P9): read it once, here,
+    // at the top — the buffer is consumed on read, and taking it after the
+    // awaits below would race a second pass through this screen.
+    const pendingMemoryUlid = takePendingMemoryUlid();
+
+    // Whatever this screen decides becomes the screen UNDER the memory, not
+    // instead of it: the couple asked for that memory by pressing the push, but
+    // they still need a hub (or their unfinished session) to come back to.
+    const openPendingMemory = () => {
+      if (pendingMemoryUlid) {
+        navigation.navigate('MemoryCard', { memoryUlid: pendingMemoryUlid });
+      }
+    };
+
     (async () => {
       // Pull user + couple into the context so Profile (and Question's partner
       // snapshot) have them. Non-fatal: a failure still lets the user play.
@@ -40,9 +55,11 @@ export function BootstrapScreen({ navigation }: Props) {
         } else {
           navigation.replace('Home');
         }
+        openPendingMemory();
       } catch {
         if (active) {
           navigation.replace('Home');
+          openPendingMemory();
         }
       }
     })();

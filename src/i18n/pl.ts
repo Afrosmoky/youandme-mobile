@@ -318,6 +318,10 @@ export const pl = {
       'Wyzwanie tygodnia — sprawdźcie wasz rytuał na ten tydzień.',
     // Osobny kanał Androida dla kamieni z mapy postępów — patrz notifee.ts.
     progressChannelName: 'Kamienie milowe',
+    // Kanały dla pushy serwerowych (P9). Same treści przychodzą z backendu —
+    // tutaj są tylko nazwy kanałów, które user widzi w ustawieniach Androida.
+    memoriesChannelName: 'Wspomnienia',
+    rewardsChannelName: 'Nagrody',
     progressMilestoneTitle: 'Nowy kamień milowy!',
     progressMilestoneBody: (name: string) =>
       `Odblokowaliście: ${name}. Zajrzyjcie na mapę.`,

@@ -36,6 +36,15 @@ jest.mock('@react-native-google-signin/google-signin', () => ({
 jest.mock('@react-navigation/native', () => ({
   useNavigation: () => ({ navigate: jest.fn(), setOptions: jest.fn() }),
   useRoute: () => ({ params: {} }),
+  // P9: src/navigation/navigationRef.ts creates a container ref at module
+  // scope, so this has to exist for any test that imports it (directly or
+  // through the push handler). Reports "not ready" by default — the state that
+  // makes a pressed notification wait for Bootstrap; tests spy on the methods.
+  createNavigationContainerRef: () => ({
+    isReady: () => false,
+    navigate: () => {},
+    getRootState: () => undefined,
+  }),
 }));
 
 // @notifee/react-native: native module. Default to resolved no-ops; tests that
@@ -48,10 +57,33 @@ jest.mock('@notifee/react-native', () => ({
     createTriggerNotification: jest.fn(() => Promise.resolve()),
     cancelNotification: jest.fn(() => Promise.resolve()),
     displayNotification: jest.fn(() => Promise.resolve()),
+    // P9: push wiring registers these at startup and on a press.
+    onForegroundEvent: jest.fn(() => jest.fn()),
+    onBackgroundEvent: jest.fn(),
+    getInitialNotification: jest.fn(() => Promise.resolve(null)),
   },
   AndroidImportance: { HIGH: 4 },
   RepeatFrequency: { DAILY: 1, WEEKLY: 2 },
   TriggerType: { TIMESTAMP: 0 },
+  EventType: { DISMISSED: 0, PRESS: 1, DELIVERED: 3 },
+}));
+
+// @react-native-firebase/messaging: native module (P9). Modular API surface
+// only — that is what src/notifications/pushToken.ts uses. getToken resolves by
+// default; tests that need the iOS "no APNs" path make it reject.
+jest.mock('@react-native-firebase/messaging', () => ({
+  getMessaging: jest.fn(() => ({})),
+  requestPermission: jest.fn(() => Promise.resolve(1)),
+  getToken: jest.fn(() => Promise.resolve('fcm-token')),
+  onTokenRefresh: jest.fn(() => jest.fn()),
+  onMessage: jest.fn(() => jest.fn()),
+  setBackgroundMessageHandler: jest.fn(),
+  AuthorizationStatus: {
+    NOT_DETERMINED: -1,
+    DENIED: 0,
+    AUTHORIZED: 1,
+    PROVISIONAL: 2,
+  },
 }));
 
 // react-native-store-review: native TurboModule wrapping SKStoreReviewController
