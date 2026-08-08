@@ -89,6 +89,7 @@ export const pl = {
 
   categoryPicker: {
     title: 'Wybierz kategorię',
+    homeButton: 'Wróć',
     memoriesButton: 'Wspomnienia',
     mixButton: 'Tryb mix (wszystkie kategorie)',
     mixHint: 'Pytania z różnych kategorii wymieszane',
@@ -131,8 +132,8 @@ export const pl = {
     // Osobny pusty stan dla filtra — „nie masz wspomnień" byłoby nieprawdą.
     emptyFavorites: 'Nie macie jeszcze ulubionych wspomnień.',
     loadError: 'Nie udało się pobrać wspomnień.',
-    favoritesFilter: 'Tylko ulubione',
-    allFilter: 'Wszystkie',
+    favoritesFilter: 'Pokaż ulubione',
+    allFilter: 'Pokaż wszystkie',
     favoriteError: 'Nie udało się zmienić ulubionych.',
     // "Odpowiedź Ola"
     player: (name: string) => `Odpowiedź ${name}`,
@@ -140,6 +141,7 @@ export const pl = {
       session: 'Sesja',
       daily: 'Karta dnia',
       challenge: 'Wyzwanie',
+      localGame: 'Gra lokalna',
     },
   },
 
@@ -182,6 +184,64 @@ export const pl = {
     deckHint: 'Odblokujcie kolejne pytania',
     progressTitle: 'Wasza mapa',
     progressHint: 'Zobaczcie, jak daleko zaszliście',
+    localGameTitle: 'Gra na jednym telefonie',
+    localGameHint: 'Grajcie obok siebie, na zmianę',
+  },
+
+  // P10 local two-player game. Working copy — the final wording and the button
+  // layout come in P11b, against Wiktoria's walkthrough video.
+  localGame: {
+    setupTitle: 'Gra na jednym telefonie',
+    setupHeaderTitle: 'Nowa gra',
+    player1Label: 'Gracz 1',
+    // Stands in for the nickname when /me has not answered yet.
+    player1Fallback: 'Ty',
+    player2Label: 'Gracz 2',
+    player2Placeholder: 'Imię drugiego gracza',
+    player2Hint: 'Bez konta — imię zostaje na tym telefonie.',
+    player2Required: 'Wpisz imię drugiego gracza.',
+    player2TooLong: 'Imię może mieć najwyżej 60 znaków.',
+    categoryPrompt: 'Wybierzcie kategorię, żeby zacząć',
+    // Resume prompt, e.g. "Piotr i Wiktoria — karta 4 z 20".
+    resumeTitle: 'Macie niedokończoną grę',
+    resumeSummary: (player2: string, current: number, total: number) =>
+      `Z ${player2} — karta ${current} z ${total}`,
+    resumeButton: 'Wznów grę',
+    restartButton: 'Zacznij od nowa',
+    deckEmpty:
+      'Zagraliście już wszystkie pytania z tej kategorii. Wybierzcie inną.',
+    deckError: 'Nie udało się pobrać pytań.',
+
+    headerTitle: 'Gra',
+    // Card header, e.g. "Karta 3 z 20 · Tura: Wiktoria".
+    cardHeader: (current: number, total: number, player: string) =>
+      `Karta ${current} z ${total} · Tura: ${player}`,
+    challengeHeader: 'Wyzwanie',
+    // The written answer is optional — the field stays hidden behind this.
+    writeToggleShow: 'Odpowiedz',
+    writeToggleHide: 'Ukryj pole',
+    answerPlaceholder: (player: string) => `Odpowiedź: ${player}`,
+    passButton: 'Przekaż kolejkę',
+    nextButton: 'Następne pytanie',
+    challengeDoneButton: 'Dalej',
+    skipButton: 'Pomiń',
+    pauseButton: 'Przerwij',
+    saveButton: 'Zapisz wspomnienie',
+    savedBadge: 'Wspomnienie zapisane',
+    saveError: 'Nie udało się zapisać wspomnienia.',
+
+    summaryHeaderTitle: 'Koniec gry',
+    summaryTitle: 'To były wszystkie karty',
+    // "Zagraliście 18 kart" / "1 kartę" / "3 karty" — Polish counts in three.
+    summaryQuestions: (count: number) => `Zagrane karty: ${count}`,
+    summaryChallenges: (count: number) => `Wyzwania: ${count}`,
+    summaryMemories: (count: number) => `Zapisane wspomnienia: ${count}`,
+    playAgainButton: 'Zagrajcie znów',
+    backHome: 'Wróć do początku',
+    // The report is retried on the next visit to the setup screen, so this is a
+    // note rather than an error the couple has to act on.
+    reportPending:
+      'Nie udało się teraz zapisać postępu. Spróbujemy ponownie później.',
   },
 
   // P8 progress map. Milestone names come from the backend; only the framing

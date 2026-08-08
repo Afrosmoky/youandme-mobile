@@ -13,6 +13,9 @@ import { HomeScreen } from '../screens/HomeScreen';
 import { DailyCardScreen } from '../screens/DailyCardScreen';
 import { RitualScreen } from '../screens/RitualScreen';
 import { CategoryPickerScreen } from '../screens/CategoryPickerScreen';
+import { LocalGameSetupScreen } from '../screens/LocalGameSetupScreen';
+import { LocalGameScreen } from '../screens/LocalGameScreen';
+import { LocalGameSummaryScreen } from '../screens/LocalGameSummaryScreen';
 import { DeckScreen } from '../screens/DeckScreen';
 import { RewardsScreen } from '../screens/RewardsScreen';
 import { ProgressMapScreen } from '../screens/ProgressMapScreen';
@@ -96,6 +99,38 @@ export function RootNavigator() {
             name="CategoryPicker"
             component={CategoryPickerScreen}
             options={{ title: pl.categoryPicker.title }}
+          />
+          <Stack.Screen
+            name="LocalGameSetup"
+            component={LocalGameSetupScreen}
+            options={{ title: pl.localGame.setupHeaderTitle }}
+          />
+          <Stack.Screen
+            name="LocalGame"
+            component={LocalGameScreen}
+            options={{
+              title: pl.localGame.headerTitle,
+              // No back arrow, no swipe: "Przerwij" (→ Home) is the only way out
+              // of a game in progress. Going back would land on a still-mounted
+              // LocalGameSetup holding the session it read when IT mounted —
+              // stale by then. The resume card would be missing, the
+              // matchesSetup guard would compare against null and overwrite a
+              // game in progress with a fresh deck, and the pending report would
+              // never flush (all three hang off the same mount effect).
+              // Leaving via Home unwinds the setup screen too, so the next entry
+              // always re-reads what is actually on disk.
+              headerBackVisible: false,
+              gestureEnabled: false,
+            }}
+          />
+          <Stack.Screen
+            name="LocalGameSummary"
+            component={LocalGameSummaryScreen}
+            options={{
+              title: pl.localGame.summaryHeaderTitle,
+              headerBackVisible: false,
+              gestureEnabled: false,
+            }}
           />
           <Stack.Screen
             name="Question"

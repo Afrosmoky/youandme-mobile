@@ -15,6 +15,12 @@ export type RootStackParamList = {
   // Weekly ritual (P4): read-only ritual of the week.
   Ritual: undefined;
   CategoryPicker: undefined;
+  // Local two-player game (P10). Neither screen takes params: the session lives
+  // in AsyncStorage, so the game screen reads it rather than being handed it —
+  // which is also what makes resuming after a cold start work at all.
+  LocalGameSetup: undefined;
+  LocalGame: undefined;
+  LocalGameSummary: undefined;
   // Closed deck (P7): what the couple has unlocked, and what a credit buys.
   Deck: undefined;
   // Credit balance (P7). Reached from Home via the deck, or from the deck header.

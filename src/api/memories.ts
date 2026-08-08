@@ -81,6 +81,37 @@ export async function createMemory(
   };
 }
 
+// P10: an answer written during a local game. A separate endpoint rather than a
+// flag on POST /memories, for two reasons the backend is explicit about: that
+// one is gated on an active server session, which a local game has none of, and
+// player_b_name is not an input there — it comes from the couple's stored
+// partner name. Here the second player is a name typed on the setup screen, and
+// the two may legitimately differ.
+//
+// The response carries a memory alone: there is no local session on the server
+// to report back.
+export type CreateLocalMemoryInput = {
+  questionUlid: string;
+  answerA: string;
+  answerB: string | null;
+  // Snapshot, not a reference — the second player has no account (MVP).
+  playerBName: string;
+  answeredAt: string;
+};
+
+export async function createLocalMemory(
+  input: CreateLocalMemoryInput,
+): Promise<Memory> {
+  const res = await apiClient.post('/memories/local', {
+    question_ulid: input.questionUlid,
+    answer_a: input.answerA,
+    answer_b: input.answerB,
+    player_b_name: input.playerBName,
+    answered_at: input.answeredAt,
+  });
+  return mapRawMemory(memoryResponseSchema.parse(res.data).memory);
+}
+
 // Fetches one page of memories. Omit `cursor` for the first page; pass
 // `nextCursor` from a previous page to load the next. `favoritesOnly` narrows
 // the same list — the flag is sent only when set, so the unfiltered request

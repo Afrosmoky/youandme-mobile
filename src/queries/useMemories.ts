@@ -1,4 +1,4 @@
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query';
 import { listMemories } from '../api/memories';
 import { queryKeys } from './queryKeys';
 
@@ -17,5 +17,11 @@ export function useMemories(favoritesOnly: boolean = false) {
       listMemories({ cursor: pageParam, favoritesOnly }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: lastPage => lastPage.nextCursor ?? undefined,
+    // Because the filter is part of the key, flipping it switches to a cache
+    // entry that is empty on first use — the list would blink through its empty
+    // state on every toggle. keepPreviousData holds the outgoing list on screen
+    // until the new one arrives (isFetching stays true, so the pull-to-refresh
+    // spinner still reports the fetch).
+    placeholderData: keepPreviousData,
   });
 }

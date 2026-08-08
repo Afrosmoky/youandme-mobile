@@ -1,0 +1,126 @@
+import {
+  LOCAL_GAME_STATE_KEY,
+  LOCAL_GAME_STATE_VERSION,
+  clearLocalGameState,
+  loadLocalGameState,
+  saveLocalGameState,
+} from './localGameState';
+import { kv } from './kv';
+import { advance, setAnswer, startLocalGame } from '../domain/localGame';
+import { CHALLENGES } from '../domain/challenges';
+import { Question } from '../domain/types';
+
+const question = (n: number): Question => ({
+  ulid: `Q${n}`,
+  body: `Pytanie ${n}?`,
+  type: 'session',
+  category: { slug: 'randka', name: 'Randka' },
+  tags: ['bliskosc'],
+  liked: false,
+  isLocked: false,
+});
+
+// A session mid-play: some cards behind it, the phone with player two, an answer
+// typed but not saved.
+const midSession = () => {
+  const started = startLocalGame({
+    player1: 'Piotr',
+    player2: 'Wiktoria',
+    categorySlug: 'randka',
+    questions: [question(1), question(2), question(3)],
+    challenges: CHALLENGES,
+    interval: 2,
+    startedAt: '2026-08-05T18:00:00.000Z',
+  });
+  return setAnswer(advance(started), 'p1', 'moja odpowiedź');
+};
+
+beforeEach(async () => {
+  // The mock store lives for the module registry's lifetime, not the test's.
+  await clearLocalGameState();
+});
+
+describe('saveLocalGameState / loadLocalGameState', () => {
+  test('a saved session comes back exactly as it went in', async () => {
+    const state = midSession();
+
+    await saveLocalGameState(state);
+
+    expect(await loadLocalGameState()).toEqual(state);
+  });
+
+  test('the queue survives the round trip, challenges and all', async () => {
+    const state = midSession();
+
+    await saveLocalGameState(state);
+    const restored = await loadLocalGameState();
+
+    // Resume has to show the same cards it started with — this is why the queue
+    // holds whole questions rather than ulids to refetch.
+    expect(restored?.queue).toEqual(state.queue);
+    expect(restored?.queue.some(item => item.kind === 'challenge')).toBe(true);
+  });
+
+  test('nothing stored means nothing to resume', async () => {
+    expect(await loadLocalGameState()).toBeNull();
+  });
+
+  test('clearing removes the session', async () => {
+    await saveLocalGameState(midSession());
+    await clearLocalGameState();
+
+    expect(await loadLocalGameState()).toBeNull();
+  });
+});
+
+describe('unreadable stored values', () => {
+  test('a version this build does not know is dropped, not migrated', async () => {
+    await kv.set(
+      LOCAL_GAME_STATE_KEY,
+      JSON.stringify({
+        version: LOCAL_GAME_STATE_VERSION + 1,
+        state: midSession(),
+      }),
+    );
+
+    expect(await loadLocalGameState()).toBeNull();
+    // And cleared, so the next launch does not walk into it again.
+    expect(await kv.get(LOCAL_GAME_STATE_KEY)).toBeNull();
+  });
+
+  test('a value that is not JSON is dropped and cleared', async () => {
+    await kv.set(LOCAL_GAME_STATE_KEY, 'nie-json');
+
+    expect(await loadLocalGameState()).toBeNull();
+    expect(await kv.get(LOCAL_GAME_STATE_KEY)).toBeNull();
+  });
+
+  test('a state missing a field is dropped and cleared', async () => {
+    const { cursor, ...withoutCursor } = midSession();
+
+    await kv.set(
+      LOCAL_GAME_STATE_KEY,
+      JSON.stringify({
+        version: LOCAL_GAME_STATE_VERSION,
+        state: withoutCursor,
+      }),
+    );
+
+    expect(cursor).toBe(1);
+    expect(await loadLocalGameState()).toBeNull();
+    expect(await kv.get(LOCAL_GAME_STATE_KEY)).toBeNull();
+  });
+
+  test('a queue item of an unknown kind is dropped and cleared', async () => {
+    await kv.set(
+      LOCAL_GAME_STATE_KEY,
+      JSON.stringify({
+        version: LOCAL_GAME_STATE_VERSION,
+        state: { ...midSession(), queue: [{ kind: 'advert' }] },
+      }),
+    );
+
+    expect(await loadLocalGameState()).toBeNull();
+    expect(await kv.get(LOCAL_GAME_STATE_KEY)).toBeNull();
+  });
+});

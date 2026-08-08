@@ -6,6 +6,41 @@ import '@testing-library/jest-native/extend-expect';
 // Native-module mocks shared by all tests. Runs after the RN preset's own
 // setup (see jest.config.js).
 
+// @react-native-async-storage/async-storage: the plain key-value store behind
+// src/storage/kv.ts (P10 keeps the local game there). The package ships its own
+// in-memory mock, but it is ESM under a scope the RN preset's
+// transformIgnorePatterns does not transform (`@react-native(-community)?` does
+// not cover `@react-native-async-storage`), so it cannot be required from here.
+// This reproduces it: one store per database name, same three methods kv.ts
+// uses. State lives for the module registry's lifetime, so a suite that writes
+// clears up after itself (see src/storage/localGameState.test.ts).
+jest.mock('@react-native-async-storage/async-storage', () => {
+  const databases = new Map();
+  const createAsyncStorage = name => {
+    if (!databases.has(name)) {
+      const store = new Map();
+      databases.set(name, {
+        getItem: async key => (store.has(key) ? store.get(key) : null),
+        setItem: async (key, value) => {
+          store.set(key, value);
+        },
+        removeItem: async key => {
+          store.delete(key);
+        },
+        clear: async () => {
+          store.clear();
+        },
+      });
+    }
+    return databases.get(name);
+  };
+  return {
+    __esModule: true,
+    createAsyncStorage,
+    default: createAsyncStorage('legacy'),
+  };
+});
+
 // react-native-keychain: token persistence. No native keychain under Jest.
 jest.mock('react-native-keychain', () => ({
   setGenericPassword: jest.fn(() => Promise.resolve(false)),

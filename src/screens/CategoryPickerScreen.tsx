@@ -1,35 +1,23 @@
 import React, { useCallback, useLayoutEffect, useMemo, useState } from 'react';
-import {
-  ActivityIndicator,
-  FlatList,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import axios from 'axios';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { startSession } from '../api/sessions';
 import { parseApiError } from '../api/errors';
-import { useCategories } from '../queries/useCategories';
-import { Card } from '../components/Card';
+import { CategoryList } from '../components/CategoryList';
 import { Theme, useTheme } from '../theme';
 import { pl } from '../i18n/pl';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CategoryPicker'>;
 
+// Picks the category for a server-side session. The tiles themselves live in
+// CategoryList (extracted in P10, so the local game offers the same choice);
+// what stays here is what a tap MEANS on this screen — start a session and open
+// the question screen.
 export function CategoryPickerScreen({ navigation }: Props) {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const {
-    data: categories,
-    isLoading,
-    isError,
-    error: categoriesError,
-  } = useCategories();
-  // Session-start errors are separate from the categories query error; both
-  // surface in the same banner, with the session error taking precedence.
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
 
@@ -40,6 +28,21 @@ export function CategoryPickerScreen({ navigation }: Props) {
       headerShadowVisible: false,
       // The screen title lives in the body as an h1 (per mockup).
       headerTitle: () => null,
+      // An explicit way back to the hub, replacing the default back arrow. The
+      // arrow only pops one screen, which is wrong on the way back OUT of a
+      // session: Question pops to here, and here the couple wants Home, not the
+      // screen they happened to come from. popTo works for both stack shapes —
+      // [Home, CategoryPicker] unwinds, a session resumed at startup has no Home
+      // to unwind to and gets one. (This screen goes away when the session and
+      // the local game merge; until then it is a dead end without this.)
+      // eslint-disable-next-line react/no-unstable-nested-components
+      headerLeft: () => (
+        <TouchableOpacity
+          testID="category-picker-home"
+          onPress={() => navigation.popTo('Home')}>
+          <Text style={styles.headerButton}>{pl.categoryPicker.homeButton}</Text>
+        </TouchableOpacity>
+      ),
       // headerRight is a navigation render prop, not a remounted subtree.
       // eslint-disable-next-line react/no-unstable-nested-components
       headerRight: () => (
@@ -84,154 +87,20 @@ export function CategoryPickerScreen({ navigation }: Props) {
     [navigation],
   );
 
-  const error =
-    sessionError ??
-    (isError
-      ? parseApiError(categoriesError, pl.categoryPicker.error).topLevel
-      : null);
-
-  if (isLoading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator color={theme.colors.gold.primary} />
-        <Text style={styles.loadingText}>{pl.categoryPicker.loading}</Text>
-      </View>
-    );
-  }
-
   return (
-    <View testID="category-picker-screen" style={styles.container}>
-      {error && (
-        <Text testID="category-picker-error" style={styles.error}>
-          {error}
-        </Text>
-      )}
-      <FlatList
-        data={categories ?? []}
-        keyExtractor={item => item.slug}
-        contentContainerStyle={styles.listContent}
-        ListHeaderComponent={
-          <Text style={styles.title}>{pl.categoryPicker.title}</Text>
-        }
-        renderItem={({ item }) => (
-          <Card
-            testID={`category-${item.slug}`}
-            onPress={() => start(item.slug)}
-            disabled={starting}
-            style={styles.categoryCard}>
-            <View style={styles.categoryRow}>
-              <View style={styles.categoryText}>
-                <Text style={styles.categoryName}>{item.name}</Text>
-                {item.description && (
-                  <Text style={styles.categoryDesc}>{item.description}</Text>
-                )}
-              </View>
-              <Text style={styles.chevron}>›</Text>
-            </View>
-          </Card>
-        )}
-        ListFooterComponent={
-          <Card
-            testID="category-picker-mix"
-            variant="gold"
-            onPress={() => start(null)}
-            disabled={starting}
-            style={styles.mixCard}>
-            <Text style={styles.mixName}>{pl.categoryPicker.mixButton}</Text>
-            <Text style={styles.mixHint}>{pl.categoryPicker.mixHint}</Text>
-          </Card>
-        }
-      />
-      {starting && (
-        <ActivityIndicator
-          style={styles.startingSpinner}
-          color={theme.colors.gold.primary}
-        />
-      )}
-    </View>
+    <CategoryList
+      testID="category-picker-screen"
+      title={pl.categoryPicker.title}
+      onSelect={start}
+      disabled={starting}
+      error={sessionError}
+    />
   );
 }
 
 const createStyles = (theme: Theme) => {
   const { colors, typography, spacing } = theme;
   return StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: colors.bg.base,
-    },
-    centered: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: colors.bg.base,
-    },
-    loadingText: {
-      marginTop: spacing.md,
-      color: colors.text.muted,
-      fontFamily: typography.family.body,
-      fontSize: typography.size.bodySm,
-    },
-    listContent: {
-      padding: spacing.lg,
-    },
-    title: {
-      fontFamily: typography.family.heading,
-      fontSize: typography.size.h1,
-      color: colors.text.primary,
-      marginBottom: spacing.xl,
-    },
-    error: {
-      fontFamily: typography.family.body,
-      fontSize: typography.size.bodySm,
-      color: colors.burgundy.accent,
-      paddingHorizontal: spacing.lg,
-      paddingTop: spacing.md,
-    },
-    categoryCard: {
-      marginBottom: spacing.md,
-    },
-    categoryRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    categoryText: {
-      flex: 1,
-    },
-    categoryName: {
-      fontFamily: typography.family.heading,
-      fontSize: typography.size.h3,
-      color: colors.text.primary,
-    },
-    categoryDesc: {
-      fontFamily: typography.family.body,
-      fontSize: typography.size.bodySm,
-      color: colors.text.secondary,
-      marginTop: spacing.xs,
-    },
-    chevron: {
-      fontFamily: typography.family.body,
-      fontSize: typography.size.h3,
-      color: colors.gold.deep,
-      marginLeft: spacing.md,
-    },
-    mixCard: {
-      marginTop: spacing.sm,
-      paddingVertical: spacing.xl,
-    },
-    mixName: {
-      fontFamily: typography.family.heading,
-      fontSize: typography.size.h3,
-      color: colors.gold.primary,
-    },
-    mixHint: {
-      fontFamily: typography.family.body,
-      fontSize: typography.size.bodySm,
-      color: colors.text.secondary,
-      marginTop: spacing.xs,
-    },
-    startingSpinner: {
-      paddingVertical: spacing.lg,
-    },
     headerButtons: {
       flexDirection: 'row',
       gap: spacing.lg,

@@ -41,6 +41,8 @@ function originLabel(origin: string): string {
       return pl.memories.origin.daily;
     case 'challenge':
       return pl.memories.origin.challenge;
+    case 'local_game':
+      return pl.memories.origin.localGame;
     default:
       return origin;
   }

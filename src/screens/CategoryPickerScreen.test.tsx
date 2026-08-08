@@ -17,7 +17,7 @@ type RenderProp = (p: object) => React.ReactElement;
 
 // Pulls the latest navigation.setOptions payload and renders a header render
 // prop (the real navigator isn't mounted under Jest).
-function renderHeader(props: Props, key: 'headerRight') {
+function renderHeader(props: Props, key: 'headerLeft' | 'headerRight') {
   const calls = jest.mocked(props.navigation.setOptions).mock.calls;
   const opts = calls[calls.length - 1][0];
   return render((opts[key] as unknown as RenderProp)({}));
@@ -63,10 +63,11 @@ const session = {
 };
 
 const navigate = jest.fn();
+const popTo = jest.fn();
 
 function makeProps(): Props {
   return {
-    navigation: {navigate, setOptions: jest.fn(), goBack: jest.fn()},
+    navigation: {navigate, popTo, setOptions: jest.fn(), goBack: jest.fn()},
     route: {key: 'CategoryPicker', name: 'CategoryPicker', params: undefined},
   } as unknown as Props;
 }
@@ -90,7 +91,7 @@ describe('CategoryPickerScreen', () => {
   test('renders the mix button', async () => {
     renderWithQueryClient(<CategoryPickerScreen {...makeProps()} />);
 
-    expect(await screen.findByTestId('category-picker-mix')).toBeOnTheScreen();
+    expect(await screen.findByTestId('category-mix')).toBeOnTheScreen();
   });
 
   test('the header memories button navigates to Memories', async () => {
@@ -102,6 +103,17 @@ describe('CategoryPickerScreen', () => {
     fireEvent.press(header.getByTestId('category-picker-memories'));
 
     expect(navigate).toHaveBeenCalledWith('Memories');
+  });
+
+  test('the header home button unwinds to Home', async () => {
+    const props = makeProps();
+    renderWithQueryClient(<CategoryPickerScreen {...props} />);
+    await screen.findByTestId('category-na_poznanie');
+
+    const header = renderHeader(props, 'headerLeft');
+    fireEvent.press(header.getByTestId('category-picker-home'));
+
+    expect(popTo).toHaveBeenCalledWith('Home');
   });
 
   test('tapping a category starts a session and navigates to Question', async () => {
@@ -116,7 +128,7 @@ describe('CategoryPickerScreen', () => {
 
   test('tapping mix starts a session with null', async () => {
     renderWithQueryClient(<CategoryPickerScreen {...makeProps()} />);
-    fireEvent.press(await screen.findByTestId('category-picker-mix'));
+    fireEvent.press(await screen.findByTestId('category-mix'));
 
     await waitFor(() => expect(startSession).toHaveBeenCalledWith(null));
   });
@@ -147,7 +159,7 @@ describe('CategoryPickerScreen', () => {
     renderWithQueryClient(<CategoryPickerScreen {...makeProps()} />);
 
     expect(
-      await screen.findByTestId('category-picker-error'),
+      await screen.findByTestId('category-list-error'),
     ).toHaveTextContent(pl.categoryPicker.error);
   });
 });

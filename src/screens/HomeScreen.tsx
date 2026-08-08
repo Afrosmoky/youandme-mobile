@@ -110,6 +110,14 @@ export function HomeScreen({ navigation }: Props) {
       </Card>
 
       <Card
+        testID="home-local-game"
+        onPress={() => navigation.navigate('LocalGameSetup')}
+        style={styles.tile}>
+        <Text style={styles.tileTitle}>{pl.home.localGameTitle}</Text>
+        <Text style={styles.tileHint}>{pl.home.localGameHint}</Text>
+      </Card>
+
+      <Card
         testID="home-deck"
         onPress={() => navigation.navigate('Deck')}
         style={styles.tile}>
