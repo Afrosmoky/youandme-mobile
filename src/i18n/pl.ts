@@ -217,6 +217,10 @@ export const pl = {
     cardHeader: (current: number, total: number, player: string) =>
       `Karta ${current} z ${total} · Tura: ${player}`,
     challengeHeader: 'Wyzwanie',
+    // Nad listą opcji na karcie „do wyboru" (S2) — jedna odpowiedź albo kilka,
+    // zależnie od tego, co mówi sama karta.
+    pickOne: 'Wybierz odpowiedź',
+    pickMany: 'Możesz wybrać kilka',
     // The written answer is optional — the field stays hidden behind this.
     writeToggleShow: 'Odpowiedz',
     writeToggleHide: 'Ukryj pole',

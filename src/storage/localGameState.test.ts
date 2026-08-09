@@ -16,6 +16,7 @@ const question = (n: number): Question => ({
   type: 'session',
   category: { slug: 'randka', name: 'Randka' },
   tags: ['bliskosc'],
+  options: null,
   liked: false,
   isLocked: false,
 });
@@ -109,6 +110,33 @@ describe('unreadable stored values', () => {
     expect(cursor).toBe(1);
     expect(await loadLocalGameState()).toBeNull();
     expect(await kv.get(LOCAL_GAME_STATE_KEY)).toBeNull();
+  });
+
+  // The upgrade case for S2: cards dealt by an older build have no options key
+  // at all. Dropping those states would end every game in progress on update —
+  // the exact failure the version envelope exists to prevent — so the field is
+  // optional with a null default and the version stays at 1.
+  test('a game dealt before choice cards existed still resumes', async () => {
+    const state = midSession();
+    // Written the way an older build wrote it: no options key anywhere, not even
+    // a null one.
+    const legacy = JSON.stringify(
+      { version: LOCAL_GAME_STATE_VERSION, state },
+      (key, value) => (key === 'options' ? undefined : value),
+    );
+    expect(legacy).not.toContain('options');
+
+    await kv.set(LOCAL_GAME_STATE_KEY, legacy);
+
+    const restored = await loadLocalGameState();
+    const firstCard = restored?.queue.find(item => item.kind === 'question');
+
+    expect(restored).not.toBeNull();
+    expect(restored?.queue).toHaveLength(state.queue.length);
+    // Read back as an open card, which is what it always was.
+    expect(firstCard?.kind === 'question' && firstCard.question.options).toBe(
+      null,
+    );
   });
 
   test('a queue item of an unknown kind is dropped and cleared', async () => {

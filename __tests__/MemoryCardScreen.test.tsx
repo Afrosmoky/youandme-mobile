@@ -32,6 +32,7 @@ const memory: Memory = {
     type: 'session',
     category: {slug: 'na_poznanie', name: 'Na poznanie'},
     tags: [],
+    options: null,
     liked: false,
     isLocked: false,
   },

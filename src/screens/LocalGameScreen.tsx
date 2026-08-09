@@ -38,6 +38,7 @@ import { SectionLabel } from '../components/SectionLabel';
 import { GoldButton } from '../components/GoldButton';
 import { OutlineButton } from '../components/OutlineButton';
 import { TextField } from '../components/TextField';
+import { OptionPicker } from '../components/OptionPicker';
 import { Theme, useTheme } from '../theme';
 import { pl } from '../i18n/pl';
 
@@ -229,24 +230,50 @@ export function LocalGameScreen({ navigation }: Props) {
         {item.question.body}
       </Text>
 
-      {writing ? (
-        <TextField
+      {/* A card that came with options is answered by picking, and the picker is
+          on screen from the start — there is nothing optional about it to hide
+          behind a toggle, the way writing is optional on an open card. Both
+          paths write to the same place through onType, so the picked labels are
+          the answer text, and the turn, the save and the report never learn that
+          this card was different. */}
+      {item.question.options ? (
+        <OptionPicker
+          testID="local-game-options"
+          label={
+            item.question.options.multiple
+              ? pl.localGame.pickMany
+              : pl.localGame.pickOne
+          }
+          items={item.question.options.items}
+          multiple={item.question.options.multiple}
           value={state.answers[state.activePlayer]}
-          onChangeText={onType}
-          placeholder={pl.localGame.answerPlaceholder(activeName)}
-          multiline
-          testID="local-game-answer"
+          onChange={onType}
+          style={styles.picker}
         />
-      ) : null}
+      ) : (
+        <>
+          {writing ? (
+            <TextField
+              value={state.answers[state.activePlayer]}
+              onChangeText={onType}
+              placeholder={pl.localGame.answerPlaceholder(activeName)}
+              multiline
+              testID="local-game-answer"
+            />
+          ) : null}
 
-      <OutlineButton
-        testID="local-game-write-toggle"
-        title={
-          writing ? pl.localGame.writeToggleHide : pl.localGame.writeToggleShow
-        }
-        onPress={() => setWriting(current => !current)}
-        style={styles.writeToggle}
-      />
+          <OutlineButton
+            testID="local-game-write-toggle"
+            title={
+              writing
+                ? pl.localGame.writeToggleHide
+                : pl.localGame.writeToggleShow
+            }
+            onPress={() => setWriting(current => !current)}
+            style={styles.writeToggle}
+          />
+        </>
+      )}
 
       {saveError && (
         <Text testID="local-game-save-error" style={styles.error}>
@@ -322,6 +349,9 @@ const createStyles = (theme: Theme) => {
       marginBottom: spacing.xxl,
     },
     writeToggle: {
+      marginBottom: spacing.lg,
+    },
+    picker: {
       marginBottom: spacing.lg,
     },
     error: {

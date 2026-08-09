@@ -25,6 +25,7 @@ const question = (n: number): Question => ({
   type: 'session',
   category: { slug: 'randka', name: 'Randka' },
   tags: [],
+  options: null,
   liked: false,
   isLocked: false,
 });
@@ -59,6 +60,19 @@ const session = (count: number, interval = 5) =>
 
 const renderScreen = () =>
   renderWithQueryClient(<LocalGameScreen {...makeProps()} />);
+
+// A one-card session whose card is answered by picking (S2).
+const items = ['Rada', 'Przytulenie', 'Przestrzeń'];
+const choiceSession = (multiple: boolean) =>
+  startLocalGame({
+    player1: 'piotr_s',
+    player2: 'Wiktoria',
+    categorySlug: 'randka',
+    questions: [{ ...question(1), options: { items, multiple } }],
+    challenges: [challenge],
+    interval: 5,
+    startedAt: '2026-08-05T18:00:00.000Z',
+  });
 
 describe('LocalGameScreen', () => {
   beforeEach(async () => {
@@ -350,5 +364,127 @@ describe('LocalGameScreen — saving a card as a memory', () => {
     await screen.findByTestId('local-game-saved');
 
     expect((await loadLocalGameState())?.playedUlids).toEqual([]);
+  });
+});
+
+// S2: 14 cards in the deck are answered by picking from a list. The picker is a
+// different way of writing the same answer — everything past it (the turn, the
+// save, the report) must not be able to tell the difference.
+describe('LocalGameScreen — cards answered by picking', () => {
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    await clearLocalGameState();
+    jest.mocked(createLocalMemory).mockResolvedValue({} as Memory);
+  });
+
+  test('a choice card shows the options instead of the write toggle', async () => {
+    await saveLocalGameState(choiceSession(false));
+    renderScreen();
+
+    expect(await screen.findByTestId('local-game-options')).toBeOnTheScreen();
+    // Nothing to hide behind a toggle here: picking IS the answer.
+    expect(screen.queryByTestId('local-game-write-toggle')).toBeNull();
+    expect(screen.queryByTestId('local-game-answer')).toBeNull();
+    expect(screen.getByTestId('local-game-options-2')).toHaveTextContent(
+      'Przestrzeń',
+    );
+  });
+
+  test('one choice renders radios, several renders checkboxes', async () => {
+    await saveLocalGameState(choiceSession(false));
+    const single = renderScreen();
+    await screen.findByTestId('local-game-options');
+
+    expect(screen.getAllByRole('radio')).toHaveLength(3);
+    single.unmount();
+
+    await saveLocalGameState(choiceSession(true));
+    renderScreen();
+    await screen.findByTestId('local-game-options');
+
+    expect(screen.getAllByRole('checkbox')).toHaveLength(3);
+  });
+
+  test('an open card keeps the write toggle', async () => {
+    await saveLocalGameState(session(20));
+    renderScreen();
+
+    expect(
+      await screen.findByTestId('local-game-write-toggle'),
+    ).toBeOnTheScreen();
+    expect(screen.queryByTestId('local-game-options')).toBeNull();
+  });
+
+  test('the picked option is the answer that gets saved', async () => {
+    await saveLocalGameState(choiceSession(false));
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('local-game-options-0'));
+    // Ticked, and read back off the answer rather than off a private copy.
+    expect(screen.getByTestId('local-game-options-0')).toHaveProp(
+      'accessibilityState',
+      expect.objectContaining({ checked: true }),
+    );
+
+    fireEvent.press(screen.getByTestId('local-game-primary'));
+    await waitFor(() =>
+      expect(screen.getByTestId('local-game-primary')).toHaveTextContent(
+        pl.localGame.nextButton,
+      ),
+    );
+    // Player two starts from a blank card, exactly as with a written answer.
+    expect(screen.getByTestId('local-game-options-0')).toHaveProp(
+      'accessibilityState',
+      expect.objectContaining({ checked: false }),
+    );
+    fireEvent.press(screen.getByTestId('local-game-options-2'));
+    fireEvent.press(screen.getByTestId('local-game-save'));
+
+    await waitFor(() =>
+      expect(createLocalMemory).toHaveBeenCalledWith(
+        expect.objectContaining({
+          questionUlid: 'Q1',
+          answerA: 'Rada',
+          answerB: 'Przestrzeń',
+        }),
+      ),
+    );
+  });
+
+  test('several picks are saved as one joined answer', async () => {
+    await saveLocalGameState(choiceSession(true));
+    renderScreen();
+
+    // Tapped out of order; the answer still reads in the card's order.
+    fireEvent.press(await screen.findByTestId('local-game-options-2'));
+    fireEvent.press(screen.getByTestId('local-game-options-0'));
+    fireEvent.press(screen.getByTestId('local-game-primary'));
+    await waitFor(() =>
+      expect(screen.getByTestId('local-game-primary')).toHaveTextContent(
+        pl.localGame.nextButton,
+      ),
+    );
+    fireEvent.press(screen.getByTestId('local-game-options-1'));
+    fireEvent.press(screen.getByTestId('local-game-save'));
+
+    await waitFor(() =>
+      expect(createLocalMemory).toHaveBeenCalledWith(
+        expect.objectContaining({
+          answerA: 'Rada, Przestrzeń',
+          answerB: 'Przytulenie',
+        }),
+      ),
+    );
+  });
+
+  test('the save stays dead until both have picked', async () => {
+    await saveLocalGameState(choiceSession(false));
+    renderScreen();
+
+    expect(await screen.findByTestId('local-game-save')).toBeDisabled();
+
+    fireEvent.press(screen.getByTestId('local-game-options-1'));
+
+    expect(screen.getByTestId('local-game-save')).toBeDisabled();
   });
 });

@@ -34,6 +34,17 @@ const questionSchema = z.object({
   type: z.string(),
   category: z.object({ slug: z.string(), name: z.string() }).nullable(),
   tags: z.array(z.string()),
+  // S2: optional with a null default, which is what keeps the version at 1. A
+  // game dealt before this build has cards with no options key at all, and those
+  // states still parse — an open card and a card from before choice cards existed
+  // are the same thing to the screen. Requiring the field would have dropped
+  // every game in progress on upgrade, which is precisely the failure the version
+  // envelope exists to avoid, not to cause.
+  options: z
+    .object({ items: z.array(z.string()), multiple: z.boolean() })
+    .nullable()
+    .optional()
+    .default(null),
   liked: z.boolean(),
   isLocked: z.boolean(),
 });

@@ -35,6 +35,7 @@ const memory: Memory = {
     type: 'session',
     category: null,
     tags: [],
+    options: null,
     liked: false,
     isLocked: false,
   },

@@ -25,6 +25,7 @@ const question = (n: number): Question => ({
   type: 'session',
   category: { slug: 'randka', name: 'Randka' },
   tags: [],
+  options: null,
   liked: false,
   isLocked: false,
 });

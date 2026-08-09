@@ -46,6 +46,8 @@ describe('fetchNextQuestion', () => {
       type: 'session',
       category: { slug: 'na_poznanie', name: 'Na poznanie' },
       tags: ['niespodzianki'],
+      // Same story again for `options` (S2): absent means an open question.
+      options: null,
       // No `liked` in the payload → defaults to false (P5 Slice 1b).
       liked: false,
       // Same for `is_locked` (P7): absent means a free question.
@@ -81,6 +83,26 @@ describe('fetchNextQuestion', () => {
     const result = await fetchNextQuestion();
 
     expect(result.question?.isLocked).toBe(true);
+  });
+
+  test('carries the options envelope through as the backend sends it', async () => {
+    jest.mocked(apiClient.get).mockResolvedValue(
+      res({
+        question: {
+          ...rawQuestion,
+          options: { items: ['Rada', 'Przytulenie'], multiple: true },
+        },
+        session: rawSession,
+        session_complete: false,
+      }),
+    );
+
+    const result = await fetchNextQuestion();
+
+    expect(result.question?.options).toEqual({
+      items: ['Rada', 'Przytulenie'],
+      multiple: true,
+    });
   });
 
   test('returns a null question when the session is complete', async () => {

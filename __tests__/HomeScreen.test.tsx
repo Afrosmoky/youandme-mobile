@@ -21,6 +21,7 @@ const dailyCard: DailyCard = {
     type: 'daily',
     category: null,
     tags: [],
+    options: null,
     liked: false,
     isLocked: false,
   },

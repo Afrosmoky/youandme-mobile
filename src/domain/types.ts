@@ -133,12 +133,26 @@ export type CategoryRef = z.infer<typeof rawCategoryRefSchema>;
 // Question (P3 — now embeds a category ref and tags)
 // ---------------------------------------------------------------------------
 
+// S2: a question answered by picking rather than writing carries the list to
+// pick from. `multiple` is the card's own rule (one option or several), so it
+// travels with the list instead of being guessed from its length.
+export const rawQuestionOptionsSchema = z.object({
+  items: z.array(z.string()),
+  multiple: z.boolean(),
+});
+export type QuestionOptions = z.infer<typeof rawQuestionOptionsSchema>;
+
 export const rawQuestionSchema = z.object({
   ulid: z.string(),
   body: z.string(),
   type: z.string(),
   category: rawCategoryRefSchema.nullable(),
   tags: z.array(z.string()),
+  // S2: null (or absent) means "answer in your own words". Optional with a null
+  // default for the same reason as liked/is_locked below — this schema is shared
+  // by /questions/next, /questions/deck, the daily card and the questions
+  // embedded in memories, and only the first two carry the field.
+  options: rawQuestionOptionsSchema.nullable().optional().default(null),
   // P5 Slice 1b: whether this couple liked the question. Optional with a false
   // default because questions embedded in memories (rawMemorySchema) never carry
   // it — without the default those payloads would fail to parse.
@@ -156,6 +170,7 @@ export type Question = {
   type: string;
   category: CategoryRef | null;
   tags: string[];
+  options: QuestionOptions | null;
   liked: boolean;
   isLocked: boolean;
 };
@@ -167,6 +182,7 @@ export function mapRawQuestion(raw: z.infer<typeof rawQuestionSchema>): Question
     type: raw.type,
     category: raw.category,
     tags: raw.tags,
+    options: raw.options,
     liked: raw.liked,
     isLocked: raw.is_locked,
   };
