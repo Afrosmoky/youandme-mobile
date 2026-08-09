@@ -46,11 +46,20 @@ export type LocalGameState = {
   // card would be worse than dropping it.
   answers: { p1: string; p2: string };
 
-  // Question cards the couple has left behind — what POST /game/local/report
-  // sends after the session. Written on advance rather than on display: dealing
-  // is not playing (the same line GET /questions/deck draws by recording
-  // nothing), so a couple that puts the phone down mid-card has not played it.
+  // Question cards the couple has left behind. Written on advance rather than on
+  // display: dealing is not playing (the same line GET /questions/deck draws by
+  // recording nothing), so a couple that puts the phone down mid-card has not
+  // played it. This is the session's own count — what the summary reads — and it
+  // is never emptied.
   playedUlids: string[];
+  // The subset of the above the server has not confirmed yet (S3c).
+  //
+  // Since the report goes out on every transition rather than once at the end,
+  // "played" and "reported" stop being the same list, and only a persisted
+  // pending buffer can tell them apart across a kill: the map has to be right
+  // WHILE the couple plays, and a card must not be lost because the phone died
+  // between playing it and the response coming back.
+  pendingReport: string[];
   // Question ulids already saved as a memory. Counted on the summary screen, and
   // it stops one card being saved twice.
   savedMemoryUlids: string[];
@@ -125,6 +134,7 @@ export function startLocalGame(params: {
     activePlayer: 'p1',
     answers: { p1: '', p2: '' },
     playedUlids: [],
+    pendingReport: [],
     savedMemoryUlids: [],
     startedAt: params.startedAt,
   };
@@ -173,6 +183,10 @@ export function passTurn(state: LocalGameState): LocalGameState {
  * would cost: POST /game/local/report rejects a batch containing the same ulid
  * twice with a 422, so one repeat would fail the report for the WHOLE session,
  * not for one card.
+ *
+ * The card lands in the pending buffer at the same moment (S3c). Buffer first,
+ * request second, always: the screen fires the report AFTER this transition is
+ * on disk, so a phone that dies mid-request still knows what it owes.
  */
 export function advance(state: LocalGameState): LocalGameState {
   if (isFinished(state)) {
@@ -180,18 +194,49 @@ export function advance(state: LocalGameState): LocalGameState {
   }
 
   const item = state.queue[state.cursor];
+  // The card this transition leaves behind, or null when there is nothing to
+  // record (a challenge, or a question already counted).
   const played =
     item.kind === 'question' && !state.playedUlids.includes(item.question.ulid)
-      ? [...state.playedUlids, item.question.ulid]
-      : state.playedUlids;
+      ? item.question.ulid
+      : null;
 
   return {
     ...state,
     cursor: state.cursor + 1,
     activePlayer: 'p1',
     answers: { p1: '', p2: '' },
-    playedUlids: played,
+    playedUlids: played ? [...state.playedUlids, played] : state.playedUlids,
+    // The same guard covers both lists: pending only ever shrinks (see
+    // confirmReported), so it is a subset of playedUlids — a card new to the one
+    // is new to the other, and a card the server has already confirmed is not
+    // re-added here to be sent twice.
+    pendingReport: played
+      ? [...state.pendingReport, played]
+      : state.pendingReport,
   };
+}
+
+/**
+ * Drops the cards the server has just acknowledged from the pending buffer.
+ *
+ * Takes the exact list that was sent rather than clearing the buffer wholesale:
+ * the response arrives after an await, and by then the couple may have played
+ * another card into it. Clearing everything would swallow that one.
+ *
+ * Returns the state itself when nothing changed, so the caller can skip a write
+ * to disk that would say the same thing.
+ */
+export function confirmReported(
+  state: LocalGameState,
+  reportedUlids: string[],
+): LocalGameState {
+  const confirmed = new Set(reportedUlids);
+  const pending = state.pendingReport.filter(ulid => !confirmed.has(ulid));
+
+  return pending.length === state.pendingReport.length
+    ? state
+    : { ...state, pendingReport: pending };
 }
 
 // Notes that this card has been written into the couple's memories.

@@ -83,6 +83,16 @@ describe('saveLocalGameState / loadLocalGameState', () => {
     expect(restored).toEqual(state);
   });
 
+  // S3c: the report goes out per transition, so what a killed app owes lives in
+  // the state. If it did not survive the round trip, those cards would be lost.
+  test('what the session still owes comes back with it', async () => {
+    const state = { ...midSession(), pendingReport: ['Q1'] };
+
+    await saveLocalGameState(state);
+
+    expect((await loadLocalGameState())?.pendingReport).toEqual(['Q1']);
+  });
+
   test('nothing stored means nothing to resume', async () => {
     expect(await loadLocalGameState()).toBeNull();
   });
@@ -158,6 +168,25 @@ describe('unreadable stored values', () => {
     expect(firstCard?.kind === 'question' && firstCard.question.options).toBe(
       null,
     );
+  });
+
+  // The upgrade case for S3c. Before it, nothing was reported until the session
+  // ended — so a state written by that build owes the server everything it
+  // played, and reading the missing key as "nothing owed" would drop those cards
+  // silently. Dropping the whole state would lose them too, plus the game.
+  test('a game dealt before the live report still owes what it played', async () => {
+    const state = { ...midSession(), playedUlids: ['Q1'] };
+    const legacy = JSON.stringify(
+      { version: LOCAL_GAME_STATE_VERSION, state },
+      (key, value) => (key === 'pendingReport' ? undefined : value),
+    );
+    expect(legacy).not.toContain('pendingReport');
+
+    await kv.set(LOCAL_GAME_STATE_KEY, legacy);
+    const restored = await loadLocalGameState();
+
+    expect(restored?.pendingReport).toEqual(['Q1']);
+    expect(restored?.cursor).toBe(state.cursor);
   });
 
   test('a queue item of an unknown kind is dropped and cleared', async () => {

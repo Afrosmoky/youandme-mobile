@@ -176,6 +176,9 @@ export const pl = {
     streak: (days: number) => `${days} dni serii`,
     streakNone: 'Zacznijcie serię dziś',
     ritualLabel: 'Rytuał tygodnia',
+    // Kafel sesji serwerowej — od S3c niepodpięty pod Home (sesją pary jest gra
+    // na jednym telefonie). Copy zostaje razem z uśpionymi ekranami, pod tryb
+    // solo z etapu II.
     sessionTitle: 'Sesja pytań',
     sessionHint: 'Wybierzcie kategorię i grajcie',
     memoriesTitle: 'Wspomnienia',
@@ -242,10 +245,6 @@ export const pl = {
     summaryMemories: (count: number) => `Zapisane wspomnienia: ${count}`,
     playAgainButton: 'Zagrajcie znów',
     backHome: 'Wróć do początku',
-    // The report is retried on the next visit to the setup screen, so this is a
-    // note rather than an error the couple has to act on.
-    reportPending:
-      'Nie udało się teraz zapisać postępu. Spróbujemy ponownie później.',
   },
 
   // P8 progress map. Milestone names come from the backend; only the framing

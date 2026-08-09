@@ -11,9 +11,11 @@ import {
 } from '../storage/localGameState';
 import { createLocalMemory } from '../api/memories';
 import { likeQuestion, unlikeQuestion } from '../api/likes';
+import { reportPlayedCards } from '../api/localGame';
+import { getProgress } from '../api/progress';
 import type { RootStackParamList } from '../navigation/types';
 import type { Challenge } from '../domain/challenges';
-import type { Memory, Question } from '../domain/types';
+import type { Memory, Progress, Question } from '../domain/types';
 import { pl } from '../i18n/pl';
 
 jest.mock('../api/memories', () => ({ createLocalMemory: jest.fn() }));
@@ -21,6 +23,33 @@ jest.mock('../api/likes', () => ({
   likeQuestion: jest.fn(),
   unlikeQuestion: jest.fn(),
 }));
+jest.mock('../api/localGame', () => ({ reportPlayedCards: jest.fn() }));
+jest.mock('../api/progress', () => ({ getProgress: jest.fn() }));
+
+const milestone = (threshold: number, unlocked: boolean) => ({
+  slug: `m${threshold}`,
+  name: `Kamień ${threshold}`,
+  threshold,
+  ordering: 1,
+  unlocked,
+  unlockedAt: unlocked ? '2026-08-05T18:00:00.000Z' : null,
+});
+
+const progressWith = (unlocked: boolean): Progress => ({
+  totalPlayed: unlocked ? 10 : 4,
+  nextThreshold: unlocked ? null : 10,
+  milestones: [milestone(10, unlocked)],
+});
+
+// Every transition now talks to the server (S3c), so both calls answer by
+// default in every suite in this file. jest.clearAllMocks() in the suites below
+// clears the calls, not these implementations.
+beforeEach(() => {
+  jest
+    .mocked(reportPlayedCards)
+    .mockResolvedValue({ playedTotal: 1, newlyPlayed: 1 });
+  jest.mocked(getProgress).mockResolvedValue(progressWith(false));
+});
 
 type Props = NativeStackScreenProps<RootStackParamList, 'LocalGame'>;
 
@@ -598,6 +627,308 @@ describe('LocalGameScreen — liking a card', () => {
 
     await screen.findByTestId('local-game-challenge-title');
     expect(screen.queryByTestId('local-game-like')).toBeNull();
+  });
+});
+
+// S3c: the map moves WHILE the couple plays. Every transition hands the card to
+// the server and clears it from what the session owes; nothing waits for the end
+// of the game, and nothing waits for the network.
+describe('LocalGameScreen — reporting as they play', () => {
+  const pendingOnDisk = async () =>
+    (await loadLocalGameState())?.pendingReport;
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    await clearLocalGameState();
+  });
+
+  test('the card is reported the moment the couple leaves it', async () => {
+    await saveLocalGameState(session(20));
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('local-game-skip'));
+
+    await waitFor(() =>
+      expect(reportPlayedCards).toHaveBeenCalledWith(['Q1']),
+    );
+  });
+
+  // The whole point of the buffer: it is on disk BEFORE the request goes out, so
+  // a phone that dies mid-request still knows what it owes. The setup screen
+  // resends it on the couple's next visit (see its own test).
+  test('what is owed is on disk before the request, and stays until confirmed', async () => {
+    let finish: (result: { playedTotal: number; newlyPlayed: number }) => void =
+      () => {};
+    jest
+      .mocked(reportPlayedCards)
+      .mockReturnValue(new Promise(resolve => (finish = resolve)));
+    await saveLocalGameState(session(20));
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('local-game-skip'));
+
+    await waitFor(async () => expect(await pendingOnDisk()).toEqual(['Q1']));
+
+    finish({ playedTotal: 1, newlyPlayed: 1 });
+
+    await waitFor(async () => expect(await pendingOnDisk()).toEqual([]));
+    // Played is the session's own count and stays put — the summary reads it.
+    expect((await loadLocalGameState())?.playedUlids).toEqual(['Q1']);
+  });
+
+  // A game must not turn into a queue of spinners on a bad connection.
+  test('the next card is on screen before the server has answered', async () => {
+    jest.mocked(reportPlayedCards).mockReturnValue(new Promise(() => {}));
+    await saveLocalGameState(session(20));
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('local-game-skip'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('local-game-question')).toHaveTextContent(
+        'Pytanie 2?',
+      ),
+    );
+    expect(screen.getByTestId('local-game-primary')).toBeEnabled();
+  });
+
+  test('a confirmed card is not sent a second time', async () => {
+    await saveLocalGameState(session(20));
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('local-game-skip'));
+    await waitFor(() => expect(reportPlayedCards).toHaveBeenCalledWith(['Q1']));
+    fireEvent.press(screen.getByTestId('local-game-skip'));
+
+    await waitFor(() => expect(reportPlayedCards).toHaveBeenCalledWith(['Q2']));
+    expect(reportPlayedCards).toHaveBeenCalledTimes(2);
+  });
+
+  // Not a retry loop of its own: the next tap carries the failed card along.
+  test('a failed report is retried by the next transition', async () => {
+    jest
+      .mocked(reportPlayedCards)
+      .mockRejectedValueOnce(new Error('network'))
+      .mockResolvedValue({ playedTotal: 2, newlyPlayed: 2 });
+    await saveLocalGameState(session(20));
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('local-game-skip'));
+    await waitFor(async () => expect(await pendingOnDisk()).toEqual(['Q1']));
+
+    fireEvent.press(screen.getByTestId('local-game-skip'));
+
+    await waitFor(() =>
+      expect(reportPlayedCards).toHaveBeenCalledWith(['Q1', 'Q2']),
+    );
+    await waitFor(async () => expect(await pendingOnDisk()).toEqual([]));
+  });
+
+  // The endpoint keeps a set, so a resend of something already counted answers
+  // newly_played: 0. That is a normal answer, not a failure — the cards are
+  // settled either way.
+  test('a resend the server had already counted settles just the same', async () => {
+    jest
+      .mocked(reportPlayedCards)
+      .mockResolvedValue({ playedTotal: 7, newlyPlayed: 0 });
+    await saveLocalGameState(session(20));
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('local-game-skip'));
+
+    // Owed first (the buffer is written before the request), settled after.
+    await waitFor(async () => expect(await pendingOnDisk()).toEqual(['Q1']));
+    await waitFor(async () => expect(await pendingOnDisk()).toEqual([]));
+  });
+
+  // A card played while the previous report was in flight is not in the list
+  // that went out, so confirming that list must not swallow it.
+  test('a card played mid-request stays owed', async () => {
+    let finish: (result: { playedTotal: number; newlyPlayed: number }) => void =
+      () => {};
+    jest
+      .mocked(reportPlayedCards)
+      .mockReturnValueOnce(new Promise(resolve => (finish = resolve)))
+      .mockResolvedValue({ playedTotal: 2, newlyPlayed: 1 });
+    await saveLocalGameState(session(20));
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('local-game-skip'));
+    await waitFor(async () => expect(await pendingOnDisk()).toEqual(['Q1']));
+    // Second card played while the first report is still open.
+    fireEvent.press(screen.getByTestId('local-game-skip'));
+    await waitFor(async () =>
+      expect(await pendingOnDisk()).toEqual(['Q1', 'Q2']),
+    );
+
+    finish({ playedTotal: 1, newlyPlayed: 1 });
+
+    await waitFor(async () => expect(await pendingOnDisk()).toEqual(['Q2']));
+  });
+
+  // Two reports racing over the same buffer would win nothing — the endpoint is
+  // throttled, and the next transition resends anyway.
+  test('a transition during a report does not open a second one', async () => {
+    jest.mocked(reportPlayedCards).mockReturnValue(new Promise(() => {}));
+    await saveLocalGameState(session(20));
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('local-game-skip'));
+    await waitFor(() => expect(reportPlayedCards).toHaveBeenCalledTimes(1));
+    fireEvent.press(screen.getByTestId('local-game-skip'));
+    await waitFor(() =>
+      expect(screen.getByTestId('local-game-question')).toHaveTextContent(
+        'Pytanie 3?',
+      ),
+    );
+
+    expect(reportPlayedCards).toHaveBeenCalledTimes(1);
+  });
+
+  // A resumed session carries everything it was paused with: the position, the
+  // hearts (S3b) and what it still owes.
+  test('a resumed session picks up where it stopped, debts included', async () => {
+    const paused = {
+      ...session(20),
+      cursor: 1,
+      playedUlids: ['Q1'],
+      pendingReport: ['Q1'],
+    };
+    paused.queue[0] = {
+      kind: 'question',
+      question: { ...question(1), liked: true },
+    };
+    await saveLocalGameState(paused);
+    renderScreen();
+
+    expect(await screen.findByTestId('local-game-question')).toHaveTextContent(
+      'Pytanie 2?',
+    );
+    // The heart the couple left on the first card is still there in the queue.
+    const stored = await loadLocalGameState();
+    const first = stored?.queue[0];
+    expect(first?.kind === 'question' && first.question.liked).toBe(true);
+
+    fireEvent.press(screen.getByTestId('local-game-skip'));
+
+    // The card it never managed to report goes out with the new one.
+    await waitFor(() =>
+      expect(reportPlayedCards).toHaveBeenCalledWith(['Q1', 'Q2']),
+    );
+  });
+
+  // The last card leaves for the summary immediately, so the answer to its report
+  // comes back to a screen that is gone. It must not write to the session then:
+  // by that point the setup screen may have flushed and cleared it, and a late
+  // write would resurrect a finished game on disk. The card stays owed instead,
+  // and the setup screen resends it — see its "finished session is flushed and
+  // then cleared" test.
+  test('an answer landing after the screen is gone writes nothing', async () => {
+    let finish: (result: { playedTotal: number; newlyPlayed: number }) => void =
+      () => {};
+    jest
+      .mocked(reportPlayedCards)
+      .mockReturnValue(new Promise(resolve => (finish = resolve)));
+    await saveLocalGameState(session(1));
+    const view = renderScreen();
+
+    fireEvent.press(await screen.findByTestId('local-game-skip'));
+
+    await waitFor(() => expect(reportPlayedCards).toHaveBeenCalledWith(['Q1']));
+    expect(replace).toHaveBeenCalledWith('LocalGameSummary');
+    await waitFor(async () => expect(await pendingOnDisk()).toEqual(['Q1']));
+
+    // What the navigator does on replace, while the request is still open.
+    view.unmount();
+    finish({ playedTotal: 1, newlyPlayed: 1 });
+    await new Promise(resolve => setImmediate(resolve));
+
+    expect(await pendingOnDisk()).toEqual(['Q1']);
+  });
+});
+
+// The celebration moved onto the card that earns it (S3c). Its ordering is the
+// same as P10's — a baseline reading of the map before anything moves it — only
+// now the session start provides it instead of a hand-built effect.
+describe('LocalGameScreen — celebrating a milestone mid-game', () => {
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    await clearLocalGameState();
+  });
+
+  test('a milestone crossed by a played card is celebrated over the game', async () => {
+    jest
+      .mocked(getProgress)
+      .mockResolvedValueOnce(progressWith(false))
+      .mockResolvedValue(progressWith(true));
+    await saveLocalGameState(session(20));
+    renderScreen();
+
+    // Baseline in first, then the card that moves the map.
+    await waitFor(() => expect(getProgress).toHaveBeenCalled());
+    fireEvent.press(screen.getByTestId('local-game-skip'));
+
+    expect(
+      await screen.findByText(pl.celebration.milestoneTitle),
+    ).toBeOnTheScreen();
+    // Over the game, not instead of it — the next card is right there behind it.
+    expect(screen.getByTestId('local-game-question')).toHaveTextContent(
+      'Pytanie 2?',
+    );
+  });
+
+  test('the modal shows the milestone by name, and closes', async () => {
+    jest
+      .mocked(getProgress)
+      .mockResolvedValueOnce(progressWith(false))
+      .mockResolvedValue(progressWith(true));
+    await saveLocalGameState(session(20));
+    renderScreen();
+
+    await waitFor(() => expect(getProgress).toHaveBeenCalled());
+    fireEvent.press(screen.getByTestId('local-game-skip'));
+    await screen.findByText(pl.celebration.milestoneBody('Kamień 10'));
+
+    fireEvent.press(screen.getByTestId('celebration-dismiss'));
+
+    await waitFor(() =>
+      expect(screen.queryByText(pl.celebration.milestoneTitle)).toBeNull(),
+    );
+  });
+
+  // History is not an achievement: a couple who already had the milestone when
+  // they sat down gets nothing, however many cards they play.
+  test('milestones already unlocked at the start are never celebrated', async () => {
+    jest.mocked(getProgress).mockResolvedValue(progressWith(true));
+    await saveLocalGameState(session(20));
+    renderScreen();
+
+    await waitFor(() => expect(getProgress).toHaveBeenCalled());
+    fireEvent.press(screen.getByTestId('local-game-skip'));
+    await waitFor(() => expect(reportPlayedCards).toHaveBeenCalled());
+
+    expect(screen.queryByText(pl.celebration.milestoneTitle)).toBeNull();
+  });
+
+  // The modal has to survive the card moving on underneath it — a challenge
+  // lands on a different layout, and a celebration that vanished with it would
+  // be a milestone the couple never saw.
+  test('the modal stays up when the transition lands on a challenge', async () => {
+    jest
+      .mocked(getProgress)
+      .mockResolvedValueOnce(progressWith(false))
+      .mockResolvedValue(progressWith(true));
+    // Interval 1: question, challenge, question.
+    await saveLocalGameState(session(3, 1));
+    renderScreen();
+
+    await waitFor(() => expect(getProgress).toHaveBeenCalled());
+    fireEvent.press(screen.getByTestId('local-game-skip'));
+
+    expect(
+      await screen.findByText(pl.celebration.milestoneTitle),
+    ).toBeOnTheScreen();
+    expect(screen.getByTestId('local-game-challenge-title')).toBeOnTheScreen();
   });
 });
 

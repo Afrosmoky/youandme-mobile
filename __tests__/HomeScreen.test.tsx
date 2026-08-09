@@ -92,12 +92,23 @@ describe('HomeScreen', () => {
     expect(navigate).toHaveBeenCalledWith('DailyCard');
   });
 
-  test('the session tile navigates to the category picker', async () => {
+  test('the game tile opens the local game setup', async () => {
     renderWithQueryClient(<HomeScreen {...makeProps()} />);
 
-    fireEvent.press(await screen.findByTestId('home-session'));
+    fireEvent.press(await screen.findByTestId('home-local-game'));
 
-    expect(navigate).toHaveBeenCalledWith('CategoryPicker');
+    expect(navigate).toHaveBeenCalledWith('LocalGameSetup');
+  });
+
+  // S3c: the couple's session is the local game, and it is the only way in. The
+  // server-side session screens stay in the codebase for the solo mode of etap
+  // II, but nothing on the hub points at them.
+  test('there is no second session tile pointing at the server session', async () => {
+    renderWithQueryClient(<HomeScreen {...makeProps()} />);
+
+    await screen.findByText(dailyCard.question.body);
+    expect(screen.queryByTestId('home-session')).toBeNull();
+    expect(screen.queryByText(pl.home.sessionTitle)).toBeNull();
   });
 
   test('the deck tile navigates to the closed deck', async () => {
@@ -135,7 +146,7 @@ describe('HomeScreen', () => {
 
     // The rest of the home screen still renders.
     await screen.findByText(dailyCard.question.body);
-    expect(screen.getByTestId('home-session')).toBeOnTheScreen();
+    expect(screen.getByTestId('home-local-game')).toBeOnTheScreen();
     expect(screen.queryByTestId('home-ritual')).toBeNull();
   });
 });

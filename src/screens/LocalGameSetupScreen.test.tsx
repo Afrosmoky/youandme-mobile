@@ -259,11 +259,15 @@ describe('LocalGameSetupScreen — a paused game', () => {
     expect((await loadLocalGameState())?.player2).toBe('Ala');
   });
 
-  // The flush seam: an interrupted session's played cards are owed to the
-  // server, and this runs on mount — before the couple can tap a category and
-  // overwrite them.
-  test('an interrupted session reports what it played, on entry', async () => {
-    const interrupted = { ...paused(), playedUlids: ['Q1', 'Q2'] };
+  // The safety net for the live report (S3c): the app was killed between playing
+  // a card and the answer coming back, so the card is still owed. This runs on
+  // mount — before the couple can tap a category and overwrite the buffer.
+  test('an interrupted session resends what it still owes, on entry', async () => {
+    const interrupted = {
+      ...paused(),
+      playedUlids: ['Q1', 'Q2'],
+      pendingReport: ['Q1', 'Q2'],
+    };
     await saveLocalGameState(interrupted);
     renderScreen();
 
@@ -275,40 +279,64 @@ describe('LocalGameSetupScreen — a paused game', () => {
     expect(await loadLocalGameState()).not.toBeNull();
   });
 
-  test('a session with nothing played reports nothing', async () => {
-    await saveLocalGameState(paused());
+  // Once the server has them, the resumed session must not carry them into its
+  // next transition and send them again.
+  test('a landed flush settles the buffer on disk', async () => {
+    const interrupted = {
+      ...paused(),
+      playedUlids: ['Q1', 'Q2'],
+      pendingReport: ['Q1', 'Q2'],
+    };
+    await saveLocalGameState(interrupted);
+    renderScreen();
+
+    await waitFor(() => expect(reportPlayedCards).toHaveBeenCalled());
+    await waitFor(async () =>
+      expect((await loadLocalGameState())?.pendingReport).toEqual([]),
+    );
+    // Played is the session's own count and stays as it was.
+    expect((await loadLocalGameState())?.playedUlids).toEqual(['Q1', 'Q2']);
+  });
+
+  // The usual case since S3c: the cards went out as they were played.
+  test('a session that owes nothing reports nothing', async () => {
+    await saveLocalGameState({ ...paused(), playedUlids: ['Q1'] });
     renderScreen();
 
     await screen.findByTestId('local-game-resume');
     expect(reportPlayedCards).not.toHaveBeenCalled();
   });
 
-  // The summary's report failed, so the session is still on disk with its buffer
-  // — this is the retry, and once it lands there is nothing left to resume.
+  // The last card of a session: its report was still in flight when the game
+  // screen went away, so nothing confirmed it. This is where it lands.
   test('a finished session is flushed and then cleared', async () => {
     const finished = {
       ...paused(),
       cursor: 3,
       playedUlids: ['Q1', 'Q2', 'Q3'],
+      pendingReport: ['Q3'],
     };
     await saveLocalGameState(finished);
     renderScreen();
 
-    await waitFor(() =>
-      expect(reportPlayedCards).toHaveBeenCalledWith(['Q1', 'Q2', 'Q3']),
-    );
+    await waitFor(() => expect(reportPlayedCards).toHaveBeenCalledWith(['Q3']));
     await waitFor(async () => expect(await loadLocalGameState()).toBeNull());
     expect(screen.queryByTestId('local-game-resume')).toBeNull();
   });
 
   test('a failed flush keeps the buffer for the next visit', async () => {
     jest.mocked(reportPlayedCards).mockRejectedValue(new Error('network'));
-    const finished = { ...paused(), cursor: 3, playedUlids: ['Q1'] };
+    const finished = {
+      ...paused(),
+      cursor: 3,
+      playedUlids: ['Q1'],
+      pendingReport: ['Q1'],
+    };
     await saveLocalGameState(finished);
     renderScreen();
 
     await waitFor(() => expect(reportPlayedCards).toHaveBeenCalled());
-    expect((await loadLocalGameState())?.playedUlids).toEqual(['Q1']);
+    expect((await loadLocalGameState())?.pendingReport).toEqual(['Q1']);
   });
 
   test('a different category deals a fresh deck', async () => {

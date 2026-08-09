@@ -2,6 +2,7 @@ import {
   advance,
   buildQueue,
   canSaveMemory,
+  confirmReported,
   currentItem,
   isFinished,
   markMemorySaved,
@@ -259,6 +260,67 @@ describe('advance', () => {
     expect(isFinished(finished)).toBe(true);
     expect(advance(finished)).toBe(finished);
     expect(currentItem(finished)).toBeNull();
+  });
+
+  // S3c: the card lands in the pending buffer in the same transition that plays
+  // it, so what the screen writes to disk before firing the report already says
+  // what is owed.
+  test('the played card is owed to the server as well as counted', () => {
+    const state = advanceBy(game(10), 3);
+
+    expect(state.pendingReport).toEqual(['Q1', 'Q2', 'Q3']);
+  });
+
+  test('a challenge is owed nothing either', () => {
+    const state = advanceBy(game(10, 5, 3), 4);
+
+    expect(state.pendingReport).toEqual(['Q1', 'Q2', 'Q3']);
+  });
+
+  // The two lists part company as soon as the server answers: played is the
+  // session's own count and never shrinks, pending is only what is still owed.
+  test('a card confirmed by the server stays played but stops being owed', () => {
+    const settled = confirmReported(advanceBy(game(10), 3), ['Q1', 'Q2']);
+
+    expect(settled.playedUlids).toEqual(['Q1', 'Q2', 'Q3']);
+    expect(settled.pendingReport).toEqual(['Q3']);
+  });
+
+  // And a settled card must not creep back in: advance would otherwise re-add it
+  // on any replay of the same position and send it twice.
+  test('a confirmed card is not owed again', () => {
+    const settled = confirmReported(advanceBy(game(3), 3), ['Q1', 'Q2', 'Q3']);
+    const again = advance({ ...settled, cursor: 0 });
+
+    expect(again.pendingReport).toEqual([]);
+  });
+});
+
+describe('confirmReported', () => {
+  // The answer comes back after an await, and the couple may have played another
+  // card into the buffer meanwhile — clearing it wholesale would swallow that one.
+  test('drops only what was actually sent', () => {
+    const state = advanceBy(game(10), 3);
+    const settled = confirmReported(state, ['Q1', 'Q2']);
+
+    expect(settled.pendingReport).toEqual(['Q3']);
+  });
+
+  test('an answer for cards no longer owed changes nothing', () => {
+    const state = advanceBy(game(10), 2);
+
+    expect(confirmReported(state, ['Q7'])).toBe(state);
+    expect(confirmReported(state, [])).toBe(state);
+  });
+
+  test('touches nothing but the buffer', () => {
+    const before = advanceBy(game(10), 2);
+    const after = confirmReported(before, ['Q1', 'Q2']);
+
+    expect(after.pendingReport).toEqual([]);
+    expect(after.cursor).toBe(before.cursor);
+    expect(after.playedUlids).toEqual(before.playedUlids);
+    expect(after.queue).toBe(before.queue);
   });
 });
 

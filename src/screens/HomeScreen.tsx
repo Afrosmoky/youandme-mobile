@@ -101,14 +101,12 @@ export function HomeScreen({ navigation }: Props) {
         </Card>
       )}
 
-      <Card
-        testID="home-session"
-        onPress={() => navigation.navigate('CategoryPicker')}
-        style={styles.tile}>
-        <Text style={styles.tileTitle}>{pl.home.sessionTitle}</Text>
-        <Text style={styles.tileHint}>{pl.home.sessionHint}</Text>
-      </Card>
-
+      {/* S3c: the couple's session IS the local game. The server-side session
+          (CategoryPicker -> QuestionScreen) is no longer reachable from here —
+          one game, one way in, so a couple is never asked which of two things
+          called "sesja pytań" they meant. Those screens stay in the codebase,
+          dormant, for the solo mode of etap II; BootstrapScreen still resumes a
+          server session that is already open. */}
       <Card
         testID="home-local-game"
         onPress={() => navigation.navigate('LocalGameSetup')}

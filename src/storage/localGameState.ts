@@ -64,18 +64,31 @@ const queueItemSchema = z.discriminatedUnion('kind', [
 // Annotated with the domain type on purpose: add a field to LocalGameState and
 // forget it here, and this stops compiling rather than silently dropping that
 // field from every resumed session.
-const stateSchema: z.ZodType<LocalGameState> = z.object({
-  player1: z.string(),
-  player2: z.string(),
-  categorySlug: z.string().nullable(),
-  queue: z.array(queueItemSchema),
-  cursor: z.number(),
-  activePlayer: z.union([z.literal('p1'), z.literal('p2')]),
-  answers: z.object({ p1: z.string(), p2: z.string() }),
-  playedUlids: z.array(z.string()),
-  savedMemoryUlids: z.array(z.string()),
-  startedAt: z.string(),
-});
+const stateSchema: z.ZodType<LocalGameState> = z
+  .object({
+    player1: z.string(),
+    player2: z.string(),
+    categorySlug: z.string().nullable(),
+    queue: z.array(queueItemSchema),
+    cursor: z.number(),
+    activePlayer: z.union([z.literal('p1'), z.literal('p2')]),
+    answers: z.object({ p1: z.string(), p2: z.string() }),
+    playedUlids: z.array(z.string()),
+    // S3c, and the version stays at 1 for the same reason as `options` above: a
+    // session dealt by the previous build has no such key, and dropping it would
+    // end a game in progress on upgrade.
+    pendingReport: z.array(z.string()).optional(),
+    savedMemoryUlids: z.array(z.string()),
+    startedAt: z.string(),
+  })
+  // Absent is NOT "nothing owed". Before S3c nothing was reported until the
+  // session ended, so everything such a state played is still owed — and saying
+  // so here is what keeps those cards on the retry path instead of quietly
+  // losing them the moment a new build reads the state.
+  .transform(({ pendingReport, ...rest }) => ({
+    ...rest,
+    pendingReport: pendingReport ?? rest.playedUlids,
+  }));
 
 // The state is left unknown at this level so a version mismatch is answered
 // before anything tries to read a shape it was never meant to fit.

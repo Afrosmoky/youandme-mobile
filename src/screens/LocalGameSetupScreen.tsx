@@ -15,6 +15,7 @@ import { CHALLENGES } from '../domain/challenges';
 import { shuffle } from '../domain/shuffle';
 import {
   LocalGameState,
+  confirmReported,
   isFinished,
   matchesSetup,
   questionCounter,
@@ -76,24 +77,29 @@ export function LocalGameSetupScreen({ navigation }: Props) {
   useEffect(() => {
     let active = true;
     (async () => {
-      const saved = await loadLocalGameState();
+      let saved = await loadLocalGameState();
       if (!active) {
         return;
       }
 
-      // Flush before anything else can touch the stored state: the played buffer
-      // of an interrupted session is the one thing left in it that the server
-      // still wants, and this runs on mount, before the couple can tap a
+      // The safety net for the live report (S3c), and it runs before anything
+      // else can touch the stored state — on mount, before the couple can tap a
       // category and overwrite it.
       //
-      // Two ways to get here with cards owing: the app was killed mid-session,
-      // or the summary screen's report failed. Both are covered by the same
-      // resend, because the endpoint keeps a set — cards already counted come
-      // back as newly_played: 0 rather than counting twice.
+      // Since the game screen settles up on every transition, a session usually
+      // arrives here owing nothing. What lands in `pendingReport` is what the
+      // live path could not finish: the phone died between playing a card and
+      // the answer coming back, or the last request of a session was still in
+      // flight when the screen went away. Resending is free — the endpoint keeps
+      // a set, so cards already counted come back as newly_played: 0.
       let reported = true;
-      if (saved !== null && saved.playedUlids.length > 0) {
+      if (saved !== null && saved.pendingReport.length > 0) {
         try {
-          await flush.mutateAsync(saved.playedUlids);
+          await flush.mutateAsync(saved.pendingReport);
+          // Settle the buffer on disk too, so a resumed session does not carry
+          // cards the server has already confirmed into its next transition.
+          saved = confirmReported(saved, saved.pendingReport);
+          await saveLocalGameState(saved);
         } catch {
           // Keep the buffer and try again on the next visit. It is lost only if
           // this fails AND the couple starts a new game before it succeeds —

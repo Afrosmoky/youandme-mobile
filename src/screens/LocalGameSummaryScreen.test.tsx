@@ -5,7 +5,12 @@ import { renderWithQueryClient } from '../test/renderWithQueryClient';
 import { LocalGameSummaryScreen } from './LocalGameSummaryScreen';
 import { reportPlayedCards } from '../api/localGame';
 import { getProgress } from '../api/progress';
-import { advance, startLocalGame, markMemorySaved } from '../domain/localGame';
+import {
+  advance,
+  confirmReported,
+  startLocalGame,
+  markMemorySaved,
+} from '../domain/localGame';
 import {
   clearLocalGameState,
   loadLocalGameState,
@@ -56,7 +61,9 @@ function makeProps(): Props {
   } as unknown as Props;
 }
 
-// A played-out session: three cards left behind, one challenge seen, one saved.
+// A played-out session, the way S3c leaves one: three cards left behind, one
+// challenge seen, one saved — and nothing owed, because the game screen settled
+// up on every transition.
 const playedOut = () => {
   let state = startLocalGame({
     player1: 'piotr_s',
@@ -72,12 +79,16 @@ const playedOut = () => {
   for (let i = 0; i < 4; i++) {
     state = advance(state);
   }
-  return state;
+  return confirmReported(state, state.pendingReport);
 };
 
 const renderScreen = () =>
   renderWithQueryClient(<LocalGameSummaryScreen {...makeProps()} />);
 
+// S3c turned this screen into a read. The report moved onto every transition,
+// the celebration onto the card that earned it, and the clearing of the state
+// onto the setup screen — so the ordering puzzle P10 had here is gone, and what
+// these tests guard is that none of it came back.
 describe('LocalGameSummaryScreen', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -103,66 +114,29 @@ describe('LocalGameSummaryScreen', () => {
     );
   });
 
-  test('reports the played cards once', async () => {
-    await saveLocalGameState(playedOut());
-    renderScreen();
-
-    await waitFor(() =>
-      expect(reportPlayedCards).toHaveBeenCalledWith(['Q1', 'Q2', 'Q3']),
-    );
-    expect(reportPlayedCards).toHaveBeenCalledTimes(1);
-  });
-
-  test('clears the session once the report has landed', async () => {
-    await saveLocalGameState(playedOut());
-    renderScreen();
-
-    await waitFor(async () =>
-      expect(await loadLocalGameState()).toBeNull(),
-    );
-  });
-
-  // The buffer is the only thing the server still wants — losing it because one
-  // request failed would cost the couple the whole session's progress.
-  test('a failed report keeps the session for the setup screen to retry', async () => {
-    jest.mocked(reportPlayedCards).mockRejectedValue(new Error('network'));
-    await saveLocalGameState(playedOut());
-    renderScreen();
-
-    expect(
-      await screen.findByTestId('local-game-report-pending'),
-    ).toHaveTextContent(pl.localGame.reportPending);
-    expect((await loadLocalGameState())?.playedUlids).toEqual([
-      'Q1',
-      'Q2',
-      'Q3',
-    ]);
-  });
-
-  // The ordering that makes the celebration possible at all: the milestone hook
-  // needs a reading of the map from BEFORE the report moved it, or its first
-  // reading is already the new one and nothing ever fires.
-  test('waits for the progress baseline before reporting', async () => {
-    let releaseProgress: (value: Progress) => void = () => {};
-    jest
-      .mocked(getProgress)
-      .mockReturnValue(
-        new Promise<Progress>(resolve => {
-          releaseProgress = resolve;
-        }),
-      );
+  test('reports nothing — the cards went out as they were played', async () => {
     await saveLocalGameState(playedOut());
     renderScreen();
 
     await screen.findByTestId('local-game-summary-questions');
     expect(reportPlayedCards).not.toHaveBeenCalled();
-
-    releaseProgress(progressWith(false));
-
-    await waitFor(() => expect(reportPlayedCards).toHaveBeenCalled());
   });
 
-  test('celebrates a milestone the report just unlocked', async () => {
+  // Anything the live path could not finish is the setup screen's job. This
+  // screen must not send it, and must not clear the state that carries it.
+  test('leaves an unsettled session alone for the setup screen', async () => {
+    const owing = { ...playedOut(), pendingReport: ['Q3'] };
+    await saveLocalGameState(owing);
+    renderScreen();
+
+    await screen.findByTestId('local-game-summary-questions');
+    expect(reportPlayedCards).not.toHaveBeenCalled();
+    expect((await loadLocalGameState())?.pendingReport).toEqual(['Q3']);
+  });
+
+  // The milestone was celebrated on the card that earned it — a second modal
+  // here would celebrate the same thing twice.
+  test('does not celebrate a milestone a second time', async () => {
     jest
       .mocked(getProgress)
       .mockResolvedValueOnce(progressWith(false))
@@ -170,40 +144,24 @@ describe('LocalGameSummaryScreen', () => {
     await saveLocalGameState(playedOut());
     renderScreen();
 
-    expect(
-      await screen.findByText(pl.celebration.milestoneTitle),
-    ).toBeOnTheScreen();
+    await screen.findByTestId('local-game-summary-questions');
+    await waitFor(() => expect(getProgress).not.toHaveBeenCalled());
+    expect(screen.queryByText(pl.celebration.milestoneTitle)).toBeNull();
   });
 
-  // The report invalidates the map, so a fresh reading lands moments after the
-  // session has been cleared from disk. Nothing about that second reading may
-  // send the couple anywhere — they are looking at their summary, and the
-  // celebration may not even be on screen yet.
-  test('stays on the summary after the report refetches the map', async () => {
-    jest
-      .mocked(getProgress)
-      .mockResolvedValueOnce(progressWith(false))
-      .mockResolvedValue(progressWith(true));
+  // P10 read the state twice — once for the counters, once from the effect that
+  // reported — and the second read landed after the session had been cleared,
+  // which bounced the couple off their own summary. Nothing clears the state
+  // here any more, and the read is still mount-only.
+  test('stays put; nothing sends the couple away or clears the session', async () => {
     await saveLocalGameState(playedOut());
     renderScreen();
 
-    // The session is gone and the refetch has landed (the celebration only
-    // fires on the second reading).
-    await waitFor(async () => expect(await loadLocalGameState()).toBeNull());
-    await screen.findByText(pl.celebration.milestoneTitle);
+    await screen.findByTestId('local-game-summary-questions');
+    await waitFor(async () => expect(await loadLocalGameState()).not.toBeNull());
 
     expect(replace).not.toHaveBeenCalled();
     expect(screen.getByTestId('local-game-summary-questions')).toBeOnTheScreen();
-  });
-
-  // A map that is down must not strand the couple on a spinner, and must not
-  // swallow their progress either.
-  test('reports anyway when the progress map cannot be read', async () => {
-    jest.mocked(getProgress).mockRejectedValue(new Error('network'));
-    await saveLocalGameState(playedOut());
-    renderScreen();
-
-    await waitFor(() => expect(reportPlayedCards).toHaveBeenCalled());
   });
 
   test('with nothing stored it sends the couple back to the setup', async () => {

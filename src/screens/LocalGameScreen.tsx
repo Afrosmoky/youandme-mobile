@@ -19,6 +19,7 @@ import {
   LocalGameState,
   advance,
   canSaveMemory,
+  confirmReported,
   currentItem,
   isFinished,
   markMemorySaved,
@@ -35,8 +36,11 @@ import {
 import { parseApiError } from '../api/errors';
 import { likeQuestion, unlikeQuestion } from '../api/likes';
 import { useSaveLocalMemory } from '../queries/useSaveLocalMemory';
+import { useReportPlayedCards } from '../queries/useReportPlayedCards';
+import { useMilestoneCelebration } from '../queries/useMilestoneCelebration';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { Badge } from '../components/Badge';
+import { Celebration } from '../components/Celebration';
 import { LikeHeart } from '../components/LikeHeart';
 import { SectionLabel } from '../components/SectionLabel';
 import { GoldButton } from '../components/GoldButton';
@@ -71,15 +75,35 @@ export function LocalGameScreen({ navigation }: Props) {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [likePending, setLikePending] = useState(false);
   const saveMemory = useSaveLocalMemory();
+  const report = useReportPlayedCards();
+  // One report at a time. Every transition offers to settle what is owed, and
+  // two overlapping calls would race over the same buffer for no gain — the
+  // endpoint is throttled and the next transition retries anyway.
+  const reportInFlight = useRef(false);
 
-  // `state` as of the last committed render. Only the like round trip needs it:
-  // it is the one transition here that resumes AFTER an await, by which time the
-  // couple may have typed more, handed the phone over or moved on. Applying its
-  // answer to the snapshot it started from would undo all of that.
+  // Mounted here, at the START of the session, and this is the whole ordering the
+  // celebration depends on: the hook's first reading of the map only seeds a
+  // baseline, so it has to happen before the first report moves it. On the
+  // summary screen (where P10 kept it) that ordering had to be constructed by
+  // hand; here the couple gives it to us for free by playing a card.
+  const { milestone, dismiss } = useMilestoneCelebration();
+
+  // `state` as of the last committed render, for the two things that resume AFTER
+  // an await — the like round trip (S3b) and the report (S3c). By the time either
+  // answer comes back the couple may have typed more, handed the phone over or
+  // moved on; applying it to the snapshot it started from would undo all of that.
+  //
+  // Null means "there is nothing on screen to write to": the state has not loaded
+  // yet, or the screen is gone. A late answer then writes nothing, which is what
+  // keeps it from resurrecting a session the setup screen has already cleared —
+  // whatever was left owing is on disk, and the setup screen resends it.
   const latestState = useRef<LocalGameState | null>(null);
   useEffect(() => {
     latestState.current = state;
   }, [state]);
+  useEffect(() => () => {
+    latestState.current = null;
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -121,18 +145,66 @@ export function LocalGameScreen({ navigation }: Props) {
     await saveLocalGameState(next);
   }, []);
 
-  // Moving between cards: persist, close the answer field, and hand over to the
-  // summary once the queue is spent.
+  /**
+   * Tells the server what the session owes, without making anyone wait (S3c).
+   *
+   * Deliberately not awaited by the caller: the couple moves to the next card the
+   * moment they tap, and a phone with no signal must not turn a game into a
+   * queue of spinners. The map is what waits, and it catches up a beat later.
+   *
+   * Fired on EVERY transition, not only on the one that played a card, so a call
+   * that failed is retried by the next tap rather than waiting for the end of the
+   * session. That is safe because the endpoint keeps a set: a card sent twice
+   * comes back as newly_played: 0.
+   */
+  const flushPending = useCallback(
+    (pending: string[]) => {
+      if (pending.length === 0 || reportInFlight.current) {
+        return;
+      }
+      reportInFlight.current = true;
+      // The exact list that went out. Cards played while it was in flight are
+      // not in it, and must stay owed.
+      const sent = pending;
+      report
+        .mutateAsync(sent)
+        .then(async () => {
+          const current = latestState.current;
+          if (current === null) {
+            return;
+          }
+          const next = confirmReported(current, sent);
+          if (next !== current) {
+            await persist(next);
+          }
+        })
+        .catch(() => {
+          // Keep the buffer. The next transition retries, and failing that the
+          // setup screen does on the couple's next visit.
+        })
+        .finally(() => {
+          reportInFlight.current = false;
+        });
+    },
+    [persist, report],
+  );
+
+  // Moving between cards: persist, close the answer field, settle up with the
+  // server, and hand over to the summary once the queue is spent.
+  //
+  // Order matters and is the same as everywhere else here: disk first, request
+  // second. A phone that dies between the two still knows what it owes.
   const transition = useCallback(
     async (next: LocalGameState) => {
       setWriting(false);
       setSaveError(null);
       await persist(next);
+      flushPending(next.pendingReport);
       if (isFinished(next)) {
         navigation.replace('LocalGameSummary');
       }
     },
-    [navigation, persist],
+    [flushPending, navigation, persist],
   );
 
   const onType = useCallback(
@@ -250,6 +322,20 @@ export function LocalGameScreen({ navigation }: Props) {
   const activeName =
     state.activePlayer === 'p1' ? state.player1 : state.player2;
 
+  // Rendered on both layouts, because the milestone lands a beat AFTER the card
+  // that earned it — by which time the couple may be on the next question or on
+  // a challenge. The one card it cannot reach is the last: that transition leaves
+  // for the summary immediately, so a milestone crossed by the final card of a
+  // session is shown on the map rather than celebrated.
+  const celebration = (
+    <Celebration
+      visible={milestone !== null}
+      title={pl.celebration.milestoneTitle}
+      body={milestone ? pl.celebration.milestoneBody(milestone.name) : ''}
+      onDismiss={dismiss}
+    />
+  );
+
   if (item?.kind === 'challenge') {
     return (
       <ScreenContainer testID="local-game-challenge">
@@ -263,6 +349,7 @@ export function LocalGameScreen({ navigation }: Props) {
           title={pl.localGame.challengeDoneButton}
           onPress={() => transition(advance(state))}
         />
+        {celebration}
       </ScreenContainer>
     );
   }
@@ -392,6 +479,8 @@ export function LocalGameScreen({ navigation }: Props) {
         title={pl.localGame.skipButton}
         onPress={() => transition(advance(state))}
       />
+
+      {celebration}
     </ScreenContainer>
   );
 }
