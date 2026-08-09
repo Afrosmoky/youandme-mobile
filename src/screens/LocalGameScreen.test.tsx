@@ -10,12 +10,17 @@ import {
   saveLocalGameState,
 } from '../storage/localGameState';
 import { createLocalMemory } from '../api/memories';
+import { likeQuestion, unlikeQuestion } from '../api/likes';
 import type { RootStackParamList } from '../navigation/types';
 import type { Challenge } from '../domain/challenges';
 import type { Memory, Question } from '../domain/types';
 import { pl } from '../i18n/pl';
 
 jest.mock('../api/memories', () => ({ createLocalMemory: jest.fn() }));
+jest.mock('../api/likes', () => ({
+  likeQuestion: jest.fn(),
+  unlikeQuestion: jest.fn(),
+}));
 
 type Props = NativeStackScreenProps<RootStackParamList, 'LocalGame'>;
 
@@ -364,6 +369,235 @@ describe('LocalGameScreen — saving a card as a memory', () => {
     await screen.findByTestId('local-game-saved');
 
     expect((await loadLocalGameState())?.playedUlids).toEqual([]);
+  });
+});
+
+// S3b: the same heart as on the served card and the daily card, on a card the
+// phone owns. What is specific here is that the flip has to reach the queue on
+// disk — the session is frozen there, and that is what a resume reads.
+describe('LocalGameScreen — liking a card', () => {
+  // The heart as LikeHeart draws it.
+  const FILLED = '♥︎';
+  const OUTLINE = '♡︎';
+
+  // A session whose first card the couple already liked, the way the deck
+  // endpoint hands it over since S3a.
+  const likedSession = () =>
+    startLocalGame({
+      player1: 'piotr_s',
+      player2: 'Wiktoria',
+      categorySlug: 'randka',
+      questions: [{ ...question(1), liked: true }, question(2)],
+      challenges: [challenge],
+      interval: 5,
+      startedAt: '2026-08-05T18:00:00.000Z',
+    });
+
+  const likedOnDisk = async (ulid: string) => {
+    const stored = await loadLocalGameState();
+    const card = stored?.queue.find(
+      item => item.kind === 'question' && item.question.ulid === ulid,
+    );
+    return card?.kind === 'question' ? card.question.liked : undefined;
+  };
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    await clearLocalGameState();
+    jest.mocked(likeQuestion).mockResolvedValue({ liked: true });
+    jest.mocked(unlikeQuestion).mockResolvedValue({ liked: false });
+  });
+
+  test('the heart shows what the card was dealt with', async () => {
+    await saveLocalGameState(likedSession());
+    renderScreen();
+
+    expect(await screen.findByTestId('local-game-like')).toHaveTextContent(
+      FILLED,
+    );
+  });
+
+  test('an unliked card gets an outline heart', async () => {
+    await saveLocalGameState(session(20));
+    renderScreen();
+
+    expect(await screen.findByTestId('local-game-like')).toHaveTextContent(
+      OUTLINE,
+    );
+  });
+
+  test('tapping fills the heart at once and tells the server', async () => {
+    await saveLocalGameState(session(20));
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('local-game-like'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('local-game-like')).toHaveTextContent(FILLED),
+    );
+    expect(likeQuestion).toHaveBeenCalledWith('Q1');
+    expect(unlikeQuestion).not.toHaveBeenCalled();
+  });
+
+  test('tapping a liked card takes the like back', async () => {
+    await saveLocalGameState(likedSession());
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('local-game-like'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('local-game-like')).toHaveTextContent(OUTLINE),
+    );
+    expect(unlikeQuestion).toHaveBeenCalledWith('Q1');
+    expect(likeQuestion).not.toHaveBeenCalled();
+  });
+
+  // Held open on purpose: a rejection that lands in the same tick would make
+  // "the heart is empty at the end" pass even if it had never been filled, which
+  // is the one thing this test is about.
+  test('the flip shows before the answer comes, and is undone if it fails', async () => {
+    let fail: (err: Error) => void = () => {};
+    jest
+      .mocked(likeQuestion)
+      .mockReturnValue(new Promise((_resolve, reject) => (fail = reject)));
+    await saveLocalGameState(session(20));
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('local-game-like'));
+
+    // Filled while the call is still in flight, and already on disk.
+    await waitFor(() =>
+      expect(screen.getByTestId('local-game-like')).toHaveTextContent(FILLED),
+    );
+    expect(await likedOnDisk('Q1')).toBe(true);
+
+    fail(new Error('network'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('local-game-like')).toHaveTextContent(OUTLINE),
+    );
+    expect(await likedOnDisk('Q1')).toBe(false);
+  });
+
+  // One tap, one call: the heart is dead while its own call is in flight.
+  test('a double tap does not fire two calls', async () => {
+    let finish: (result: { liked: boolean }) => void = () => {};
+    jest
+      .mocked(likeQuestion)
+      .mockReturnValue(new Promise(resolve => (finish = resolve)));
+    await saveLocalGameState(session(20));
+    renderScreen();
+
+    const heart = await screen.findByTestId('local-game-like');
+    fireEvent.press(heart);
+    await waitFor(() => expect(heart).toHaveTextContent(FILLED));
+    fireEvent.press(heart);
+
+    expect(likeQuestion).toHaveBeenCalledTimes(1);
+    expect(unlikeQuestion).not.toHaveBeenCalled();
+
+    finish({ liked: true });
+    await waitFor(() => expect(heart).toHaveTextContent(FILLED));
+  });
+
+  // The whole point of S3b: the queue is frozen on disk, so a heart that lives
+  // only in the component would be gone by the next resume.
+  test('the like is written into the frozen queue, so a resume keeps it', async () => {
+    await saveLocalGameState(session(20));
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('local-game-like'));
+
+    await waitFor(async () => expect(await likedOnDisk('Q1')).toBe(true));
+
+    // And it is still there after the state has been through storage again,
+    // exactly as the couple would find it on the next launch.
+    const resumed = await loadLocalGameState();
+    await saveLocalGameState(resumed!);
+    expect(await likedOnDisk('Q1')).toBe(true);
+  });
+
+  test('liking changes nothing else about the session', async () => {
+    await saveLocalGameState(session(20));
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('local-game-like'));
+    await waitFor(async () => expect(await likedOnDisk('Q1')).toBe(true));
+
+    const stored = await loadLocalGameState();
+    expect(stored?.cursor).toBe(0);
+    expect(stored?.activePlayer).toBe('p1');
+    // Liking is not playing: the map still moves on the report only.
+    expect(stored?.playedUlids).toEqual([]);
+    expect(stored?.savedMemoryUlids).toEqual([]);
+  });
+
+  test('the heart travels with the card, not with the screen', async () => {
+    await saveLocalGameState(session(20));
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('local-game-like'));
+    await waitFor(() =>
+      expect(screen.getByTestId('local-game-like')).toHaveTextContent(FILLED),
+    );
+
+    fireEvent.press(screen.getByTestId('local-game-skip'));
+
+    // Next card, its own (empty) heart.
+    await waitFor(() =>
+      expect(screen.getByTestId('local-game-question')).toHaveTextContent(
+        'Pytanie 2?',
+      ),
+    );
+    expect(screen.getByTestId('local-game-like')).toHaveTextContent(OUTLINE);
+    expect(await likedOnDisk('Q1')).toBe(true);
+  });
+
+  // The like is the one transition that lands after an await. If it wrote back
+  // the state it started from, an answer arriving after the couple moved on
+  // would rewind the session to the previous card.
+  test('an answer arriving after the couple moved on does not rewind them', async () => {
+    let finish: (result: { liked: boolean }) => void = () => {};
+    jest
+      .mocked(likeQuestion)
+      .mockReturnValue(new Promise(resolve => (finish = resolve)));
+    await saveLocalGameState(session(20));
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('local-game-like'));
+    await waitFor(() =>
+      expect(screen.getByTestId('local-game-like')).toHaveTextContent(FILLED),
+    );
+    // Still in flight, and the couple is done with this card.
+    fireEvent.press(screen.getByTestId('local-game-skip'));
+    await waitFor(() =>
+      expect(screen.getByTestId('local-game-question')).toHaveTextContent(
+        'Pytanie 2?',
+      ),
+    );
+
+    finish({ liked: true });
+
+    await waitFor(async () =>
+      expect((await loadLocalGameState())?.cursor).toBe(1),
+    );
+    expect((await loadLocalGameState())?.playedUlids).toEqual(['Q1']);
+    expect(screen.getByTestId('local-game-question')).toHaveTextContent(
+      'Pytanie 2?',
+    );
+    expect(await likedOnDisk('Q1')).toBe(true);
+  });
+
+  // A challenge is an instruction, not a card of the deck — there is nothing
+  // server-side to like it on.
+  test('a challenge has no heart', async () => {
+    await saveLocalGameState(session(3, 1));
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('local-game-skip'));
+
+    await screen.findByTestId('local-game-challenge-title');
+    expect(screen.queryByTestId('local-game-like')).toBeNull();
   });
 });
 

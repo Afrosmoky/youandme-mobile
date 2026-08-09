@@ -209,6 +209,47 @@ export function markMemorySaved(
 }
 
 /**
+ * Records a like on one card of the queue (S3b).
+ *
+ * The heart has to live IN the queue, not beside it. The queue is frozen into
+ * AsyncStorage when the session is dealt and is the only thing a resume reads,
+ * so a flip kept in the component (or in a side table of overrides) would last
+ * exactly as long as the screen: the couple would come back to a card whose
+ * heart says what it said when it was dealt. Writing it onto the card keeps ONE
+ * truth per card, which is what every other read of the queue already assumes.
+ *
+ * Matched by ulid across the whole queue rather than on the current card only:
+ * nothing in buildQueue forbids the same question appearing twice, and one
+ * hearted copy out of two would read as a puzzle rather than as a bug.
+ *
+ * Returns the state itself when nothing changed — an unknown ulid, or a card
+ * already in that state. The screen leans on this: reconciling with the server's
+ * answer after a round trip is then free in the happy path, because the value
+ * always matches the flip already on screen and no second disk write happens.
+ */
+export function setQuestionLiked(
+  state: LocalGameState,
+  questionUlid: string,
+  liked: boolean,
+): LocalGameState {
+  let changed = false;
+
+  const queue = state.queue.map(item => {
+    if (
+      item.kind !== 'question' ||
+      item.question.ulid !== questionUlid ||
+      item.question.liked === liked
+    ) {
+      return item;
+    }
+    changed = true;
+    return { ...item, question: { ...item.question, liked } };
+  });
+
+  return changed ? { ...state, queue } : state;
+}
+
+/**
  * Whether "Zapisz wspomnienie" is live right now.
  *
  * On only once BOTH have written something: a memory from the local game is the

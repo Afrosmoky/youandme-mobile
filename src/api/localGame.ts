@@ -32,8 +32,11 @@ const deckResponseSchema = z.object({
  * places. An exhausted deck comes back as an empty list, not an error — the
  * setup screen says so instead of walking into an empty game.
  *
- * The cards carry no `liked`, unlike /questions/next: the batch endpoint omits
- * it, which is why the heart is not on the game card until P11b.
+ * The cards carry `liked` since S3a, as /questions/next always has. Nothing here
+ * had to change for it — rawQuestionSchema already declared the field optional
+ * with a false default, so the cards simply stopped falling back to that default
+ * — but it is what the heart on the game card reads (S3b), so it is worth a test
+ * rather than an assumption.
  */
 export async function fetchGameDeck(
   categorySlug: string | null,

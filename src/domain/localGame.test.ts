@@ -11,6 +11,7 @@ import {
   questionCounter,
   reportBatches,
   setAnswer,
+  setQuestionLiked,
   startLocalGame,
   summarise,
   LocalGameState,
@@ -301,6 +302,62 @@ describe('markMemorySaved', () => {
     const state = markMemorySaved(markMemorySaved(game(10), 'Q1'), 'Q1');
 
     expect(state.savedMemoryUlids).toEqual(['Q1']);
+  });
+});
+
+describe('setQuestionLiked', () => {
+  // The card in the queue is what a resume reads, so this is where the heart has
+  // to land — see the screen test that pauses and comes back.
+  const likedCard = (state: LocalGameState, ulid: string) =>
+    state.queue.find(item => item.kind === 'question' && item.question.ulid === ulid);
+
+  test('writes the like onto the card in the queue', () => {
+    const state = setQuestionLiked(game(10), 'Q3', true);
+
+    expect(likedCard(state, 'Q3')).toEqual({
+      kind: 'question',
+      question: expect.objectContaining({ ulid: 'Q3', liked: true }),
+    });
+  });
+
+  test('takes it back off again', () => {
+    const state = setQuestionLiked(setQuestionLiked(game(10), 'Q3', true), 'Q3', false);
+
+    expect(likedCard(state, 'Q3')).toEqual({
+      kind: 'question',
+      question: expect.objectContaining({ ulid: 'Q3', liked: false }),
+    });
+  });
+
+  test('leaves every other card alone', () => {
+    const state = setQuestionLiked(game(10), 'Q3', true);
+
+    expect(
+      state.queue.filter(
+        item => item.kind === 'question' && item.question.liked,
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('touches nothing but the queue', () => {
+    const before = advance(setAnswer(game(10), 'p1', 'moja'));
+    const after = setQuestionLiked(before, 'Q2', true);
+
+    expect(after.cursor).toBe(before.cursor);
+    expect(after.answers).toEqual(before.answers);
+    expect(after.playedUlids).toEqual(before.playedUlids);
+    expect(after.savedMemoryUlids).toEqual(before.savedMemoryUlids);
+  });
+
+  // The screen reconciles with the server's answer after every call, which in
+  // the happy path repeats the flip it already wrote. Returning the same state
+  // is what keeps that from costing a second write to disk.
+  test('a like that changes nothing returns the same state', () => {
+    const state = setQuestionLiked(game(10), 'Q3', true);
+
+    expect(setQuestionLiked(state, 'Q3', true)).toBe(state);
+    expect(setQuestionLiked(state, 'Q_nieznane', true)).toBe(state);
+    expect(setQuestionLiked(state, 'Q1', false)).toBe(state);
   });
 });
 

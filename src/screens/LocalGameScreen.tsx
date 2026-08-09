@@ -3,6 +3,7 @@ import React, {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import {
@@ -25,15 +26,18 @@ import {
   primaryAction,
   questionCounter,
   setAnswer,
+  setQuestionLiked,
 } from '../domain/localGame';
 import {
   loadLocalGameState,
   saveLocalGameState,
 } from '../storage/localGameState';
 import { parseApiError } from '../api/errors';
+import { likeQuestion, unlikeQuestion } from '../api/likes';
 import { useSaveLocalMemory } from '../queries/useSaveLocalMemory';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { Badge } from '../components/Badge';
+import { LikeHeart } from '../components/LikeHeart';
 import { SectionLabel } from '../components/SectionLabel';
 import { GoldButton } from '../components/GoldButton';
 import { OutlineButton } from '../components/OutlineButton';
@@ -65,7 +69,17 @@ export function LocalGameScreen({ navigation }: Props) {
   // every handover, because it belongs to whoever is answering now.
   const [writing, setWriting] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [likePending, setLikePending] = useState(false);
   const saveMemory = useSaveLocalMemory();
+
+  // `state` as of the last committed render. Only the like round trip needs it:
+  // it is the one transition here that resumes AFTER an await, by which time the
+  // couple may have typed more, handed the phone over or moved on. Applying its
+  // answer to the snapshot it started from would undo all of that.
+  const latestState = useRef<LocalGameState | null>(null);
+  useEffect(() => {
+    latestState.current = state;
+  }, [state]);
 
   useEffect(() => {
     let active = true;
@@ -156,6 +170,54 @@ export function LocalGameScreen({ navigation }: Props) {
     }
   }, [persist, saveMemory, state]);
 
+  // Writes one card's heart onto whatever the state is NOW, and only when that
+  // actually changes something (setQuestionLiked returns the state untouched
+  // otherwise) — so reconciling with the server's answer costs no second write.
+  const writeLiked = useCallback(
+    async (questionUlid: string, liked: boolean) => {
+      const current = latestState.current;
+      if (current === null) {
+        return;
+      }
+      const next = setQuestionLiked(current, questionUlid, liked);
+      if (next !== current) {
+        await persist(next);
+      }
+    },
+    [persist],
+  );
+
+  // The heart, exactly as on the served card (QuestionScreen) and the daily card:
+  // flip now, call P5, reconcile with what the server says, roll back if the call
+  // failed. What is different here is where the flip lands — in the queue on
+  // disk, so a paused session resumes with the heart the couple left.
+  //
+  // A failed like is silent: nothing was lost, the heart simply goes back. The
+  // save error banner is for the memory, which the couple asked to keep.
+  const onToggleLike = useCallback(async () => {
+    if (state === null || likePending) {
+      return;
+    }
+    const item = currentItem(state);
+    if (item?.kind !== 'question') {
+      return;
+    }
+    const { ulid, liked } = item.question;
+
+    setLikePending(true);
+    await writeLiked(ulid, !liked);
+    try {
+      const res = liked
+        ? await unlikeQuestion(ulid)
+        : await likeQuestion(ulid);
+      await writeLiked(ulid, res.liked);
+    } catch {
+      await writeLiked(ulid, liked);
+    } finally {
+      setLikePending(false);
+    }
+  }, [likePending, state, writeLiked]);
+
   useLayoutEffect(() => {
     navigation.setOptions({
       headerStyle: { backgroundColor: theme.colors.bg.base },
@@ -226,9 +288,20 @@ export function LocalGameScreen({ navigation }: Props) {
         </Badge>
       )}
 
-      <Text testID="local-game-question" style={styles.question}>
-        {item.question.body}
-      </Text>
+      {/* The heart belongs to the question, and only to it: a challenge is an
+          instruction the couple performs, not a card of the deck they can like
+          (there is nothing server-side to like it on). */}
+      <View style={styles.questionRow}>
+        <Text testID="local-game-question" style={styles.question}>
+          {item.question.body}
+        </Text>
+        <LikeHeart
+          testID="local-game-like"
+          liked={item.question.liked}
+          onToggle={onToggleLike}
+          disabled={likePending}
+        />
+      </View>
 
       {/* A card that came with options is answered by picking, and the picker is
           on screen from the start — there is nothing optional about it to hide
@@ -340,13 +413,19 @@ const createStyles = (theme: Theme) => {
     unlockedBadge: {
       marginTop: spacing.md,
     },
+    questionRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      marginTop: spacing.lg,
+      marginBottom: spacing.xxl,
+    },
     question: {
+      flex: 1,
       fontFamily: typography.family.heading,
       fontSize: typography.size.h2,
       color: colors.text.primary,
       lineHeight: typography.size.h2 * 1.3,
-      marginTop: spacing.lg,
-      marginBottom: spacing.xxl,
+      marginRight: spacing.md,
     },
     writeToggle: {
       marginBottom: spacing.lg,

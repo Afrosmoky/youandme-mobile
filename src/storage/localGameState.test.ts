@@ -6,7 +6,12 @@ import {
   saveLocalGameState,
 } from './localGameState';
 import { kv } from './kv';
-import { advance, setAnswer, startLocalGame } from '../domain/localGame';
+import {
+  advance,
+  setAnswer,
+  setQuestionLiked,
+  startLocalGame,
+} from '../domain/localGame';
 import { CHALLENGES } from '../domain/challenges';
 import { Question } from '../domain/types';
 
@@ -60,6 +65,22 @@ describe('saveLocalGameState / loadLocalGameState', () => {
     // holds whole questions rather than ulids to refetch.
     expect(restored?.queue).toEqual(state.queue);
     expect(restored?.queue.some(item => item.kind === 'challenge')).toBe(true);
+  });
+
+  // S3b: the heart is written onto the card in the queue, so it has to survive
+  // the round trip like everything else about that card — otherwise a paused
+  // session comes back showing what the server said when it dealt the deck.
+  test('a like given mid-session comes back with the card', async () => {
+    const state = setQuestionLiked(midSession(), 'Q2', true);
+
+    await saveLocalGameState(state);
+    const restored = await loadLocalGameState();
+    const card = restored?.queue.find(
+      item => item.kind === 'question' && item.question.ulid === 'Q2',
+    );
+
+    expect(card?.kind === 'question' && card.question.liked).toBe(true);
+    expect(restored).toEqual(state);
   });
 
   test('nothing stored means nothing to resume', async () => {
