@@ -72,6 +72,13 @@ def enableProguardInReleaseBuilds = false
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
+// P11 crash reporting: uploads the JS bundle source maps and the native debug
+// symbols to Sentry after a build. Skipped for *Debug* variants by the plugin
+// itself, so local development needs no Sentry credentials; release builds read
+// the auth token from the SENTRY_AUTH_TOKEN environment variable and the rest
+// from android/sentry.properties.
+apply from: new File(["node", "--print", "require.resolve('@sentry/react-native/package.json')"].execute().text.trim(), "../sentry.gradle")
+
 android {
     ndkVersion rootProject.ext.ndkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion

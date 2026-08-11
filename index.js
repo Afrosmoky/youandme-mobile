@@ -2,12 +2,20 @@
  * @format
  */
 
+// P11 crash reporting. This import MUST stay first — it starts Sentry as a side
+// effect, and imports are evaluated in order, so anything above it would run
+// unmonitored. The OS also enters this same bundle headlessly to deliver a
+// background push, and the handlers registered below run there with no App and
+// no providers around them; an init placed in the component tree would leave
+// that whole path unreported.
+import './src/monitoring/initSentry';
 import { AppRegistry } from 'react-native';
 import notifee, { EventType } from '@notifee/react-native';
 import {
   getMessaging,
   setBackgroundMessageHandler,
 } from '@react-native-firebase/messaging';
+import { wrapWithSentry } from './src/monitoring/sentry';
 import App from './App';
 import { name as appName } from './app.json';
 import {
@@ -35,4 +43,4 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
   }
 });
 
-AppRegistry.registerComponent(appName, () => App);
+AppRegistry.registerComponent(appName, () => wrapWithSentry(App));

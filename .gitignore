@@ -74,6 +74,12 @@ yarn-error.log
 !.yarn/sdks
 !.yarn/versions
 
+# Sentry — plik, do ktorego narzedzia Sentry potrafia zapisac auth token.
+# Sam token trzymamy w SENTRY_AUTH_TOKEN, nigdy w repo. ios/sentry.properties i
+# android/sentry.properties SA wersjonowane, ale zawieraja wylacznie defaults.*
+# (pilnuje tego src/monitoring/sentryProperties.test.ts).
+.env.sentry-build-plugin
+
 # Claude Code context (lokalne, nie wersjonowane)
 /CLAUDE.md
 /docs/

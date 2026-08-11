@@ -162,6 +162,17 @@ jest.mock('react-native-google-mobile-ads', () => {
   };
 });
 
+// @sentry/react-native: native module (P11 crash reporting). Only
+// src/monitoring/sentry.ts touches it — the scrubbing layer next to it is
+// deliberately free of any runtime import from here, so it tests as plain data
+// transforms. `wrap` returns the component untouched: under Jest we render the
+// tree ourselves and want nothing extra around it.
+jest.mock('@sentry/react-native', () => ({
+  init: jest.fn(),
+  wrap: jest.fn(component => component),
+  captureException: jest.fn(),
+}));
+
 // axios: AuthScreen reads `axios.isAxiosError`, and api/client.ts calls
 // `axios.create`. Tests override isAxiosError per case.
 jest.mock('axios', () => {
