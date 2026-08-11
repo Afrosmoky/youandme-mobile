@@ -1,18 +1,20 @@
-import React, { useState } from 'react';
+import React, { useLayoutEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
   Text,
-  TouchableOpacity,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
+import { Banner } from '../components/Banner';
+import { GlowBackground } from '../components/GlowBackground';
+import { GoldButton } from '../components/GoldButton';
 import { PasswordInput } from '../components/PasswordInput';
 import { parseApiError, FieldErrors } from '../api/errors';
 import { useResetPassword } from '../queries/useResetPassword';
+import { Theme, useTheme } from '../theme';
 import { pl } from '../i18n/pl';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ResetPassword'>;
@@ -20,6 +22,8 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ResetPassword'>;
 const MIN_PASSWORD_LENGTH = 8;
 
 export function ResetPasswordScreen({ navigation, route }: Props) {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const { token, email } = route.params;
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -33,6 +37,19 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
   const tooShort = password.length < MIN_PASSWORD_LENGTH;
   const mismatch = confirm.length > 0 && password !== confirm;
   const valid = !tooShort && password === confirm;
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerStyle: { backgroundColor: theme.colors.bg.base },
+      headerTintColor: theme.colors.gold.primary,
+      headerShadowVisible: false,
+      headerTitleAlign: 'center',
+      // eslint-disable-next-line react/no-unstable-nested-components
+      headerTitle: () => (
+        <Text style={styles.headerTitle}>{pl.resetPassword.title}</Text>
+      ),
+    });
+  }, [navigation, styles, theme]);
 
   // Only show an inline error once the user has typed something.
   const inlineError = (() => {
@@ -92,12 +109,15 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
       testID="reset-password-screen"
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <Text style={styles.title}>{pl.resetPassword.title}</Text>
+      <GlowBackground size={360} intensity={0.35} style={styles.glow} />
 
       {topLevelError && (
-        <Text testID="reset-password-banner" style={styles.errorBanner}>
-          {topLevelError}
-        </Text>
+        <Banner
+          variant="error"
+          testID="reset-password-banner"
+          title={topLevelError}
+          style={styles.banner}
+        />
       )}
 
       <PasswordInput
@@ -118,58 +138,49 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
 
       {inlineError && <Text style={styles.error}>{inlineError}</Text>}
 
-      <TouchableOpacity
+      <GoldButton
         testID="reset-password-submit"
-        style={[styles.button, (isPending || !valid) && styles.buttonDisabled]}
+        title={pl.resetPassword.submit}
         onPress={onSubmit}
-        disabled={isPending || !valid}>
-        {isPending ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>{pl.resetPassword.submit}</Text>
-        )}
-      </TouchableOpacity>
+        loading={isPending}
+        disabled={isPending || !valid}
+        style={styles.submit}
+      />
     </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '600',
-    marginBottom: 24,
-    textAlign: 'center',
-  },
-  error: {
-    color: '#b00020',
-    marginBottom: 12,
-  },
-  errorBanner: {
-    color: '#b00020',
-    fontSize: 15,
-    fontWeight: '600',
-    paddingVertical: 10,
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  button: {
-    backgroundColor: '#333',
-    borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});
+const createStyles = (theme: Theme) => {
+  const { colors, typography, spacing } = theme;
+  return StyleSheet.create({
+    // Same recipe as AuthScreen and ForgotPassword: a short form centred on the
+    // dark background, so KeyboardAvoidingView rather than ScreenContainer.
+    container: {
+      flex: 1,
+      justifyContent: 'center',
+      paddingHorizontal: spacing.xxl,
+      backgroundColor: colors.bg.base,
+    },
+    glow: {
+      justifyContent: 'flex-start',
+      paddingTop: spacing.xxxl,
+    },
+    banner: {
+      marginBottom: spacing.lg,
+    },
+    error: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.bodySm,
+      color: colors.burgundy.accent,
+      marginBottom: spacing.md,
+    },
+    submit: {
+      marginTop: spacing.xs,
+    },
+    headerTitle: {
+      fontFamily: typography.family.heading,
+      fontSize: typography.size.h2,
+      color: colors.text.primary,
+    },
+  });
+};

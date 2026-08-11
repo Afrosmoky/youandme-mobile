@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import {
   Alert,
   KeyboardAvoidingView,
@@ -45,9 +45,23 @@ export function AuthScreen() {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { signInWithGoogle } = useAuth();
+
   const loginMutation = useLogin();
   const registerMutation = useRegister();
   const navigation = useNavigation<AuthNav>();
+  // The body of this screen was already on the P11a tokens; the native header
+  // was not, so the app opened on a white bar over a near-black screen. Same
+  // treatment as every other screen in the app.
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerStyle: { backgroundColor: theme.colors.bg.base },
+      headerTintColor: theme.colors.gold.primary,
+      headerShadowVisible: false,
+      headerTitleAlign: 'center',
+      // eslint-disable-next-line react/no-unstable-nested-components
+      headerTitle: () => <Text style={styles.headerTitle}>{pl.appTitle}</Text>,
+    });
+  }, [navigation, styles, theme]);
   const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -340,6 +354,11 @@ const createStyles = (theme: Theme) => {
     },
     submit: {
       marginTop: spacing.xs,
+    },
+    headerTitle: {
+      fontFamily: typography.family.heading,
+      fontSize: typography.size.h2,
+      color: colors.text.primary,
     },
     google: {
       marginTop: spacing.md,

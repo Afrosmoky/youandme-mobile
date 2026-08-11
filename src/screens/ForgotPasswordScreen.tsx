@@ -1,18 +1,19 @@
-import React, { useState } from 'react';
+import React, { useLayoutEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
   Text,
-  TextInput,
-  TouchableOpacity,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { parseApiError, FieldErrors } from '../api/errors';
 import { useRequestPasswordReset } from '../queries/useRequestPasswordReset';
+import { GlowBackground } from '../components/GlowBackground';
+import { GoldButton } from '../components/GoldButton';
+import { TextField } from '../components/TextField';
+import { Theme, useTheme } from '../theme';
 import { pl } from '../i18n/pl';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ForgotPassword'>;
@@ -21,11 +22,26 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ForgotPassword'>;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function ForgotPasswordScreen({ navigation }: Props) {
+  const theme = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [email, setEmail] = useState('');
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const { mutate: sendReset, isPending } = useRequestPasswordReset();
 
   const emailValid = EMAIL_PATTERN.test(email);
+
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerStyle: { backgroundColor: theme.colors.bg.base },
+      headerTintColor: theme.colors.gold.primary,
+      headerShadowVisible: false,
+      headerTitleAlign: 'center',
+      // eslint-disable-next-line react/no-unstable-nested-components
+      headerTitle: () => (
+        <Text style={styles.headerTitle}>{pl.forgotPassword.title}</Text>
+      ),
+    });
+  }, [navigation, styles, theme]);
 
   const onEmailChange = (value: string) => {
     setEmail(value);
@@ -66,80 +82,55 @@ export function ForgotPasswordScreen({ navigation }: Props) {
       testID="forgot-password-screen"
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <Text style={styles.title}>{pl.forgotPassword.title}</Text>
+      <GlowBackground size={360} intensity={0.35} style={styles.glow} />
 
-      <TextInput
-        style={styles.input}
-        placeholder={pl.forgotPassword.email}
-        autoCapitalize="none"
-        autoCorrect={false}
-        keyboardType="email-address"
+      {/* TextField renders the inline error as `${testID}-error`, which is the
+          same id the screen used to put on a hand-rolled Text. */}
+      <TextField
+        testID="forgot-password-email"
         value={email}
         onChangeText={onEmailChange}
+        placeholder={pl.forgotPassword.email}
+        error={fieldErrors.email}
+        autoCapitalize="none"
+        keyboardType="email-address"
       />
-      {fieldErrors.email && (
-        <Text testID="forgot-password-email-error" style={styles.fieldError}>
-          {fieldErrors.email}
-        </Text>
-      )}
 
-      <TouchableOpacity
+      <GoldButton
         testID="forgot-password-submit"
-        style={[
-          styles.button,
-          (isPending || !emailValid) && styles.buttonDisabled,
-        ]}
+        title={pl.forgotPassword.submit}
         onPress={onSubmit}
-        disabled={isPending || !emailValid}>
-        {isPending ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.buttonText}>{pl.forgotPassword.submit}</Text>
-        )}
-      </TouchableOpacity>
+        loading={isPending}
+        disabled={isPending || !emailValid}
+        style={styles.submit}
+      />
     </KeyboardAvoidingView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '600',
-    marginBottom: 24,
-    textAlign: 'center',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    marginBottom: 16,
-    fontSize: 16,
-  },
-  fieldError: {
-    color: '#b00020',
-    fontSize: 13,
-    marginTop: -8,
-    marginBottom: 16,
-  },
-  button: {
-    backgroundColor: '#333',
-    borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});
+const createStyles = (theme: Theme) => {
+  const { colors, typography, spacing } = theme;
+  return StyleSheet.create({
+    // Same recipe as AuthScreen: this stack centres a short form on the dark
+    // background rather than scrolling a padded page, so it keeps the
+    // KeyboardAvoidingView instead of ScreenContainer.
+    container: {
+      flex: 1,
+      justifyContent: 'center',
+      paddingHorizontal: spacing.xxl,
+      backgroundColor: colors.bg.base,
+    },
+    glow: {
+      justifyContent: 'flex-start',
+      paddingTop: spacing.xxxl,
+    },
+    submit: {
+      marginTop: spacing.xs,
+    },
+    headerTitle: {
+      fontFamily: typography.family.heading,
+      fontSize: typography.size.h2,
+      color: colors.text.primary,
+    },
+  });
+};
