@@ -11,9 +11,44 @@ import { rawQuestionSchema, mapRawQuestion, Question } from '../domain/types';
 //
 // Unrelated to GET /deck despite the name: that one is the closed-deck
 // entitlement ("which locked cards do we own"), this one is content to play.
+
+// Why an empty deck is empty (S4a backend). Present only when the pool came back
+// with nothing — a deck with cards in it never carries this.
+//
+//   other_categories — this category is spent, others still have cards
+//   locked_available — everything free is played; what is left costs a credit
+//   complete         — the couple has played the whole deck
+const exhaustionSchema = z.object({
+  reason: z.enum(['other_categories', 'locked_available', 'complete']),
+  locked_remaining: z.number(),
+});
+
 const deckResponseSchema = z.object({
   questions: z.array(rawQuestionSchema),
+  // Optional, nullable AND caught, which is three defences for two different
+  // futures. Optional/nullable is the backend that does not send it (an older
+  // build, or any deck that is not empty). `.catch(null)` is the backend that
+  // sends a reason this build has never heard of: a fourth kind of exhaustion
+  // must degrade to "no reason given", which the setup screen answers with its
+  // neutral message. Without it, one unknown string would fail the parse of the
+  // WHOLE deck and turn "you have played everything" into "could not fetch
+  // questions" — the exact confusion S4b exists to remove.
+  exhaustion: exhaustionSchema.optional().nullable().catch(null),
 });
+
+export type DeckExhaustionReason = z.infer<typeof exhaustionSchema>['reason'];
+
+export type DeckExhaustion = {
+  reason: DeckExhaustionReason;
+  lockedRemaining: number;
+};
+
+export type GameDeck = {
+  questions: Question[];
+  // Null means "there is nothing to explain": either the deck has cards, or the
+  // server gave no reason we understand.
+  exhaustion: DeckExhaustion | null;
+};
 
 /**
  * Fetches the deck for one local session.
@@ -30,7 +65,13 @@ const deckResponseSchema = z.object({
  * `limit` is clamped server-side to 1..100 and defaults to 40 there; we leave it
  * to the backend rather than restating a number that would then live in two
  * places. An exhausted deck comes back as an empty list, not an error — the
- * setup screen says so instead of walking into an empty game.
+ * setup screen says so instead of walking into an empty game, and since S4a it
+ * can say WHY: `exhaustion` tells apart a spent category from a paywall from a
+ * finished deck, which are three different things to tell a couple.
+ *
+ * The reason is dropped whenever cards did come back. The contract says it is
+ * only ever sent with an empty pool, and enforcing that in the one place that
+ * reads it is cheaper than every caller having to remember the rule.
  *
  * The cards carry `liked` since S3a, as /questions/next always has. Nothing here
  * had to change for it — rawQuestionSchema already declared the field optional
@@ -40,11 +81,24 @@ const deckResponseSchema = z.object({
  */
 export async function fetchGameDeck(
   categorySlug: string | null,
-): Promise<Question[]> {
+): Promise<GameDeck> {
   const res = await apiClient.get('/questions/deck', {
     params: categorySlug ? { category_slug: categorySlug } : {},
   });
-  return deckResponseSchema.parse(res.data).questions.map(mapRawQuestion);
+  const parsed = deckResponseSchema.parse(res.data);
+  const questions = parsed.questions.map(mapRawQuestion);
+  const exhaustion = parsed.exhaustion ?? null;
+
+  return {
+    questions,
+    exhaustion:
+      questions.length > 0 || exhaustion === null
+        ? null
+        : {
+            reason: exhaustion.reason,
+            lockedRemaining: exhaustion.locked_remaining,
+          },
+  };
 }
 
 // POST /game/local/report — the cards this phone dealt, sent in one batch after

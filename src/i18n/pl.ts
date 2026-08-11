@@ -205,15 +205,47 @@ export const pl = {
     player2Required: 'Wpisz imię drugiego gracza.',
     player2TooLong: 'Imię może mieć najwyżej 60 znaków.',
     categoryPrompt: 'Wybierzcie kategorię, żeby zacząć',
-    // Resume prompt, e.g. "Piotr i Wiktoria — karta 4 z 20".
+    // Resume prompt, e.g. "Z Wiktorią · Randka — karta 4 z 20". Kategoria jest
+    // tu, bo jeden slot na grę znaczy, że to jedyne miejsce, gdzie widać CO się
+    // wznawia — samo imię i numer karty pasują do każdej odłożonej gry.
     resumeTitle: 'Macie niedokończoną grę',
-    resumeSummary: (player2: string, current: number, total: number) =>
-      `Z ${player2} — karta ${current} z ${total}`,
+    resumeSummary: (
+      player2: string,
+      category: string,
+      current: number,
+      total: number,
+    ) => `Z ${player2} · ${category} — karta ${current} z ${total}`,
+    // Nazwa kategorii na karcie „wznów" dla gry na wymieszanej talii.
+    resumeMix: 'mix',
     resumeButton: 'Wznów grę',
     restartButton: 'Zacznij od nowa',
-    deckEmpty:
-      'Zagraliście już wszystkie pytania z tej kategorii. Wybierzcie inną.',
+    // Jeden slot na grę lokalną: nowa gra o innej konfiguracji nadpisuje tę
+    // odłożoną, więc pytamy, zanim to zrobimy.
+    overwriteTitle: 'Masz niedokończoną grę',
+    overwriteMessage: 'Zaczynając nową, stracisz ją. Kontynuować?',
+    overwriteCancel: 'Anuluj',
+    overwriteConfirm: 'Zacznij nową',
+    // Fallback na pustą pulę BEZ powodu — starszy backend albo powód, którego ta
+    // wersja nie zna (patrz .catch(null) w src/api/localGame.ts). Neutralny,
+    // dlatego nie mówi „z tej kategorii": przy mixie żadnej kategorii nie było.
+    deckEmpty: 'Nie ma teraz kart do zagrania. Spróbujcie innej kategorii.',
     deckError: 'Nie udało się pobrać pytań.',
+
+    // Pusta pula z powodem (S4b). Trzy różne sytuacje, które do tej pory
+    // wyglądały identycznie — i jak reszta tej sekcji, treść robocza: Wiktoria
+    // dopracuje (§10 / #36). To samo dotyczy złota na wariancie „complete",
+    // które dostanie swój token w S_polish.
+    exhaustion: {
+      otherCategoriesTitle: 'Koniec kart w tej kategorii',
+      otherCategoriesBody: 'Skończyły się karty w tej kategorii. Spróbujcie innej.',
+      lockedTitle: 'Koniec darmowych kart',
+      lockedBody: 'Skończyły się darmowe karty.',
+      // „Zostało 12 zamkniętych kart" — pomijane, gdy backend nie podał liczby.
+      lockedRemaining: (count: number) => `Zostało ${count} zamkniętych kart`,
+      lockedCta: 'Odblokujcie więcej →',
+      completeTitle: 'Ukończyliście całą talię!',
+      completeBody: 'Zagraliście każdą kartę, jaką mamy. Gratulacje.',
+    },
 
     headerTitle: 'Gra',
     // Card header, e.g. "Karta 3 z 20 · Tura: Wiktoria".
@@ -221,16 +253,20 @@ export const pl = {
       `Karta ${current} z ${total} · Tura: ${player}`,
     challengeHeader: 'Wyzwanie',
     // Nad listą opcji na karcie „do wyboru" (S2) — jedna odpowiedź albo kilka,
-    // zależnie od tego, co mówi sama karta.
-    pickOne: 'Wybierz odpowiedź',
-    pickMany: 'Możesz wybrać kilka',
-    // The written answer is optional — the field stays hidden behind this.
-    writeToggleShow: 'Odpowiedz',
+    // zależnie od tego, co mówi sama karta. Z imieniem, bo na karcie do wpisania
+    // czyja jest tura widać w placeholderze pola, a picker takiego miejsca nie
+    // ma: bez imienia dwie osoby nad jednym telefonem nie wiedzą, kto wybiera.
+    pickOne: (player: string) => `${player} — wybierz odpowiedź`,
+    pickMany: (player: string) => `${player} — możesz wybrać kilka`,
+    // The written answer is optional — the field stays hidden behind this. Od
+    // S_polish to subtelny inline w karcie, nie przycisk: pisanie jest dodatkiem,
+    // a obrysowany przycisk konkurował z dwoma realnymi akcjami pod kartą.
+    writeToggleShow: '+ dopisz odpowiedź',
     writeToggleHide: 'Ukryj pole',
     answerPlaceholder: (player: string) => `Odpowiedź: ${player}`,
     passButton: 'Przekaż kolejkę',
     nextButton: 'Następne pytanie',
-    challengeDoneButton: 'Dalej',
+    challengeDoneButton: 'Zrobione',
     skipButton: 'Pomiń',
     pauseButton: 'Przerwij',
     saveButton: 'Zapisz wspomnienie',

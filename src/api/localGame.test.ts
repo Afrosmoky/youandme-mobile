@@ -27,7 +27,7 @@ describe('fetchGameDeck', () => {
       .mocked(apiClient.get)
       .mockResolvedValue(res({ questions: [rawQuestion('Q1', false)] }));
 
-    const questions = await fetchGameDeck('randka');
+    const { questions } = await fetchGameDeck('randka');
 
     expect(apiClient.get).toHaveBeenCalledWith('/questions/deck', {
       params: { category_slug: 'randka' },
@@ -57,7 +57,7 @@ describe('fetchGameDeck', () => {
       }),
     );
 
-    const questions = await fetchGameDeck('randka');
+    const { questions } = await fetchGameDeck('randka');
 
     expect(questions.map(q => q.liked)).toEqual([true, false]);
   });
@@ -68,10 +68,84 @@ describe('fetchGameDeck', () => {
     const { liked, ...withoutLiked } = rawQuestion('Q1', true);
     jest.mocked(apiClient.get).mockResolvedValue(res({ questions: [withoutLiked] }));
 
-    const questions = await fetchGameDeck(null);
+    const { questions } = await fetchGameDeck(null);
 
     expect(liked).toBe(true);
     expect(questions[0].liked).toBe(false);
+  });
+});
+
+// S4a/S4b: an empty pool now says WHY, and the three reasons are three different
+// things to tell a couple — a spent category, a paywall, a finished deck.
+describe('fetchGameDeck — why the pool is empty', () => {
+  const empty = (exhaustion: unknown) =>
+    jest.mocked(apiClient.get).mockResolvedValue(res({ questions: [], exhaustion }));
+
+  beforeEach(() => jest.clearAllMocks());
+
+  test.each([
+    ['other_categories'],
+    ['locked_available'],
+    ['complete'],
+  ])('reads %s back, with the locked count in camelCase', async reason => {
+    empty({ reason, locked_remaining: 12 });
+
+    const deck = await fetchGameDeck('randka');
+
+    expect(deck.questions).toEqual([]);
+    expect(deck.exhaustion).toEqual({ reason, lockedRemaining: 12 });
+  });
+
+  // The old backend, and every deck that is not empty. Neither is an error; the
+  // setup screen answers both with its neutral message.
+  test('a payload without the field carries no reason', async () => {
+    jest.mocked(apiClient.get).mockResolvedValue(res({ questions: [] }));
+
+    expect((await fetchGameDeck('randka')).exhaustion).toBeNull();
+  });
+
+  test('an explicit null carries no reason either', async () => {
+    empty(null);
+
+    expect((await fetchGameDeck('randka')).exhaustion).toBeNull();
+  });
+
+  // The whole point of .catch(null) on the field. A fourth reason must cost the
+  // couple a vaguer message, not the deck: without it the parse of the WHOLE
+  // response fails and "you have played everything" becomes "could not fetch
+  // questions" — the confusion S4b exists to remove.
+  test('a reason this build has never heard of degrades to none', async () => {
+    empty({ reason: 'seasonal_pause', locked_remaining: 3 });
+
+    await expect(fetchGameDeck('randka')).resolves.toEqual({
+      questions: [],
+      exhaustion: null,
+    });
+  });
+
+  test('a malformed reason object degrades the same way', async () => {
+    empty({ reason: 'complete' });
+
+    await expect(fetchGameDeck(null)).resolves.toEqual({
+      questions: [],
+      exhaustion: null,
+    });
+  });
+
+  // The contract says the field only ever travels with an empty pool. Enforced
+  // here, once, rather than trusted to every reader.
+  test('a deck with cards in it never carries a reason', async () => {
+    jest.mocked(apiClient.get).mockResolvedValue(
+      res({
+        questions: [rawQuestion('Q1', false)],
+        exhaustion: { reason: 'complete', locked_remaining: 0 },
+      }),
+    );
+
+    const deck = await fetchGameDeck('randka');
+
+    expect(deck.questions).toHaveLength(1);
+    expect(deck.exhaustion).toBeNull();
   });
 });
 

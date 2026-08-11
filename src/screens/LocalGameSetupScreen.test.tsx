@@ -50,6 +50,11 @@ const question = (n: number): Question => ({
   isLocked: false,
 });
 
+// The deck endpoint answers with a pool and, when that pool is empty, a reason
+// (S4a). Both suites below deal decks through this.
+const deck = (questions: Question[], exhaustion: DeckExhaustion | null = null) =>
+  ({ questions, exhaustion });
+
 const navigate = jest.fn();
 
 function makeProps(): Props {
@@ -163,6 +168,7 @@ describe('LocalGameSetupScreen', () => {
     expect(await screen.findByTestId('category-list-error')).toHaveTextContent(
       pl.localGame.deckEmpty,
     );
+    expect(screen.queryByTestId('local-game-exhaustion')).toBeNull();
     expect(navigate).not.toHaveBeenCalled();
     expect(await loadLocalGameState()).toBeNull();
   });
@@ -178,22 +184,183 @@ describe('LocalGameSetupScreen', () => {
   });
 });
 
-describe('LocalGameSetupScreen — a paused game', () => {
-  const paused = () =>
-    startLocalGame({
-      player1: 'piotr_s',
-      player2: 'Wiktoria',
-      categorySlug: 'randka',
-      questions: [question(1), question(2), question(3)],
-      challenges: [],
-      startedAt: '2026-08-05T18:00:00.000Z',
-    });
+// S4b: an empty pool used to look exactly like a failed request — one red line
+// in the error slot, saying "pick another category" whether or not there was
+// another category to pick. Three reasons, three answers, and the panel is a
+// normal state of the game rather than something that went wrong.
+describe('LocalGameSetupScreen — an exhausted deck', () => {
+  const exhausted = (
+    reason: DeckExhaustion['reason'],
+    lockedRemaining = 0,
+  ) =>
+    jest
+      .mocked(fetchGameDeck)
+      .mockResolvedValue(deck([], { reason, lockedRemaining }));
 
   beforeEach(async () => {
     jest.clearAllMocks();
     await clearLocalGameState();
     jest.mocked(listCategories).mockResolvedValue(categories);
-    jest.mocked(fetchGameDeck).mockResolvedValue([question(1)]);
+    jest
+      .mocked(reportPlayedCards)
+      .mockResolvedValue({ playedTotal: 0, newlyPlayed: 0 });
+    jest.mocked(useAuth).mockReturnValue({ user, couple } as ReturnType<
+      typeof useAuth
+    >);
+  });
+
+  // The tiles below the panel are the action, so the panel does not repeat it.
+  test('a spent category sends them back to the tiles, with no CTA', async () => {
+    exhausted('other_categories');
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('category-randka'));
+
+    expect(
+      await screen.findByTestId('local-game-exhaustion-body'),
+    ).toHaveTextContent(pl.localGame.exhaustion.otherCategoriesBody);
+    expect(screen.queryByTestId('local-game-exhaustion-cta')).toBeNull();
+    // The tiles are still right there, and nothing was started.
+    expect(screen.getByTestId('category-randka')).toBeOnTheScreen();
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  test('a paywall says so and counts what is behind it', async () => {
+    exhausted('locked_available', 12);
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('category-randka'));
+
+    expect(
+      await screen.findByTestId('local-game-exhaustion-body'),
+    ).toHaveTextContent(pl.localGame.exhaustion.lockedBody);
+    expect(
+      screen.getByTestId('local-game-exhaustion-remaining'),
+    ).toHaveTextContent(pl.localGame.exhaustion.lockedRemaining(12));
+  });
+
+  // The one CTA of the three, and it points at the screen that already owns
+  // unlocking — cards with "unlock (1 credit)", credits, and the rewards link
+  // in its header. Nothing about ads or premium is restated on this panel.
+  test('the paywall CTA hands over to the deck screen', async () => {
+    exhausted('locked_available', 3);
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('category-randka'));
+    fireEvent.press(await screen.findByTestId('local-game-exhaustion-cta'));
+
+    expect(navigate).toHaveBeenCalledWith('Deck');
+  });
+
+  // A count of zero would contradict the reason it comes with, so it is left off
+  // rather than printed.
+  test('a paywall with no count left prints no count', async () => {
+    exhausted('locked_available', 0);
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('category-randka'));
+
+    await screen.findByTestId('local-game-exhaustion');
+    expect(screen.queryByTestId('local-game-exhaustion-remaining')).toBeNull();
+    // The way onward still stands: credits are not the only way to unlock.
+    expect(screen.getByTestId('local-game-exhaustion-cta')).toBeOnTheScreen();
+  });
+
+  // Selling more cards to a couple who has played every one of them would be
+  // selling something that does not exist.
+  test('a finished deck celebrates and offers nothing to unlock', async () => {
+    exhausted('complete');
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('category-randka'));
+
+    expect(
+      await screen.findByTestId('local-game-exhaustion-body'),
+    ).toHaveTextContent(pl.localGame.exhaustion.completeBody);
+    expect(screen.queryByTestId('local-game-exhaustion-cta')).toBeNull();
+    expect(screen.queryByTestId('local-game-exhaustion-remaining')).toBeNull();
+  });
+
+  // The two channels stay apart: this is a state of the game, not a failure, so
+  // it does not land in the slot that says something went wrong.
+  test('exhaustion does not show up as an error', async () => {
+    exhausted('complete');
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('category-randka'));
+
+    await screen.findByTestId('local-game-exhaustion');
+    expect(screen.queryByTestId('category-list-error')).toBeNull();
+  });
+
+  // Otherwise the answer to the previous tap would stand over the next one.
+  test('the panel is cleared by the next attempt', async () => {
+    exhausted('complete');
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('category-randka'));
+    await screen.findByTestId('local-game-exhaustion');
+
+    jest.mocked(fetchGameDeck).mockResolvedValue(deck([question(1)]));
+    fireEvent.press(screen.getByTestId('category-mix'));
+
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('LocalGame'));
+    expect(screen.queryByTestId('local-game-exhaustion')).toBeNull();
+  });
+
+  // A deck with cards in it is untouched by any of this — no panel, and the game
+  // opens exactly as it did before S4b.
+  test('a deck with cards opens the game and shows no panel', async () => {
+    jest.mocked(fetchGameDeck).mockResolvedValue(deck([question(1)]));
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('category-randka'));
+
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('LocalGame'));
+    expect(screen.queryByTestId('local-game-exhaustion')).toBeNull();
+    expect(await loadLocalGameState()).not.toBeNull();
+  });
+});
+
+describe('LocalGameSetupScreen — a paused game', () => {
+  const paused = (
+    categorySlug: string | null = 'randka',
+    categoryName: string | null = 'Randka',
+  ) =>
+    startLocalGame({
+      player1: 'piotr_s',
+      player2: 'Wiktoria',
+      categorySlug,
+      categoryName,
+      questions: [question(1), question(2), question(3)],
+      challenges: [],
+      startedAt: '2026-08-05T18:00:00.000Z',
+    });
+
+  // There is one slot for a local game, so starting a different one ends the
+  // paused one — and that now asks first. Every "deals a fresh deck" path in
+  // this suite goes through the warning; these two helpers answer it, and the
+  // warning itself is tested further down.
+  let alert: jest.SpyInstance;
+
+  const overwriteButtons = () =>
+    alert.mock.calls.at(-1)?.[2] as AlertButton[] | undefined;
+
+  const confirmOverwrite = async () => {
+    const confirm = overwriteButtons()?.find(
+      button => button.text === pl.localGame.overwriteConfirm,
+    );
+    await act(async () => {
+      confirm?.onPress?.();
+    });
+  };
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    await clearLocalGameState();
+    alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    jest.mocked(listCategories).mockResolvedValue(categories);
+    jest.mocked(fetchGameDeck).mockResolvedValue(deck([question(1)]));
     jest
       .mocked(reportPlayedCards)
       .mockResolvedValue({ playedTotal: 0, newlyPlayed: 0 });
