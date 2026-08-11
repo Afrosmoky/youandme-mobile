@@ -234,6 +234,33 @@ describe('LocalGameScreen', () => {
     expect(screen.getByTestId('local-game-answer')).toHaveProp('value', '');
   });
 
+  // S_polish: the question lives in a bordered card, the two secondaries share a
+  // row under it, and the primary spans the width below them. This is layout
+  // only — every control is the one that was there before, under its own testID.
+  test('the card frame holds the question, and the footer holds the actions', async () => {
+    await saveLocalGameState(session(20));
+    renderScreen();
+
+    const card = await screen.findByTestId('local-game-card');
+    // The question and the way it is answered are IN the card.
+    expect(within(card).getByTestId('local-game-question')).toHaveTextContent(
+      'Pytanie 1?',
+    );
+    expect(
+      within(card).getByTestId('local-game-write-toggle'),
+    ).toBeOnTheScreen();
+
+    // The counter is not: it belongs to the session, not to one question.
+    expect(within(card).queryByTestId('local-game-header')).toBeNull();
+    expect(screen.getByTestId('local-game-header')).toBeOnTheScreen();
+
+    // Neither are the actions.
+    for (const action of ['save', 'skip', 'primary']) {
+      expect(screen.getByTestId(`local-game-${action}`)).toBeOnTheScreen();
+      expect(within(card).queryByTestId(`local-game-${action}`)).toBeNull();
+    }
+  });
+
   test('a challenge gets its own layout and a single way onward', async () => {
     // Interval 1: question, challenge, question.
     await saveLocalGameState(session(3, 1));

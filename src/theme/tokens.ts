@@ -18,11 +18,19 @@ export const colorSchemes = {
       secondary: '#9a9aa2',
       muted: '#7e7e86',
     },
+    // Warmed towards amber in S_polish: the first pass read as yellow rather
+    // than gold. Only the four surface tones moved; border, borderStrong,
+    // goldTint and onGold are unchanged.
+    //
+    // The two invariants this palette has to keep, both checked rather than
+    // eyeballed: the lightness order bright > primary > mid > deep (relative
+    // luminance 0.579 / 0.482 / 0.408 / 0.235), and onGold on primary, which
+    // stays AAA at 9.15:1 (it was 11.72:1 on the yellower gold).
     gold: {
-      primary: '#f0cd68',
-      bright: '#f4d67a',
-      mid: '#eac259',
-      deep: '#b08d2e',
+      primary: '#e0b24e',
+      bright: '#ecc36a',
+      mid: '#d3a441',
+      deep: '#a67f31',
       border: '#3a3020',
       borderStrong: '#6e5a24',
       onGold: '#16161a',

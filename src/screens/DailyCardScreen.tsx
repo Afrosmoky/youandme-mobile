@@ -20,8 +20,9 @@ import { parseApiError } from '../api/errors';
 import { isStreakMilestone } from '../domain/streak';
 import { notifyStreakMilestone } from '../notifications/notifee';
 import { ScreenContainer } from '../components/ScreenContainer';
+import { GameCard } from '../components/GameCard';
 import { GoldButton } from '../components/GoldButton';
-import { LikeHeart } from '../components/LikeHeart';
+import { SectionLabel } from '../components/SectionLabel';
 import { Celebration } from '../components/Celebration';
 import { Theme, useTheme } from '../theme';
 import { pl } from '../i18n/pl';
@@ -148,34 +149,44 @@ export function DailyCardScreen({ navigation }: Props) {
 
   return (
     <ScreenContainer testID="daily-card-screen">
-      <View style={styles.questionRow}>
+      {/* The same frame, label and corner hearts as a card of the local game
+          (S_polish): the daily question IS a card, and the two screens were
+          drawing it two different ways. */}
+      <SectionLabel style={styles.cardLabel}>
+        {pl.dailyCard.cardLabel}
+      </SectionLabel>
+
+      <GameCard
+        testID="daily-card-card"
+        style={styles.card}
+        like={{
+          liked: daily?.question.liked ?? false,
+          onToggle: onToggleLike,
+          disabled: !daily || like.isPending,
+          testID: 'daily-card-like',
+        }}>
         <Text testID="daily-card-question" style={styles.question}>
           {daily?.question.body}
         </Text>
-        <LikeHeart
-          testID="daily-card-like"
-          liked={daily?.question.liked ?? false}
-          onToggle={onToggleLike}
-          disabled={!daily || like.isPending}
-        />
-      </View>
 
-      {answered ? (
-        <View>
-          <Text style={styles.answeredTitle}>{pl.dailyCard.answeredTitle}</Text>
-          <TouchableOpacity
-            testID="daily-card-answered-link"
-            onPress={() => navigation.navigate('Memories')}>
-            <Text style={styles.answeredLink}>{pl.dailyCard.answeredLink}</Text>
-          </TouchableOpacity>
-        </View>
-      ) : (
-        <>
-          {error && (
-            <Text testID="daily-card-error" style={styles.error}>
-              {error}
+        {/* Answered is a state OF the card, so it stays inside it rather than
+            replacing it — the couple can still read what they answered, and
+            still like it. */}
+        {answered ? (
+          <View>
+            <Text style={styles.answeredTitle}>
+              {pl.dailyCard.answeredTitle}
             </Text>
-          )}
+            <TouchableOpacity
+              testID="daily-card-answered-link"
+              onPress={() => navigation.navigate('Memories')}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={styles.answeredLink}>
+                {pl.dailyCard.answeredLink}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
           <TextInput
             testID="daily-card-input"
             style={styles.input}
@@ -187,13 +198,24 @@ export function DailyCardScreen({ navigation }: Props) {
             value={text}
             onChangeText={setText}
           />
-          <GoldButton
-            testID="daily-card-submit"
-            title={pl.dailyCard.submitButton}
-            onPress={onSubmit}
-            loading={answer.isPending}
-          />
-        </>
+        )}
+      </GameCard>
+
+      {error && (
+        <Text testID="daily-card-error" style={styles.error}>
+          {error}
+        </Text>
+      )}
+
+      {/* One primary action across the width, under the card — the game's
+          footer minus the two secondaries it has no use for. */}
+      {!answered && (
+        <GoldButton
+          testID="daily-card-submit"
+          title={pl.dailyCard.submitButton}
+          onPress={onSubmit}
+          loading={answer.isPending}
+        />
       )}
 
       <Celebration
@@ -220,18 +242,18 @@ const createStyles = (theme: Theme) => {
       fontSize: typography.size.h2,
       color: colors.text.primary,
     },
-    questionRow: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      marginBottom: spacing.xxl,
+    cardLabel: {
+      marginBottom: spacing.md,
+    },
+    card: {
+      marginBottom: spacing.xl,
     },
     question: {
-      flex: 1,
       fontFamily: typography.family.heading,
       fontSize: typography.size.h2,
       color: colors.text.primary,
       lineHeight: typography.size.h2 * 1.3,
-      marginRight: spacing.md,
+      marginBottom: spacing.xl,
     },
     error: {
       fontFamily: typography.family.body,
@@ -247,7 +269,6 @@ const createStyles = (theme: Theme) => {
       fontFamily: typography.family.body,
       fontSize: typography.size.body,
       color: colors.text.primary,
-      marginBottom: spacing.xl,
     },
     answeredTitle: {
       fontFamily: typography.family.heading,

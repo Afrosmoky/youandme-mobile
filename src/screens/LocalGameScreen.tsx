@@ -41,7 +41,7 @@ import { useMilestoneCelebration } from '../queries/useMilestoneCelebration';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { Badge } from '../components/Badge';
 import { Celebration } from '../components/Celebration';
-import { LikeHeart } from '../components/LikeHeart';
+import { GameCard } from '../components/GameCard';
 import { SectionLabel } from '../components/SectionLabel';
 import { GoldButton } from '../components/GoldButton';
 import { OutlineButton } from '../components/OutlineButton';
@@ -368,14 +368,26 @@ export function LocalGameScreen({ navigation }: Props) {
     />
   );
 
+  // The same frame as a question, so the rhythm of the session does not break
+  // for one card — and without the two things a challenge has no business
+  // carrying: no heart (there is nothing server-side to like an instruction on)
+  // and no save (a memory is a pair of answers to a question).
   if (item?.kind === 'challenge') {
     return (
       <ScreenContainer testID="local-game-challenge">
-        <SectionLabel>{pl.localGame.challengeHeader}</SectionLabel>
-        <Text testID="local-game-challenge-title" style={styles.challengeTitle}>
-          {item.challenge.title}
-        </Text>
-        <Text style={styles.challengeBody}>{item.challenge.description}</Text>
+        <SectionLabel style={styles.cardLabel}>
+          {pl.localGame.challengeHeader}
+        </SectionLabel>
+
+        <GameCard testID="local-game-card" style={styles.card}>
+          <Text
+            testID="local-game-challenge-title"
+            style={styles.challengeTitle}>
+            {item.challenge.title}
+          </Text>
+          <Text style={styles.challengeBody}>{item.challenge.description}</Text>
+        </GameCard>
+
         <GoldButton
           testID="local-game-primary"
           title={pl.localGame.challengeDoneButton}

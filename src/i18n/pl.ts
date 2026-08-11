@@ -377,8 +377,10 @@ export const pl = {
 
   dailyCard: {
     headerTitle: 'Karta dnia',
+    // Etykieta nad ramką karty (S_polish), złote wersaliki jak licznik w grze.
+    cardLabel: 'Pytanie dnia',
     placeholder: 'Wpisz odpowiedź...',
-    submitButton: 'Zapisz',
+    submitButton: 'Zapisz odpowiedź',
     answeredTitle: 'Odpowiedziane dziś',
     answeredLink: 'Odpowiedziane — zobacz we wspomnieniach',
     emptyAnswer: 'Najpierw wpisz odpowiedź.',
