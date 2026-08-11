@@ -33,10 +33,28 @@ function extractFields(errors: unknown): FieldErrors {
   return fields;
 }
 
+// Whether a failure is the server saying "this does not exist".
+//
+// The one status that changes what a screen should DO rather than what it says:
+// a 404 has nothing to retry, so MemoryCardScreen falls back to the list for it
+// while staying put with a retry for everything else. Kept next to
+// parseApiError because both read the same axios shape, and separate from it
+// because the parser answers "what do we tell the user", not "is it gone".
+export function isNotFound(err: unknown): boolean {
+  return axios.isAxiosError(err) && err.response?.status === 404;
+}
+
 // Turns an API/network failure into a banner string plus per-field messages.
 // `fallback` is the screen-specific message used for network and unexpected
 // errors. 401/429 map to fixed Polish strings; 422 reads the backend payload.
 export function parseApiError(err: unknown, fallback: string): ParsedApiError {
+  // Screens that render an error state compute the message next to the rest of
+  // their state, which means calling this while TanStack still reports `error:
+  // null`. Answering the fallback for "no error" costs one line and keeps every
+  // callsite from having to guard.
+  if (err === null || err === undefined) {
+    return { topLevel: fallback, fields: {} };
+  }
   if (axios.isAxiosError(err)) {
     // No response at all = network failure (connection refused, timeout, DNS).
     // Must be checked before status so it is not masked as a generic error.

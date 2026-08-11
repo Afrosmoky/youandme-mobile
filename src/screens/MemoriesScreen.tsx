@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import React, { useLayoutEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -12,7 +12,10 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useMemories } from '../queries/useMemories';
 import { useSetMemoryFavorite } from '../queries/useSetMemoryFavorite';
+import { parseApiError } from '../api/errors';
 import { Card } from '../components/Card';
+import { EmptyState } from '../components/EmptyState';
+import { ErrorState } from '../components/ErrorState';
 import { SectionLabel } from '../components/SectionLabel';
 import { Badge } from '../components/Badge';
 import { LikeHeart } from '../components/LikeHeart';
@@ -56,6 +59,7 @@ export function MemoriesScreen({ navigation }: Props) {
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const {
     data,
+    error,
     isLoading,
     isError,
     isRefetching,
@@ -69,15 +73,11 @@ export function MemoriesScreen({ navigation }: Props) {
   // Flatten the paginated cache into a single newest-first list for the FlatList.
   const memories = data?.pages.flatMap(page => page.memories) ?? [];
 
-  // Preserve the previous behaviour: a failed initial load or page fetch shows
-  // the same alert. TanStack owns the error state, so we mirror it into the
-  // side-effect here. Fires once per transition into the error state (temporary
-  // pattern for this slice; superseded when error UI lands in P11).
-  useEffect(() => {
-    if (isError) {
-      Alert.alert(pl.appTitle, pl.memories.loadError);
-    }
-  }, [isError]);
+  // The message comes from the failure itself, not from a fixed string: a lost
+  // connection has to read as a lost connection, which is the whole reason this
+  // slice can skip a connectivity banner. `memories.loadError` is now the
+  // fallback for anything parseApiError cannot classify.
+  const errorMessage = parseApiError(error, pl.memories.loadError).topLevel;
 
   // Appends the next page when the user scrolls near the end. No-op while a
   // page is already loading or there is no further cursor.
@@ -141,10 +141,22 @@ export function MemoriesScreen({ navigation }: Props) {
       onEndReached={onEndReached}
       onEndReachedThreshold={0.5}
       ListFooterComponent={
+        // Two different failures hide under one `isError`. A page that fails
+        // while the list already holds memories must not wipe them off the
+        // screen, so that one gets a retry in the footer and the list stays
+        // where the couple scrolled it; a first load that fails has nothing to
+        // protect and goes through ListEmptyComponent below.
         isFetchingNextPage ? (
           <ActivityIndicator
             style={styles.footer}
             color={theme.colors.gold.primary}
+          />
+        ) : isError && memories.length > 0 ? (
+          <ErrorState
+            testID="memories-page-error"
+            message={errorMessage}
+            onRetry={() => fetchNextPage()}
+            style={styles.footer}
           />
         ) : null
       }
@@ -160,9 +172,24 @@ export function MemoriesScreen({ navigation }: Props) {
         </TouchableOpacity>
       }
       ListEmptyComponent={
-        <Text style={styles.emptyText}>
-          {favoritesOnly ? pl.memories.emptyFavorites : pl.memories.empty}
-        </Text>
+        // Nothing to show: either it broke or there is genuinely nothing here.
+        // The filter header stays visible above both, so a couple whose
+        // favourites view fails can still get back to the full list.
+        isError ? (
+          <ErrorState
+            testID="memories-error"
+            message={errorMessage}
+            onRetry={() => refetch()}
+            retrying={isRefetching}
+          />
+        ) : (
+          <EmptyState
+            testID="memories-empty"
+            title={
+              favoritesOnly ? pl.memories.emptyFavorites : pl.memories.empty
+            }
+          />
+        )
       }
       renderItem={({ item }) => (
         <Card
@@ -237,12 +264,6 @@ const createStyles = (theme: Theme) => {
       justifyContent: 'center',
       alignItems: 'center',
       padding: spacing.xxl,
-    },
-    emptyText: {
-      fontFamily: typography.family.body,
-      fontSize: typography.size.body,
-      color: colors.text.muted,
-      textAlign: 'center',
     },
     card: {
       marginBottom: spacing.md,

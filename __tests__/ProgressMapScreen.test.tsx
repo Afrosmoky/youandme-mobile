@@ -1,7 +1,7 @@
 import React from 'react';
-import {Alert} from 'react-native';
+import axios from 'axios';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
-import {screen, waitFor} from '@testing-library/react-native';
+import {fireEvent, screen, waitFor} from '@testing-library/react-native';
 import {renderWithQueryClient} from '../src/test/renderWithQueryClient';
 import {ProgressMapScreen} from '../src/screens/ProgressMapScreen';
 import {getProgress} from '../src/api/progress';
@@ -51,7 +51,7 @@ describe('ProgressMapScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.mocked(getProgress).mockResolvedValue(progress);
-    jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    jest.mocked(axios.isAxiosError).mockReturnValue(false);
   });
 
   test('renders a label for every milestone', async () => {
@@ -183,16 +183,44 @@ describe('ProgressMapScreen', () => {
     expect(screen.queryByTestId('progress-map')).toBeNull();
   });
 
-  test('alerts when the map cannot be loaded', async () => {
+  // P11: the alert that used to fire here closed and left the couple on the
+  // empty state, because `!progress` is true after a failed request too — a
+  // dropped connection told them their journey had not started yet.
+  test('a failed load is an error, not an empty journey', async () => {
     jest.mocked(getProgress).mockRejectedValue(new Error('network'));
 
     renderWithQueryClient(<ProgressMapScreen {...makeProps()} />);
 
-    await waitFor(() =>
-      expect(Alert.alert).toHaveBeenCalledWith(
-        pl.appTitle,
-        pl.progress.loadError,
-      ),
-    );
+    expect(await screen.findByTestId('progress-error')).toBeOnTheScreen();
+    expect(screen.getByText(pl.progress.loadError)).toBeOnTheScreen();
+    expect(screen.queryByTestId('progress-empty')).toBeNull();
+    expect(screen.queryByText(pl.progress.empty)).toBeNull();
+  });
+
+  test('a lost connection says so instead of blaming the map', async () => {
+    // The screens used to alert a fixed `loadError` for every failure, so
+    // networkError could never appear. This is why the slice needs no
+    // connectivity banner: the message already tells the truth.
+    const offline = {isAxiosError: true, response: undefined};
+    jest.mocked(axios.isAxiosError).mockImplementation(err => err === offline);
+    jest.mocked(getProgress).mockRejectedValue(offline);
+
+    renderWithQueryClient(<ProgressMapScreen {...makeProps()} />);
+
+    expect(await screen.findByText(pl.common.networkError)).toBeOnTheScreen();
+    expect(screen.queryByText(pl.progress.loadError)).toBeNull();
+  });
+
+  test('retry fetches the progress again', async () => {
+    jest.mocked(getProgress).mockRejectedValueOnce(new Error('network'));
+
+    renderWithQueryClient(<ProgressMapScreen {...makeProps()} />);
+    await screen.findByTestId('progress-error');
+
+    jest.mocked(getProgress).mockResolvedValue(progress);
+    fireEvent.press(screen.getByTestId('progress-error-retry'));
+
+    await waitFor(() => expect(getProgress).toHaveBeenCalledTimes(2));
+    expect(await screen.findByTestId('progress-map')).toBeOnTheScreen();
   });
 });

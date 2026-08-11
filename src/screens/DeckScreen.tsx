@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import React, { useLayoutEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -16,6 +16,8 @@ import { useUnlockQuestion } from '../queries/useUnlockQuestion';
 import { parseApiError } from '../api/errors';
 import { Badge } from '../components/Badge';
 import { Card } from '../components/Card';
+import { EmptyState } from '../components/EmptyState';
+import { ErrorState } from '../components/ErrorState';
 import { OutlineButton } from '../components/OutlineButton';
 import { SectionLabel } from '../components/SectionLabel';
 import { Theme, useTheme } from '../theme';
@@ -31,7 +33,14 @@ export function DeckScreen({ navigation }: Props) {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
 
-  const { data: deck, isLoading, isError, isRefetching, refetch } = useDeck();
+  const {
+    data: deck,
+    error,
+    isLoading,
+    isError,
+    isRefetching,
+    refetch,
+  } = useDeck();
   const { data: rewards } = useRewards();
   const { mutate: unlock } = useUnlockQuestion();
 
@@ -40,14 +49,9 @@ export function DeckScreen({ navigation }: Props) {
   // state — nothing outside this screen cares.
   const [unlockingUlid, setUnlockingUlid] = useState<string | null>(null);
 
-  // Mirrors the pre-TanStack catch, same as MemoriesScreen: a failed load shows
-  // an alert once per transition into the error state. Temporary until the
-  // error UI of P11.
-  useEffect(() => {
-    if (isError) {
-      Alert.alert(pl.appTitle, pl.deck.loadError);
-    }
-  }, [isError]);
+  // Read off the failure rather than fixed: `deck.loadError` is the fallback
+  // now, so a dropped connection says so instead of blaming the deck.
+  const errorMessage = parseApiError(error, pl.deck.loadError).topLevel;
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -128,7 +132,18 @@ export function DeckScreen({ navigation }: Props) {
           </View>
         ) : null
       }
-      ListEmptyComponent={<Text style={styles.emptyText}>{pl.deck.empty}</Text>}
+      ListEmptyComponent={
+        isError ? (
+          <ErrorState
+            testID="deck-error"
+            message={errorMessage}
+            onRetry={() => refetch()}
+            retrying={isRefetching}
+          />
+        ) : (
+          <EmptyState testID="deck-empty" title={pl.deck.empty} />
+        )
+      }
       renderItem={({ item }) => (
         <Card testID={`deck-card-${item.ulid}`} style={styles.card}>
           <View style={styles.cardHeader}>
@@ -231,12 +246,6 @@ const createStyles = (theme: Theme) => {
     },
     unlockButton: {
       marginTop: spacing.lg,
-    },
-    emptyText: {
-      fontFamily: typography.family.body,
-      fontSize: typography.size.body,
-      color: colors.text.muted,
-      textAlign: 'center',
     },
   });
 };

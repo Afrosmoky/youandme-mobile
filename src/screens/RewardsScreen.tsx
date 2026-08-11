@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import React, { useLayoutEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
@@ -8,6 +8,7 @@ import { useWatchAdForCredit } from '../queries/useWatchAdForCredit';
 import { parseApiError } from '../api/errors';
 import { AD_REWARD_ENABLED } from '../config/features';
 import { Card } from '../components/Card';
+import { ErrorState } from '../components/ErrorState';
 import { GoldButton } from '../components/GoldButton';
 import { OutlineButton } from '../components/OutlineButton';
 import { ScreenContainer } from '../components/ScreenContainer';
@@ -28,6 +29,7 @@ export function RewardsScreen({ navigation }: Props) {
 
   const {
     data: rewards,
+    error,
     isLoading,
     isError,
     isFetching: refreshingBalance,
@@ -44,12 +46,6 @@ export function RewardsScreen({ navigation }: Props) {
   // awaiting the server's callback. It is not server state — nothing can be
   // fetched to confirm it, which is exactly why it needs its own flag.
   const [creditPending, setCreditPending] = useState(false);
-
-  useEffect(() => {
-    if (isError) {
-      Alert.alert(pl.appTitle, pl.rewards.loadError);
-    }
-  }, [isError]);
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -118,6 +114,25 @@ export function RewardsScreen({ navigation }: Props) {
       <View style={styles.centered}>
         <ActivityIndicator color={theme.colors.gold.primary} />
       </View>
+    );
+  }
+
+  // The balance IS this screen. Showing the code form over a dash where the
+  // credits should be would read as a working screen with nothing in the
+  // account; and if /rewards cannot be reached, redeeming against it is not
+  // going to fare better.
+  if (isError) {
+    return (
+      <ScreenContainer
+        testID="rewards-screen"
+        contentContainerStyle={styles.stateContent}>
+        <ErrorState
+          testID="rewards-error"
+          message={parseApiError(error, pl.rewards.loadError).topLevel}
+          onRetry={() => refetchRewards()}
+          retrying={refreshingBalance}
+        />
+      </ScreenContainer>
     );
   }
 
@@ -219,6 +234,13 @@ const createStyles = (theme: Theme) => {
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: colors.bg.base,
+    },
+    // Lets EmptyState/ErrorState sit in the middle of the screen instead of
+    // hanging off the top: the components center their own content, the caller
+    // gives them the room. Same trick as the lists' emptyContent.
+    stateContent: {
+      flexGrow: 1,
+      justifyContent: 'center',
     },
     headerTitle: {
       fontFamily: typography.family.heading,

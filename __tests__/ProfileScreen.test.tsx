@@ -68,6 +68,9 @@ describe('ProfileScreen', () => {
     jest
       .mocked(fetchVerificationStatus)
       .mockResolvedValue({verified: false, daysSinceRegistration: 0});
+    // clearAllMocks clears calls, not implementations, and several tests below
+    // set isAxiosError to true. Reset it so a plain Error stays a plain Error.
+    jest.mocked(axios.isAxiosError).mockReturnValue(false);
     jest.mocked(useAuth).mockReturnValue({
       user,
       couple,
@@ -441,5 +444,72 @@ describe('ProfileScreen', () => {
     expect(screen.queryByTestId('profile-watch-ad')).toBeNull();
     expect(screen.getByTestId('profile-share')).toBeOnTheScreen();
     expect(screen.getByTestId('profile-rate')).toBeOnTheScreen();
+  });
+
+  // P11. The alert this replaces was the last one of its kind. Scoped to the
+  // slot the failed query actually feeds: the profile itself comes from the
+  // auth context, so only the verification status is missing.
+  describe('when the verification status cannot be loaded', () => {
+    test('shows the error state in place of the verification slot', async () => {
+      jest
+        .mocked(fetchVerificationStatus)
+        .mockRejectedValue(new Error('network'));
+
+      renderWithQueryClient(<ProfileScreen {...makeProps()} />);
+
+      expect(
+        await screen.findByTestId('profile-verification-error'),
+      ).toBeOnTheScreen();
+      expect(screen.getByText(pl.profile.loadError)).toBeOnTheScreen();
+    });
+
+    test('leaves the rest of the profile usable, logout included', async () => {
+      jest
+        .mocked(fetchVerificationStatus)
+        .mockRejectedValue(new Error('network'));
+
+      renderWithQueryClient(<ProfileScreen {...makeProps()} />);
+      await screen.findByTestId('profile-verification-error');
+
+      // Why this one is scoped rather than a whole-screen takeover: that would
+      // remove the way out on exactly the flaky connection that caused it.
+      expect(screen.getByDisplayValue('ola_test')).toBeOnTheScreen();
+      fireEvent.press(screen.getByTestId('profile-logout'));
+      expect(logout).toHaveBeenCalled();
+    });
+
+    test('a lost connection says so instead of blaming the profile', async () => {
+      const offline = {isAxiosError: true, response: undefined};
+      jest
+        .mocked(axios.isAxiosError)
+        .mockImplementation(err => err === offline);
+      jest.mocked(fetchVerificationStatus).mockRejectedValue(offline);
+
+      renderWithQueryClient(<ProfileScreen {...makeProps()} />);
+
+      expect(await screen.findByText(pl.common.networkError)).toBeOnTheScreen();
+      expect(screen.queryByText(pl.profile.loadError)).toBeNull();
+    });
+
+    test('retry re-reads the status and clears the slot', async () => {
+      jest
+        .mocked(fetchVerificationStatus)
+        .mockRejectedValueOnce(new Error('network'));
+
+      renderWithQueryClient(<ProfileScreen {...makeProps()} />);
+      await screen.findByTestId('profile-verification-error');
+
+      jest
+        .mocked(fetchVerificationStatus)
+        .mockResolvedValue({verified: true, daysSinceRegistration: 3});
+      fireEvent.press(screen.getByTestId('profile-verification-error-retry'));
+
+      await waitFor(() =>
+        expect(fetchVerificationStatus).toHaveBeenCalledTimes(2),
+      );
+      await waitFor(() =>
+        expect(screen.queryByTestId('profile-verification-error')).toBeNull(),
+      );
+    });
   });
 });

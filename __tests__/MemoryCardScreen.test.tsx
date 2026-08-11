@@ -233,11 +233,16 @@ describe('MemoryCardScreen', () => {
     expect(navigation.goBack).not.toHaveBeenCalled();
   });
 
-  // Most often a push pointing at something since deleted: the list is a better
-  // place to land than an empty card.
-  test('a memory that cannot be read falls back to the list', async () => {
+  // Two failures, two answers (P11 split). A 404 means the memory is gone —
+  // most often a push pointing at something since deleted — and there is
+  // nothing a retry could fix, so the P9 bounce to the list stands. Anything
+  // else is about the request, and landing on a list that is about to fail the
+  // same way helps nobody.
+  test('a deleted memory (404) falls back to the list', async () => {
     const {props, navigation} = makeProps();
-    jest.mocked(getMemory).mockRejectedValue(new Error('404'));
+    const gone = {isAxiosError: true, response: {status: 404, data: {}}};
+    jest.mocked(axios.isAxiosError).mockImplementation(err => err === gone);
+    jest.mocked(getMemory).mockRejectedValue(gone);
 
     renderWithQueryClient(<MemoryCardScreen {...props} />);
 
@@ -248,8 +253,53 @@ describe('MemoryCardScreen', () => {
       pl.appTitle,
       pl.memoryCard.loadError,
     );
+    // And never flashes the retry panel on its way out.
+    expect(screen.queryByTestId('memory-card-load-error')).toBeNull();
     await act(async () => {
       await Promise.resolve();
     });
+  });
+
+  test('a lost connection stays put and offers a retry', async () => {
+    const {props, navigation} = makeProps();
+    const offline = {isAxiosError: true, response: undefined};
+    jest.mocked(axios.isAxiosError).mockImplementation(err => err === offline);
+    jest.mocked(getMemory).mockRejectedValue(offline);
+
+    renderWithQueryClient(<MemoryCardScreen {...props} />);
+
+    expect(
+      await screen.findByTestId('memory-card-load-error'),
+    ).toBeOnTheScreen();
+    expect(screen.getByText(pl.common.networkError)).toBeOnTheScreen();
+    expect(navigation.replace).not.toHaveBeenCalled();
+  });
+
+  test('a server error stays put too', async () => {
+    const {props, navigation} = makeProps();
+    const broken = {isAxiosError: true, response: {status: 500, data: {}}};
+    jest.mocked(axios.isAxiosError).mockImplementation(err => err === broken);
+    jest.mocked(getMemory).mockRejectedValue(broken);
+
+    renderWithQueryClient(<MemoryCardScreen {...props} />);
+
+    expect(await screen.findByText(pl.common.serverError)).toBeOnTheScreen();
+    expect(navigation.replace).not.toHaveBeenCalled();
+  });
+
+  test('retry re-reads the memory', async () => {
+    const {props} = makeProps();
+    const offline = {isAxiosError: true, response: undefined};
+    jest.mocked(axios.isAxiosError).mockImplementation(err => err === offline);
+    jest.mocked(getMemory).mockRejectedValueOnce(offline);
+
+    renderWithQueryClient(<MemoryCardScreen {...props} />);
+    await screen.findByTestId('memory-card-load-error');
+
+    jest.mocked(getMemory).mockResolvedValue(memory);
+    fireEvent.press(screen.getByTestId('memory-card-load-error-retry'));
+
+    expect(await screen.findByTestId('memory-card-question')).toBeOnTheScreen();
+    await waitFor(() => expect(getMemory).toHaveBeenCalledTimes(2));
   });
 });

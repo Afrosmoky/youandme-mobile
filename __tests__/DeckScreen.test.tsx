@@ -56,6 +56,10 @@ describe('DeckScreen', () => {
     jest.clearAllMocks();
     jest.mocked(getDeck).mockResolvedValue(deck);
     jest.mocked(getRewards).mockResolvedValue(rewards);
+    // isAxiosError keeps whatever implementation a previous test gave it
+    // (clearAllMocks clears calls, not implementations), and the unlock tests
+    // set it to true. Reset it so the load-failure tests see a plain Error.
+    jest.mocked(axios.isAxiosError).mockReturnValue(false);
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   });
 
@@ -170,5 +174,62 @@ describe('DeckScreen', () => {
     expect(await screen.findByTestId('deck-complete')).toHaveTextContent(
       pl.deck.complete,
     );
+  });
+
+  // P11: the alert that used to fire here left an empty list behind, which read
+  // as "the deck is empty" rather than "we could not fetch it".
+  describe('when the deck cannot be loaded', () => {
+    test('shows the error state rather than the empty one', async () => {
+      jest.mocked(getDeck).mockRejectedValue(new Error('network'));
+
+      renderWithQueryClient(<DeckScreen {...makeProps()} />);
+
+      expect(await screen.findByTestId('deck-error')).toBeOnTheScreen();
+      expect(screen.getByText(pl.deck.loadError)).toBeOnTheScreen();
+      expect(screen.queryByTestId('deck-empty')).toBeNull();
+      expect(screen.queryByText(pl.deck.empty)).toBeNull();
+    });
+
+    test('a lost connection says so instead of blaming the deck', async () => {
+      const offline = {isAxiosError: true, response: undefined};
+      jest
+        .mocked(axios.isAxiosError)
+        .mockImplementation(err => err === offline);
+      jest.mocked(getDeck).mockRejectedValue(offline);
+
+      renderWithQueryClient(<DeckScreen {...makeProps()} />);
+
+      expect(await screen.findByText(pl.common.networkError)).toBeOnTheScreen();
+      expect(screen.queryByText(pl.deck.loadError)).toBeNull();
+    });
+
+    test('retry fetches the deck again', async () => {
+      jest.mocked(getDeck).mockRejectedValueOnce(new Error('network'));
+
+      renderWithQueryClient(<DeckScreen {...makeProps()} />);
+      await screen.findByTestId('deck-error');
+
+      jest.mocked(getDeck).mockResolvedValue(deck);
+      fireEvent.press(screen.getByTestId('deck-error-retry'));
+
+      expect(await screen.findByTestId('deck-card-q_01')).toBeOnTheScreen();
+      await waitFor(() => expect(getDeck).toHaveBeenCalledTimes(2));
+    });
+  });
+
+  test('an empty deck reads as empty', async () => {
+    jest.mocked(getDeck).mockResolvedValue({
+      lockedTotal: 0,
+      unlockedCount: 0,
+      complete: false,
+      cards: [],
+    });
+
+    renderWithQueryClient(<DeckScreen {...makeProps()} />);
+
+    expect(await screen.findByTestId('deck-empty')).toHaveTextContent(
+      pl.deck.empty,
+    );
+    expect(screen.queryByTestId('deck-error')).toBeNull();
   });
 });

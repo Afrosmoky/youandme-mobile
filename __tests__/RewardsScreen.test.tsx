@@ -76,17 +76,41 @@ describe('RewardsScreen', () => {
     expect(await screen.findByTestId('rewards-credits')).toHaveTextContent('0');
   });
 
-  test('alerts when the balance cannot be loaded', async () => {
+  // P11: the alert used to close and leave a dash where the balance goes, on a
+  // screen that otherwise looked like it was working. The balance IS this
+  // screen, so its failure takes the screen.
+  test('replaces the screen with the error state when the balance fails', async () => {
     jest.mocked(getRewards).mockRejectedValue(new Error('network'));
 
     renderWithQueryClient(<RewardsScreen {...makeProps()} />);
 
-    await waitFor(() =>
-      expect(Alert.alert).toHaveBeenCalledWith(
-        pl.appTitle,
-        pl.rewards.loadError,
-      ),
-    );
+    expect(await screen.findByTestId('rewards-error')).toBeOnTheScreen();
+    expect(screen.getByText(pl.rewards.loadError)).toBeOnTheScreen();
+    expect(screen.queryByTestId('rewards-credits')).toBeNull();
+  });
+
+  test('a lost connection says so instead of blaming the balance', async () => {
+    const offline = {isAxiosError: true, response: undefined};
+    jest.mocked(axios.isAxiosError).mockImplementation(err => err === offline);
+    jest.mocked(getRewards).mockRejectedValue(offline);
+
+    renderWithQueryClient(<RewardsScreen {...makeProps()} />);
+
+    expect(await screen.findByText(pl.common.networkError)).toBeOnTheScreen();
+    expect(screen.queryByText(pl.rewards.loadError)).toBeNull();
+  });
+
+  test('retry re-reads the balance', async () => {
+    jest.mocked(getRewards).mockRejectedValueOnce(new Error('network'));
+
+    renderWithQueryClient(<RewardsScreen {...makeProps()} />);
+    await screen.findByTestId('rewards-error');
+
+    jest.mocked(getRewards).mockResolvedValue(rewards);
+    fireEvent.press(screen.getByTestId('rewards-error-retry'));
+
+    expect(await screen.findByTestId('rewards-credits')).toBeOnTheScreen();
+    await waitFor(() => expect(getRewards).toHaveBeenCalledTimes(2));
   });
 
   // What actually ships today: the ad path is written and covered below, but a

@@ -1,7 +1,6 @@
-import React, { useEffect, useLayoutEffect, useMemo } from 'react';
+import React, { useLayoutEffect, useMemo } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   StyleSheet,
   Text,
   View,
@@ -10,6 +9,9 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useProgress } from '../queries/useProgress';
+import { parseApiError } from '../api/errors';
+import { EmptyState } from '../components/EmptyState';
+import { ErrorState } from '../components/ErrorState';
 import { ProgressMap } from '../components/ProgressMap';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { Theme, useTheme } from '../theme';
@@ -28,13 +30,14 @@ export function ProgressMapScreen({ navigation }: Props) {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { width: windowWidth } = useWindowDimensions();
 
-  const { data: progress, isLoading, isError } = useProgress();
-
-  useEffect(() => {
-    if (isError) {
-      Alert.alert(pl.appTitle, pl.progress.loadError);
-    }
-  }, [isError]);
+  const {
+    data: progress,
+    error,
+    isLoading,
+    isError,
+    isFetching,
+    refetch,
+  } = useProgress();
 
   useLayoutEffect(() => {
     navigation.setOptions({
@@ -57,14 +60,32 @@ export function ProgressMapScreen({ navigation }: Props) {
     );
   }
 
+  // Error before empty, and this order is the point. The two used to share one
+  // branch — `!progress` is true after a failed request as well — so a dropped
+  // connection told the couple their journey had not started yet.
+  if (isError) {
+    return (
+      <ScreenContainer
+        testID="progress-screen"
+        contentContainerStyle={styles.stateContent}>
+        <ErrorState
+          testID="progress-error"
+          message={parseApiError(error, pl.progress.loadError).topLevel}
+          onRetry={() => refetch()}
+          retrying={isFetching}
+        />
+      </ScreenContainer>
+    );
+  }
+
   // No milestones seeded yet: the artwork would render an empty trail, which
   // reads as breakage rather than as "nothing here yet".
   if (!progress || progress.milestones.length === 0) {
     return (
-      <ScreenContainer testID="progress-screen">
-        <Text testID="progress-empty" style={styles.empty}>
-          {pl.progress.empty}
-        </Text>
+      <ScreenContainer
+        testID="progress-screen"
+        contentContainerStyle={styles.stateContent}>
+        <EmptyState testID="progress-empty" title={pl.progress.empty} />
       </ScreenContainer>
     );
   }
@@ -90,11 +111,11 @@ const createStyles = (theme: Theme) => {
       fontSize: typography.size.h2,
       color: colors.text.primary,
     },
-    empty: {
-      fontFamily: typography.family.body,
-      fontSize: typography.size.body,
-      color: colors.text.muted,
-      textAlign: 'center',
+    // The room EmptyState/ErrorState need to sit centred; they bring their own
+    // alignment but never claim the screen.
+    stateContent: {
+      flexGrow: 1,
+      justifyContent: 'center',
     },
   });
 };

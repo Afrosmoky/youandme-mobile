@@ -21,6 +21,7 @@ import { PasswordInput } from '../components/PasswordInput';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { TextField } from '../components/TextField';
 import { Banner } from '../components/Banner';
+import { ErrorState } from '../components/ErrorState';
 import { SectionLabel } from '../components/SectionLabel';
 import { GoldButton } from '../components/GoldButton';
 import { OutlineButton } from '../components/OutlineButton';
@@ -65,8 +66,11 @@ export function ProfileScreen({ navigation }: Props) {
   // client state.
   const {
     data: verification,
+    error: verificationError,
     isLoading,
     isError,
+    isFetching,
+    refetch: refetchVerification,
   } = useVerificationStatus();
   const { mutate: save, isPending: saving } = useUpdateMe();
   const { mutate: resend, isPending: resending } = useResendVerification();
@@ -104,15 +108,6 @@ export function ProfileScreen({ navigation }: Props) {
     }
     setPartnerName(couple?.partnerNameLocal ?? '');
   }, [user, couple]);
-
-  // Mirror the pre-TanStack catch: a failed status load shows the same alert.
-  // Fires once per transition into the error state (temporary pattern for this
-  // slice; superseded when error UI lands in P11).
-  useEffect(() => {
-    if (isError) {
-      Alert.alert(pl.appTitle, pl.profile.loadError);
-    }
-  }, [isError]);
 
   const clearFieldError = (field: string) => {
     setFieldErrors(prev => {
@@ -278,6 +273,24 @@ export function ProfileScreen({ navigation }: Props) {
 
   return (
     <ScreenContainer testID="profile-screen">
+      {/*
+        Scoped to the slot the failed query actually feeds. The profile itself
+        comes from the auth context, not from the network, so the form, the
+        password change and — the reason this matters — logging out all keep
+        working when only the verification status could not be fetched. A
+        whole-screen ErrorState here would take the exit door away on exactly
+        the flaky connection that produced the error.
+      */}
+      {isError && (
+        <ErrorState
+          testID="profile-verification-error"
+          message={parseApiError(verificationError, pl.profile.loadError).topLevel}
+          onRetry={() => refetchVerification()}
+          retrying={isFetching}
+          style={styles.banner}
+        />
+      )}
+
       {verification && !verification.verified && (
         <Banner
           variant="warning"

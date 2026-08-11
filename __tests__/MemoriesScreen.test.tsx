@@ -1,4 +1,5 @@
 import React from 'react';
+import axios from 'axios';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {act, fireEvent, screen, waitFor} from '@testing-library/react-native';
 import {renderWithQueryClient} from '../src/test/renderWithQueryClient';
@@ -48,6 +49,7 @@ function makeProps(): Props {
 describe('MemoriesScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.mocked(axios.isAxiosError).mockReturnValue(false);
     jest.mocked(useAuth).mockReturnValue({
       user: null,
       couple: null,
@@ -251,5 +253,74 @@ describe('MemoriesScreen', () => {
       await screen.findByText(pl.memories.emptyFavorites),
     ).toBeOnTheScreen();
     expect(screen.queryByText(pl.memories.empty)).toBeNull();
+  });
+
+  // P11. Until now a failed load fired an alert and left the couple on a list
+  // that said "you have no memories yet" — the two states were impossible to
+  // tell apart, and there was no way to try again short of leaving the screen.
+  describe('when the list cannot be loaded', () => {
+    test('shows the error state rather than the empty one', async () => {
+      jest.mocked(listMemories).mockRejectedValue(new Error('network'));
+
+      renderWithQueryClient(<MemoriesScreen {...makeProps()} />);
+
+      expect(await screen.findByTestId('memories-error')).toBeOnTheScreen();
+      expect(screen.getByText(pl.memories.loadError)).toBeOnTheScreen();
+      expect(screen.queryByTestId('memories-empty')).toBeNull();
+      expect(screen.queryByText(pl.memories.empty)).toBeNull();
+    });
+
+    test('a lost connection says so instead of blaming the list', async () => {
+      const offline = {isAxiosError: true, response: undefined};
+      jest
+        .mocked(axios.isAxiosError)
+        .mockImplementation(err => err === offline);
+      jest.mocked(listMemories).mockRejectedValue(offline);
+
+      renderWithQueryClient(<MemoriesScreen {...makeProps()} />);
+
+      expect(await screen.findByText(pl.common.networkError)).toBeOnTheScreen();
+      expect(screen.queryByText(pl.memories.loadError)).toBeNull();
+    });
+
+    test('retry asks the server again and the list recovers', async () => {
+      jest.mocked(listMemories).mockRejectedValueOnce(new Error('network'));
+
+      renderWithQueryClient(<MemoriesScreen {...makeProps()} />);
+      await screen.findByTestId('memories-error');
+
+      jest.mocked(listMemories).mockResolvedValue({
+        memories: [memory],
+        nextCursor: null,
+        prevCursor: null,
+      });
+      fireEvent.press(screen.getByTestId('memories-error-retry'));
+
+      expect(await screen.findByText(memory.answerA)).toBeOnTheScreen();
+      await waitFor(() => expect(listMemories).toHaveBeenCalledTimes(2));
+    });
+
+    test('a failed further page keeps the memories already on screen', async () => {
+      jest
+        .mocked(listMemories)
+        .mockResolvedValueOnce({
+          memories: [memory],
+          nextCursor: 'cursor-2',
+          prevCursor: null,
+        })
+        .mockRejectedValueOnce(new Error('network'));
+
+      renderWithQueryClient(<MemoriesScreen {...makeProps()} />);
+      await screen.findByText(memory.answerA);
+
+      fireEvent(screen.getByTestId('memories-list'), 'onEndReached');
+
+      // The failure lands in the footer, not over the list.
+      expect(
+        await screen.findByTestId('memories-page-error'),
+      ).toBeOnTheScreen();
+      expect(screen.getByText(memory.answerA)).toBeOnTheScreen();
+      expect(screen.queryByTestId('memories-error')).toBeNull();
+    });
   });
 });

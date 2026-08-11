@@ -6,6 +6,7 @@ export const pl = {
   common: {
     passwordShow: 'Pokaż',
     passwordHide: 'Ukryj',
+    retry: 'Spróbuj ponownie',
     networkError:
       'Nie udało się połączyć z serwerem. Sprawdź internet i spróbuj ponownie.',
     serverError: 'Coś poszło nie tak po stronie serwera. Spróbuj za chwilę.',

@@ -13,11 +13,12 @@ import { useMemory } from '../queries/useMemory';
 import { useSetMemoryFavorite } from '../queries/useSetMemoryFavorite';
 import { useUpdateMemory } from '../queries/useUpdateMemory';
 import { useDeleteMemory } from '../queries/useDeleteMemory';
-import { parseApiError } from '../api/errors';
+import { isNotFound, parseApiError } from '../api/errors';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { Banner } from '../components/Banner';
+import { ErrorState } from '../components/ErrorState';
 import { SectionLabel } from '../components/SectionLabel';
 import { TextField } from '../components/TextField';
 import { GoldButton } from '../components/GoldButton';
@@ -58,7 +59,14 @@ export function MemoryCardScreen({ navigation, route }: Props) {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { memoryUlid } = route.params;
 
-  const { data: memory, isLoading, isError } = useMemory(memoryUlid);
+  const {
+    data: memory,
+    error,
+    isLoading,
+    isError,
+    isFetching,
+    refetch,
+  } = useMemory(memoryUlid);
   const favorite = useSetMemoryFavorite();
   const update = useUpdateMemory();
   const remove = useDeleteMemory();
@@ -82,15 +90,22 @@ export function MemoryCardScreen({ navigation, route }: Props) {
     });
   }, [navigation, styles, theme]);
 
-  // A memory that cannot be read is not a screen worth sitting on — most often
-  // it is a push pointing at something since deleted. Fall back to the list
-  // rather than leaving the couple on an empty card (Piotr's call).
+  // Two failures that deserve opposite answers, split here in P11.
+  //
+  // A 404 means the memory is gone — most often a push pointing at something
+  // since deleted. There is nothing to retry, so the P9 behaviour stands: say
+  // so and fall back to the list.
+  //
+  // Anything else (no connection, a 500) is about the request, not the memory.
+  // Bouncing to a list that is about to fail the same way helps nobody, so the
+  // screen stays put and offers a retry below.
+  const gone = isError && isNotFound(error);
   useEffect(() => {
-    if (isError) {
+    if (gone) {
       Alert.alert(pl.appTitle, pl.memoryCard.loadError);
       navigation.replace('Memories');
     }
-  }, [isError, navigation]);
+  }, [gone, navigation]);
 
   const onToggleFavorite = () => {
     if (!memory || favorite.isPending) {
@@ -168,6 +183,24 @@ export function MemoryCardScreen({ navigation, route }: Props) {
       },
     ]);
   };
+
+  // Everything except a 404 stays on the screen with a way to try again. The
+  // `!gone` guard keeps a deleted memory from flashing this panel for one frame
+  // before the effect above navigates back to the list.
+  if (isError && !gone) {
+    return (
+      <ScreenContainer
+        testID="memory-card-screen"
+        contentContainerStyle={styles.stateContent}>
+        <ErrorState
+          testID="memory-card-load-error"
+          message={parseApiError(error, pl.memoryCard.loadError).topLevel}
+          onRetry={() => refetch()}
+          retrying={isFetching}
+        />
+      </ScreenContainer>
+    );
+  }
 
   if (isLoading || !memory) {
     return (
@@ -301,6 +334,12 @@ const createStyles = (theme: Theme) => {
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: colors.bg.base,
+    },
+    // Room for ErrorState to sit centred (it aligns itself, the caller supplies
+    // the height).
+    stateContent: {
+      flexGrow: 1,
+      justifyContent: 'center',
     },
     headerTitle: {
       fontFamily: typography.family.heading,
