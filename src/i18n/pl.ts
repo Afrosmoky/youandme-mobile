@@ -197,6 +197,16 @@ export const pl = {
     remoteGameHint: 'Każde na swoim telefonie',
   },
 
+  // Ekran po kliknięciu linku weryfikacyjnego z maila. Weryfikacja dzieje się na
+  // backendzie (podpisany URL) — tutaj tylko potwierdzenie i unieważnienie
+  // zapamiętanego statusu. Robocze, Wiktoria dopracuje.
+  emailVerified: {
+    headerTitle: 'Weryfikacja',
+    badge: 'Gotowe',
+    title: 'Konto zweryfikowane',
+    body: 'E-mail potwierdzony. Możecie wrócić do gry.',
+  },
+
   // Ekran „wkrótce" — jeden, parametryzowany, dla każdej funkcji zapowiedzianej
   // przed etapem II. Treść przychodzi z route'a; tutaj tylko to, co wspólne, i
   // teksty dla poszczególnych wejść. Robocze, do dopracowania przez Wiktorię.

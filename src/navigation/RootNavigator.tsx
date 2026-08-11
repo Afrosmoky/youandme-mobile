@@ -1,8 +1,8 @@
 import React from 'react';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
-import { LinkingOptions } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from './types';
+import { linking } from './linking';
 import { useAuth } from '../auth/AuthContext';
 import { usePushRegistration } from '../notifications/usePushRegistration';
 import { AuthScreen } from '../screens/AuthScreen';
@@ -11,6 +11,7 @@ import { ResetPasswordScreen } from '../screens/ResetPasswordScreen';
 import { BootstrapScreen } from '../screens/BootstrapScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { DailyCardScreen } from '../screens/DailyCardScreen';
+import { EmailVerifiedScreen } from '../screens/EmailVerifiedScreen';
 import { RitualScreen } from '../screens/RitualScreen';
 import { CategoryPickerScreen } from '../screens/CategoryPickerScreen';
 import { LocalGameSetupScreen } from '../screens/LocalGameSetupScreen';
@@ -28,16 +29,9 @@ import { pl } from '../i18n/pl';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-// Custom-scheme deep linking. jaity://reset-password?token=&email= → the
-// ResetPassword screen, with the query string parsed into route params.
-export const linking: LinkingOptions<RootStackParamList> = {
-  prefixes: ['jaity://'],
-  config: {
-    screens: {
-      ResetPassword: 'reset-password',
-    },
-  },
-};
+// Re-exported so callers keep one import for the navigator and its links.
+export { linking };
+
 
 export function RootNavigator() {
   const { token, loading } = useAuth();
@@ -73,6 +67,7 @@ export function RootNavigator() {
             component={ResetPasswordScreen}
             options={{ title: pl.resetPassword.title }}
           />
+          <Stack.Screen name="EmailVerified" component={EmailVerifiedScreen} />
         </>
       ) : (
         <>
@@ -140,6 +135,18 @@ export function RootNavigator() {
           />
           {/* Title comes from the route params, set in the screen itself. */}
           <Stack.Screen name="ComingSoon" component={ComingSoonScreen} />
+          {/*
+            Both deep-link targets live in this branch too. Resetting a password
+            while already signed in is an ordinary thing to do - the request can
+            come from another device, or the session can outlive it - and until
+            P11 that link landed nowhere at all for a signed-in couple.
+          */}
+          <Stack.Screen
+            name="ResetPassword"
+            component={ResetPasswordScreen}
+            options={{ title: pl.resetPassword.title }}
+          />
+          <Stack.Screen name="EmailVerified" component={EmailVerifiedScreen} />
           <Stack.Screen
             name="Deck"
             component={DeckScreen}

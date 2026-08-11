@@ -28,6 +28,9 @@ export type RootStackParamList = {
   // Absent when there was no game screen to ask (a finished session found on
   // disk), which correctly means "celebrate nothing".
   LocalGameSummary: { seenMilestones?: string[] } | undefined;
+  // Where jaity://email-verified lands, after the backend has done the verifying
+  // and its page handed the couple back to the app (P11 deep links).
+  EmailVerified: undefined;
   // Announced-but-not-built feature (P11). The screen is generic and the copy
   // comes from here, so the same route serves the remote game now and the
   // ranking later without a second near-identical screen. Purely informational
