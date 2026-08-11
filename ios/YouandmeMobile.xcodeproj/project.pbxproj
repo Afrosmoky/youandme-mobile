@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0B798E36D95848CA81B742CB /* BootSplash.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 1529E5E2B145400685B2805B /* BootSplash.storyboard */; };
 		0C80B921A6F3F58F76C31292 /* libPods-YouandmeMobile.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5DCACB8F33CDC322A6C60F78 /* libPods-YouandmeMobile.a */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		279A16A02FD2249B001B18D7 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 279A169F2FD2249B001B18D7 /* GoogleService-Info.plist */; };
@@ -16,6 +17,7 @@
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		964C8F97CAF35FFA00BFC97D /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		B5A291395CC548419ED505EE /* Alegreya-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 2FBF3A408B8741FA8AC4B0FA /* Alegreya-Regular.ttf */; };
+		C4F251BB6F2447E19FD64D65 /* Colors.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2545EE4F491A47199C3BD50D /* Colors.xcassets */; };
 		CE0574C1E5D54B3FA2073BB6 /* Alegreya-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 8E07DE141A1C4D59B11992BC /* Alegreya-Bold.ttf */; };
 /* End PBXBuildFile section */
 
@@ -24,7 +26,9 @@
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = YouandmeMobile/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = YouandmeMobile/Info.plist; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = YouandmeMobile/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		1529E5E2B145400685B2805B /* BootSplash.storyboard */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = BootSplash.storyboard; path = YouandmeMobile/BootSplash.storyboard; sourceTree = "<group>"; };
 		2200A58A4FAE4917B039D8FE /* Belleza-Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Belleza-Regular.ttf"; path = "../assets/fonts/Belleza-Regular.ttf"; sourceTree = "<group>"; };
+		2545EE4F491A47199C3BD50D /* Colors.xcassets */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = folder.assetcatalog; name = Colors.xcassets; path = YouandmeMobile/Colors.xcassets; sourceTree = "<group>"; };
 		279A169F2FD2249B001B18D7 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		2FBF3A408B8741FA8AC4B0FA /* Alegreya-Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Alegreya-Regular.ttf"; path = "../assets/fonts/Alegreya-Regular.ttf"; sourceTree = "<group>"; };
 		3B4392A12AC88292D35C810B /* Pods-YouandmeMobile.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-YouandmeMobile.debug.xcconfig"; path = "Target Support Files/Pods-YouandmeMobile/Pods-YouandmeMobile.debug.xcconfig"; sourceTree = "<group>"; };
@@ -57,6 +61,8 @@
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
+				1529E5E2B145400685B2805B /* BootSplash.storyboard */,
+				2545EE4F491A47199C3BD50D /* Colors.xcassets */,
 			);
 			name = YouandmeMobile;
 			sourceTree = "<group>";
@@ -194,6 +200,8 @@
 				CE0574C1E5D54B3FA2073BB6 /* Alegreya-Bold.ttf in Resources */,
 				B5A291395CC548419ED505EE /* Alegreya-Regular.ttf in Resources */,
 				28D4DA732F0C480AABC6A159 /* Belleza-Regular.ttf in Resources */,
+				0B798E36D95848CA81B742CB /* BootSplash.storyboard in Resources */,
+				C4F251BB6F2447E19FD64D65 /* Colors.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

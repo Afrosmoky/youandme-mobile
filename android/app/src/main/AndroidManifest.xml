@@ -13,13 +13,36 @@
       android:theme="@style/AppTheme"
       android:usesCleartextTraffic="${usesCleartextTraffic}"
       android:supportsRtl="true">
+      <!--
+        Small icon and tint for notifications the SYSTEM draws rather than
+        notifee: the FCM tray fallback. Our pushes are data-only and normally go
+        through notifee (see displayServerPush), so this covers the cases where
+        Firebase renders one itself. Without it Android falls back to the app
+        icon, and since the status bar flattens whatever it is given to a
+        silhouette, the gold-heart-on-black launcher icon arrives as a solid
+        white square.
+      -->
+      <meta-data
+        android:name="com.google.firebase.messaging.default_notification_icon"
+        android:resource="@drawable/ic_notification" />
+      <!--
+        tools:replace because @react-native-firebase/messaging ships this same
+        meta-data pointing at @color/white, and the manifest merger refuses two
+        different values rather than picking one. White is the library's
+        neutral default; ours is the brand gold, so this app wins.
+      -->
+      <meta-data
+        android:name="com.google.firebase.messaging.default_notification_color"
+        android:resource="@color/notification_color"
+        tools:replace="android:resource" />
       <activity
         android:name=".MainActivity"
         android:label="@string/app_name"
         android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|smallestScreenSize|uiMode"
         android:launchMode="singleTask"
         android:windowSoftInputMode="adjustResize"
-        android:exported="true">
+        android:exported="true"
+        android:theme="@style/BootTheme">
         <intent-filter>
             <action android:name="android.intent.action.MAIN" />
             <category android:name="android.intent.category.LAUNCHER" />

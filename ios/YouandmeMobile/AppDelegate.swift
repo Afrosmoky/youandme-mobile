@@ -3,6 +3,7 @@ import React
 import React_RCTAppDelegate
 import ReactAppDependencyProvider
 import FirebaseCore
+import RNBootSplash
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -50,6 +51,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 }
 
 class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {
+  // P11 splash. The launch storyboard (BootSplash) is handed over to a view the
+  // library keeps on top of the root view, so the dark screen survives from the
+  // system launch image until JS calls BootSplash.hide() — without this the
+  // storyboard is dropped the moment React Native mounts and the couple sees a
+  // white frame before the first screen paints.
+  override func customize(_ rootView: RCTRootView) {
+    super.customize(rootView)
+    RNBootSplash.initWithStoryboard("BootSplash", rootView: rootView)
+  }
+
   override func sourceURL(for bridge: RCTBridge) -> URL? {
     self.bundleURL()
   }

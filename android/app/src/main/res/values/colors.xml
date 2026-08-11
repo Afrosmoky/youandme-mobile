@@ -1,0 +1,5 @@
+<resources>
+    <color name="bootsplash_background">#0b0b0d</color>
+    <!-- Adaptive icon background layer. Flat, so it is a colour, not a bitmap. -->
+    <color name="ic_launcher_background">#0b0b0d</color>
+</resources>

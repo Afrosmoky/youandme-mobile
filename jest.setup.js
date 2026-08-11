@@ -162,6 +162,17 @@ jest.mock('react-native-google-mobile-ads', () => {
   };
 });
 
+// react-native-bootsplash: native module (P11). Only App.tsx calls it, to hide
+// the splash once the navigator is ready; nothing under test mounts App, but a
+// mock keeps that from becoming a surprise the day something does.
+jest.mock('react-native-bootsplash', () => ({
+  __esModule: true,
+  default: {
+    hide: jest.fn(() => Promise.resolve()),
+    isVisible: jest.fn(() => Promise.resolve(false)),
+  },
+}));
+
 // @sentry/react-native: native module (P11 crash reporting). Only
 // src/monitoring/sentry.ts touches it — the scrubbing layer next to it is
 // deliberately free of any runtime import from here, so it tests as plain data

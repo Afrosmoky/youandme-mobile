@@ -10,6 +10,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { QueryClientProvider, focusManager } from '@tanstack/react-query';
 import mobileAds from 'react-native-google-mobile-ads';
+import BootSplash from 'react-native-bootsplash';
 import notifee, { EventType } from '@notifee/react-native';
 import { getMessaging, onMessage } from '@react-native-firebase/messaging';
 import { AuthProvider } from './src/auth/AuthContext';
@@ -74,7 +75,22 @@ function App() {
       <ThemeProvider>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <NavigationContainer ref={navigationRef} linking={linking}>
+            <NavigationContainer
+              ref={navigationRef}
+              linking={linking}
+              // P11: the splash goes away here, and only here. `onReady` fires
+              // once a navigator is actually mounted — which cannot happen
+              // while AuthContext is still reading the token from the keychain,
+              // because RootNavigator returns a bare spinner instead of a stack
+              // until then. So this covers both branches: the couple sees the
+              // splash until either AuthScreen or Bootstrap is on screen.
+              //
+              // Deliberately NOT in BootstrapScreen: that one only exists in
+              // the authenticated stack, so a logged-out user would sit under
+              // the splash forever.
+              onReady={() => {
+                BootSplash.hide({ fade: true });
+              }}>
               <RootNavigator />
             </NavigationContainer>
           </AuthProvider>
