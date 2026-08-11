@@ -1,5 +1,11 @@
 import React, { useLayoutEffect, useMemo } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useDailyCard } from '../queries/useDailyCard';
@@ -10,6 +16,8 @@ import { GlowBackground } from '../components/GlowBackground';
 import { Card } from '../components/Card';
 import { SectionLabel } from '../components/SectionLabel';
 import { Badge } from '../components/Badge';
+import { ErrorState } from '../components/ErrorState';
+import { parseApiError } from '../api/errors';
 import { Theme, useTheme } from '../theme';
 import { pl } from '../i18n/pl';
 
@@ -27,9 +35,23 @@ function teaser(body: string): string {
 export function HomeScreen({ navigation }: Props) {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const { data: daily } = useDailyCard();
+  const {
+    data: daily,
+    error: dailyError,
+    isLoading: dailyLoading,
+    isError: dailyFailed,
+    isFetching: dailyFetching,
+    refetch: refetchDaily,
+  } = useDailyCard();
   // A 404 / empty ritual seed leaves `ritual` undefined; the tile is simply
   // hidden (quiet empty state), the rest of the home screen is unaffected.
+  //
+  // Deliberately unchanged in P11: a network failure hides this tile the same
+  // way an unseeded ritual does. The two are indistinguishable here, and that
+  // is accepted rather than overlooked - when the whole connection is down the
+  // daily card above is already saying so, and a second outage notice under it
+  // would be noise. The case this does not cover is the ritual endpoint failing
+  // on its own, where the couple sees nothing at all and no explanation.
   const { data: ritual } = useWeeklyRitual();
 
   // Push scheduling is driven by the daily card state; gated until it resolves.
@@ -68,23 +90,56 @@ export function HomeScreen({ navigation }: Props) {
     <ScreenContainer testID="home-screen">
       <GlowBackground size={320} intensity={0.3} style={styles.glow} />
 
+      {/*
+        The daily card is the one tile on this hub with something to fetch, and
+        it is the first thing anyone sees after signing in - so it says which of
+        the three things is happening rather than showing an ellipsis for all of
+        them. It used to render "…" for a pending request and for a failed one
+        alike, with the footer underneath confidently claiming the couple had
+        not answered today and had no streak.
+
+        Only pressable once there is a card: tapping through to a screen that
+        has nothing to show is not a way out of either state, and in the failed
+        one the retry is.
+      */}
       <Card
         variant="gold"
         testID="home-daily-card"
-        onPress={() => navigation.navigate('DailyCard')}
+        onPress={daily ? () => navigation.navigate('DailyCard') : undefined}
         style={styles.tile}>
         <SectionLabel>{pl.home.dailyCardTitle}</SectionLabel>
-        <Text style={styles.dailyQuestion}>
-          {daily ? teaser(daily.question.body) : '…'}
-        </Text>
-        <View style={styles.dailyFooter}>
-          <Badge testID="home-daily-status">
-            {daily?.answeredToday ? pl.home.dailyCardDone : pl.home.dailyCardTodo}
-          </Badge>
-          <Text testID="home-streak" style={styles.streak}>
-            {streakLabel}
-          </Text>
-        </View>
+
+        {dailyLoading ? (
+          <ActivityIndicator
+            testID="home-daily-loading"
+            color={theme.colors.gold.primary}
+            style={styles.dailyLoading}
+          />
+        ) : dailyFailed ? (
+          <ErrorState
+            testID="home-daily-error"
+            message={parseApiError(dailyError, pl.dailyCard.loadError).topLevel}
+            onRetry={() => refetchDaily()}
+            retrying={dailyFetching}
+            style={styles.dailyError}
+          />
+        ) : (
+          <>
+            <Text style={styles.dailyQuestion}>
+              {daily ? teaser(daily.question.body) : '…'}
+            </Text>
+            <View style={styles.dailyFooter}>
+              <Badge testID="home-daily-status">
+                {daily?.answeredToday
+                  ? pl.home.dailyCardDone
+                  : pl.home.dailyCardTodo}
+              </Badge>
+              <Text testID="home-streak" style={styles.streak}>
+                {streakLabel}
+              </Text>
+            </View>
+          </>
+        )}
       </Card>
 
       {ritual && (
@@ -181,6 +236,15 @@ const createStyles = (theme: Theme) => {
     },
     tile: {
       marginBottom: spacing.lg,
+    },
+    // Keeps the tile roughly the height it will be once the card lands, so the
+    // hub does not jump when it does.
+    dailyLoading: {
+      marginVertical: spacing.xxl,
+    },
+    dailyError: {
+      paddingHorizontal: 0,
+      paddingBottom: 0,
     },
     dailyQuestion: {
       fontFamily: typography.family.heading,

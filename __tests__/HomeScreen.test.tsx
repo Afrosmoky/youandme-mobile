@@ -1,4 +1,5 @@
 import React from 'react';
+import axios from 'axios';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {fireEvent, screen, waitFor} from '@testing-library/react-native';
 import {renderWithQueryClient} from '../src/test/renderWithQueryClient';
@@ -55,6 +56,9 @@ describe('HomeScreen', () => {
     jest.clearAllMocks();
     jest.mocked(getDailyCard).mockResolvedValue(dailyCard);
     jest.mocked(getWeeklyRitual).mockResolvedValue(weeklyRitual);
+    // clearAllMocks clears calls, not implementations; one test below makes
+    // isAxiosError true and it would leak into the next.
+    jest.mocked(axios.isAxiosError).mockReturnValue(false);
   });
 
   test('shows the "answer today" state and the streak when unanswered', async () => {
@@ -87,7 +91,10 @@ describe('HomeScreen', () => {
   test('the daily card tile navigates to DailyCard', async () => {
     renderWithQueryClient(<HomeScreen {...makeProps()} />);
 
-    fireEvent.press(await screen.findByTestId('home-daily-card'));
+    // Once the card is there: the tile is inert while loading and while failed,
+    // where a retry is the way out rather than a screen with nothing on it.
+    await screen.findByTestId('home-daily-status');
+    fireEvent.press(screen.getByTestId('home-daily-card'));
 
     expect(navigate).toHaveBeenCalledWith('DailyCard');
   });
@@ -109,6 +116,73 @@ describe('HomeScreen', () => {
     await screen.findByText(dailyCard.question.body);
     expect(screen.queryByTestId('home-session')).toBeNull();
     expect(screen.queryByText(pl.home.sessionTitle)).toBeNull();
+  });
+
+  // P11: the daily card is the only tile here with something to fetch, and the
+  // first thing anyone sees after signing in. Before this it rendered "…" for a
+  // pending request and for a failed one alike.
+  describe('the daily card tile', () => {
+    test('shows a spinner while the card is on its way', async () => {
+      // Never resolves: the tile stays in its loading state for the assertion.
+      jest.mocked(getDailyCard).mockReturnValue(new Promise(() => {}));
+
+      renderWithQueryClient(<HomeScreen {...makeProps()} />);
+
+      expect(await screen.findByTestId('home-daily-loading')).toBeOnTheScreen();
+      // The footer would otherwise claim, confidently, that nothing has been
+      // answered and there is no streak.
+      expect(screen.queryByTestId('home-daily-status')).toBeNull();
+      expect(screen.queryByTestId('home-streak')).toBeNull();
+      expect(screen.queryByTestId('home-daily-error')).toBeNull();
+    });
+
+    test('shows the failure with a retry, in the tile', async () => {
+      jest.mocked(getDailyCard).mockRejectedValue(new Error('network'));
+
+      renderWithQueryClient(<HomeScreen {...makeProps()} />);
+
+      expect(await screen.findByTestId('home-daily-error')).toBeOnTheScreen();
+      expect(screen.getByText(pl.dailyCard.loadError)).toBeOnTheScreen();
+      expect(screen.queryByTestId('home-daily-loading')).toBeNull();
+    });
+
+    test('a lost connection says so rather than blaming the card', async () => {
+      const offline = {isAxiosError: true, response: undefined};
+      jest.mocked(axios.isAxiosError).mockImplementation(err => err === offline);
+      jest.mocked(getDailyCard).mockRejectedValue(offline);
+
+      renderWithQueryClient(<HomeScreen {...makeProps()} />);
+
+      expect(await screen.findByText(pl.common.networkError)).toBeOnTheScreen();
+    });
+
+    test('retry asks again and the card appears', async () => {
+      jest.mocked(getDailyCard).mockRejectedValueOnce(new Error('network'));
+
+      renderWithQueryClient(<HomeScreen {...makeProps()} />);
+      await screen.findByTestId('home-daily-error');
+
+      jest.mocked(getDailyCard).mockResolvedValue(dailyCard);
+      fireEvent.press(screen.getByTestId('home-daily-error-retry'));
+
+      expect(await screen.findByTestId('home-daily-status')).toBeOnTheScreen();
+      await waitFor(() => expect(getDailyCard).toHaveBeenCalledTimes(2));
+    });
+
+    // Tapping through to a screen with nothing on it is not a way out of
+    // either state.
+    test.each([
+      ['while loading', () => new Promise(() => {}), 'home-daily-loading'],
+      ['while failed', () => Promise.reject(new Error('network')), 'home-daily-error'],
+    ])('does not navigate %s', async (_name, impl, marker) => {
+      jest.mocked(getDailyCard).mockImplementation(impl as never);
+
+      renderWithQueryClient(<HomeScreen {...makeProps()} />);
+      await screen.findByTestId(marker);
+      fireEvent.press(screen.getByTestId('home-daily-card'));
+
+      expect(navigate).not.toHaveBeenCalledWith('DailyCard');
+    });
   });
 
   // P11: the remote game is announced, not built. The tile stays on the hub so
