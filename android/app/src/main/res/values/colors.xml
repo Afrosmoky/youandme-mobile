@@ -2,4 +2,11 @@
     <color name="bootsplash_background">#0b0b0d</color>
     <!-- Adaptive icon background layer. Flat, so it is a colour, not a bitmap. -->
     <color name="ic_launcher_background">#0b0b0d</color>
+    <!--
+      Tint Android applies to the notification's small icon. Must equal
+      colorSchemes.dark.gold.primary in src/theme/tokens.ts — the status bar
+      cannot read our TS tokens, so this is the one place the value is copied,
+      and NotificationIconColor.test.ts fails if the two drift apart.
+    -->
+    <color name="notification_color">#e0b24e</color>
 </resources>

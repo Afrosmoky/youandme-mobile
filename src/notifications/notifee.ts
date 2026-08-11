@@ -4,10 +4,29 @@ import notifee, {
   TriggerType,
 } from '@notifee/react-native';
 import { AppState } from 'react-native';
+import { colorSchemes } from '../theme';
 import { pl } from '../i18n/pl';
 
 // All notifee interaction lives here so screens stay declarative and the native
 // calls are mockable in one place.
+
+// Android options every notification we draw must carry, spread into each
+// `android` block below.
+//
+// `smallIcon` is the load-bearing one. Android flattens the status-bar icon to
+// a silhouette using only its alpha channel, so without an explicit monochrome
+// drawable it takes the launcher icon — and our gold heart on near-black
+// becomes a solid white square. `ic_notification` is that silhouette: the heart
+// in white on transparency, shipped at five densities.
+//
+// `color` is the tint Android then applies to it, so the silhouette reads as
+// our gold rather than system grey. It comes from the same token the app uses,
+// so the notification cannot drift from the UI; the manifest's FCM fallback
+// carries a copy in colors.xml, which a test keeps in step.
+const ANDROID_DEFAULTS = {
+  smallIcon: 'ic_notification',
+  color: colorSchemes.dark.gold.primary,
+} as const;
 
 const CHANNEL_ID = 'daily-card';
 // Progress-map milestones get their own Android channel. The daily-card channel
@@ -92,7 +111,7 @@ export async function scheduleDailyReminder(hour: number): Promise<void> {
       id: DAILY_REMINDER_ID,
       title: pl.notifications.dailyReminderTitle,
       body: pl.notifications.dailyReminderBody,
-      android: { channelId },
+      android: { channelId, ...ANDROID_DEFAULTS },
     },
     {
       type: TriggerType.TIMESTAMP,
@@ -115,7 +134,7 @@ export async function scheduleStreakWarning(dailyPushHour: number): Promise<void
       id: STREAK_WARNING_ID,
       title: pl.notifications.streakWarningTitle,
       body: pl.notifications.streakWarningBody,
-      android: { channelId },
+      android: { channelId, ...ANDROID_DEFAULTS },
     },
     { type: TriggerType.TIMESTAMP, timestamp: nextAt(warningHour) },
   );
@@ -135,7 +154,7 @@ export async function scheduleWeeklyRitualReminder(): Promise<void> {
       id: RITUAL_REMINDER_ID,
       title: pl.notifications.ritualReminderTitle,
       body: pl.notifications.ritualReminderBody,
-      android: { channelId },
+      android: { channelId, ...ANDROID_DEFAULTS },
     },
     {
       type: TriggerType.TIMESTAMP,
@@ -155,7 +174,7 @@ export async function notifyStreakMilestone(streak: number): Promise<void> {
   await notifee.displayNotification({
     title: pl.notifications.milestoneTitle,
     body: pl.notifications.milestoneBody(streak),
-    android: { channelId },
+    android: { channelId, ...ANDROID_DEFAULTS },
   });
 }
 
@@ -181,7 +200,7 @@ export async function displayServerPush(
     title,
     body,
     data,
-    android: { channelId, pressAction: { id: 'default' } },
+    android: { channelId, pressAction: { id: 'default' }, ...ANDROID_DEFAULTS },
   });
 }
 
@@ -197,6 +216,6 @@ export async function notifyProgressMilestone(name: string): Promise<void> {
   await notifee.displayNotification({
     title: pl.notifications.progressMilestoneTitle,
     body: pl.notifications.progressMilestoneBody(name),
-    android: { channelId },
+    android: { channelId, ...ANDROID_DEFAULTS },
   });
 }

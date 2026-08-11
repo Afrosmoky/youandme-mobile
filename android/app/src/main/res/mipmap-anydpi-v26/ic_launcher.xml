@@ -1,11 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Adaptive icon (P11), API 26+. The launcher masks these two layers into
-  whatever shape the device uses, so the heart lives in the inner 66% of the
-  foreground and the background is a flat fill rather than a bitmap: one colour
-  entry instead of five PNGs that could drift apart.
+  Adaptive icon (P11), API 26+. The launcher masks these layers into whatever
+  shape the device uses, so the heart lives in the inner 66% of the foreground
+  and the background is a flat fill rather than a bitmap: one colour entry
+  instead of five PNGs that could drift apart.
+
+  The monochrome layer is Android 13's themed icon: the system ignores our
+  colours entirely and tints this silhouette with the wallpaper palette, so it
+  has to be a solid shape on transparency, drawn to the same 108dp geometry as
+  the foreground. Without it a themed launcher falls back to shrinking the
+  normal icon into a grey blob.
 -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
     <background android:drawable="@color/ic_launcher_background" />
     <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+    <monochrome android:drawable="@mipmap/ic_launcher_monochrome" />
 </adaptive-icon>
