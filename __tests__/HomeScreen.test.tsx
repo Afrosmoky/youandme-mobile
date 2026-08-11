@@ -111,6 +111,29 @@ describe('HomeScreen', () => {
     expect(screen.queryByText(pl.home.sessionTitle)).toBeNull();
   });
 
+  // P11: the remote game is announced, not built. The tile stays on the hub so
+  // the path does not vanish between now and etap II.
+  test('shows the remote game tile marked as coming soon', async () => {
+    renderWithQueryClient(<HomeScreen {...makeProps()} />);
+
+    expect(await screen.findByTestId('home-remote-game')).toBeOnTheScreen();
+    expect(screen.getByText(pl.home.remoteGameTitle)).toBeOnTheScreen();
+    expect(screen.getByTestId('home-remote-game-badge')).toHaveTextContent(
+      pl.comingSoon.badge,
+    );
+  });
+
+  test('the remote game tile opens ComingSoon with its own copy', async () => {
+    renderWithQueryClient(<HomeScreen {...makeProps()} />);
+
+    fireEvent.press(await screen.findByTestId('home-remote-game'));
+
+    expect(navigate).toHaveBeenCalledWith('ComingSoon', {
+      title: pl.comingSoon.remoteGameTitle,
+      body: pl.comingSoon.remoteGameBody,
+    });
+  });
+
   test('the deck tile navigates to the closed deck', async () => {
     renderWithQueryClient(<HomeScreen {...makeProps()} />);
 

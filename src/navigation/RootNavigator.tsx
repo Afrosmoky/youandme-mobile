@@ -16,6 +16,7 @@ import { CategoryPickerScreen } from '../screens/CategoryPickerScreen';
 import { LocalGameSetupScreen } from '../screens/LocalGameSetupScreen';
 import { LocalGameScreen } from '../screens/LocalGameScreen';
 import { LocalGameSummaryScreen } from '../screens/LocalGameSummaryScreen';
+import { ComingSoonScreen } from '../screens/ComingSoonScreen';
 import { DeckScreen } from '../screens/DeckScreen';
 import { RewardsScreen } from '../screens/RewardsScreen';
 import { ProgressMapScreen } from '../screens/ProgressMapScreen';
@@ -137,6 +138,8 @@ export function RootNavigator() {
             component={QuestionScreen}
             options={{ title: pl.question.headerTitle }}
           />
+          {/* Title comes from the route params, set in the screen itself. */}
+          <Stack.Screen name="ComingSoon" component={ComingSoonScreen} />
           <Stack.Screen
             name="Deck"
             component={DeckScreen}

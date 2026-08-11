@@ -115,6 +115,27 @@ export function HomeScreen({ navigation }: Props) {
         <Text style={styles.tileHint}>{pl.home.localGameHint}</Text>
       </Card>
 
+      {/* Directly under the local game on purpose: the two modes are the same
+          idea seen twice, one playable today and one announced. Keeping it on
+          Home (rather than waiting for etap II) is the whole point — testers
+          should see the path exists and is coming, not wonder whether playing
+          apart was ever planned. */}
+      <Card
+        testID="home-remote-game"
+        onPress={() =>
+          navigation.navigate('ComingSoon', {
+            title: pl.comingSoon.remoteGameTitle,
+            body: pl.comingSoon.remoteGameBody,
+          })
+        }
+        style={styles.tile}>
+        <View style={styles.tileHeader}>
+          <Text style={styles.tileTitle}>{pl.home.remoteGameTitle}</Text>
+          <Badge testID="home-remote-game-badge">{pl.comingSoon.badge}</Badge>
+        </View>
+        <Text style={styles.tileHint}>{pl.home.remoteGameHint}</Text>
+      </Card>
+
       <Card
         testID="home-deck"
         onPress={() => navigation.navigate('Deck')}
@@ -182,6 +203,12 @@ const createStyles = (theme: Theme) => {
       fontFamily: typography.family.heading,
       fontSize: typography.size.h3,
       color: colors.text.primary,
+    },
+    // Title on the left, "Wkrótce" pill on the right, baselines aligned.
+    tileHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
     },
     tileHint: {
       fontFamily: typography.family.body,

@@ -190,6 +190,21 @@ export const pl = {
     progressHint: 'Zobaczcie, jak daleko zaszliście',
     localGameTitle: 'Gra na jednym telefonie',
     localGameHint: 'Grajcie obok siebie, na zmianę',
+    // Dwa tryby obok siebie: jeden gra się dziś, drugi jest zapowiedziany.
+    // Kafel zostaje widoczny, żeby ścieżka gry zdalnej nie zniknęła z mapy
+    // aplikacji między teraz a etapem II.
+    remoteGameTitle: 'Gra zdalna',
+    remoteGameHint: 'Każde na swoim telefonie',
+  },
+
+  // Ekran „wkrótce" — jeden, parametryzowany, dla każdej funkcji zapowiedzianej
+  // przed etapem II. Treść przychodzi z route'a; tutaj tylko to, co wspólne, i
+  // teksty dla poszczególnych wejść. Robocze, do dopracowania przez Wiktorię.
+  comingSoon: {
+    badge: 'Wkrótce',
+    remoteGameTitle: 'Gra zdalna',
+    remoteGameBody:
+      'Grajcie razem, każde na swoim telefonie — pytania, odpowiedzi i wspomnienia na odległość. Pracujemy nad tym.',
   },
 
   // P10 local two-player game. Working copy — the final wording and the button
