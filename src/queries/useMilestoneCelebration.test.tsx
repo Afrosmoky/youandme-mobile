@@ -23,13 +23,31 @@ const makeWrapper = (queryClient: QueryClient) =>
   };
 
 // TanStack notifies its observers off a timer, so a resolved fetch is not yet a
-// rendered one: without a macrotask turn the hook has not seen the data and has
-// not run its diff. Every step here waits for the render, not for the request —
-// asserting on getProgress alone would let the second reading arrive before the
-// first was ever observed, and the baseline would silently swallow it.
-const settle = () => act(async () => {
-  await new Promise(resolve => setTimeout(resolve, 0));
-});
+// rendered one: until the hook has seen the data it has not run its diff. This
+// used to be waited out with a single macrotask turn, which held right up until
+// new suites changed how Jest schedules its workers — under load one turn is not
+// enough, and the block below started failing about one full run in three.
+//
+// So nothing here waits for a tick any more; every step waits for the thing it
+// is about to assert on.
+//
+// `seenMilestones()` is that signal for a reading with nothing to celebrate: it
+// is undefined until one has landed (the test at the bottom pins that down), so
+// it says "the data arrived AND the hook rendered its diff" without depending on
+// what the diff found. A bare waitFor on a negative assertion would be no wait
+// at all — it passes on the first try, before the query resolves, and the test
+// would be green whatever the hook did.
+type Celebration = ReturnType<typeof useMilestoneCelebration>;
+
+const readingLanded = (result: {current: Celebration}) =>
+  waitFor(() => expect(result.current.seenMilestones()).toBeDefined());
+
+// For a refetch that changes nothing there is no rendered state to watch, so the
+// call count is the anchor. Weaker than the above on purpose: getting here early
+// can only make an assertion pass that would have passed anyway, never fail one
+// that should not.
+const refetched = (times: number) =>
+  waitFor(() => expect(getProgress).toHaveBeenCalledTimes(times));
 
 // AppState.currentState is a plain property on the RN mock (not a getter), so it
 // is written, not spied.
@@ -79,7 +97,7 @@ describe('useMilestoneCelebration', () => {
       wrapper: makeWrapper(makeClient()),
     });
 
-    await settle();
+    await readingLanded(result);
 
     expect(result.current.milestone).toBeNull();
     expect(notifee.displayNotification).not.toHaveBeenCalled();
@@ -90,7 +108,7 @@ describe('useMilestoneCelebration', () => {
     const {result} = renderHook(() => useMilestoneCelebration(), {
       wrapper: makeWrapper(queryClient),
     });
-    await settle();
+    await readingLanded(result);
 
     // What a saved card does: the mutation invalidates the key and the refetch
     // brings the unlock (see useSaveMemory / useAnswerDailyCard).
@@ -98,9 +116,8 @@ describe('useMilestoneCelebration', () => {
     await act(async () => {
       await queryClient.invalidateQueries({queryKey: queryKeys.progress});
     });
-    await settle();
 
-    expect(result.current.milestone?.slug).toBe('m3');
+    await waitFor(() => expect(result.current.milestone?.slug).toBe('m3'));
     expect(result.current.milestone?.name).toBe('Kamień 3');
   });
 
@@ -109,12 +126,12 @@ describe('useMilestoneCelebration', () => {
     const {result} = renderHook(() => useMilestoneCelebration(), {
       wrapper: makeWrapper(queryClient),
     });
-    await settle();
+    await readingLanded(result);
 
     await act(async () => {
       await queryClient.invalidateQueries({queryKey: queryKeys.progress});
     });
-    await settle();
+    await refetched(2);
 
     expect(result.current.milestone).toBeNull();
     expect(notifee.displayNotification).not.toHaveBeenCalled();
@@ -128,12 +145,12 @@ describe('useMilestoneCelebration', () => {
     const {result} = renderHook(() => useMilestoneCelebration(), {
       wrapper: makeWrapper(queryClient),
     });
-    await settle();
+    await readingLanded(result);
 
     await act(async () => {
       await queryClient.invalidateQueries({queryKey: queryKeys.progress});
     });
-    await settle();
+    await refetched(2);
 
     expect(result.current.milestone).toBeNull();
   });
@@ -143,13 +160,12 @@ describe('useMilestoneCelebration', () => {
     const {result} = renderHook(() => useMilestoneCelebration(), {
       wrapper: makeWrapper(queryClient),
     });
-    await settle();
+    await readingLanded(result);
     jest.mocked(getProgress).mockResolvedValue(after);
     await act(async () => {
       await queryClient.invalidateQueries({queryKey: queryKeys.progress});
     });
-    await settle();
-    expect(result.current.milestone).not.toBeNull();
+    await waitFor(() => expect(result.current.milestone).not.toBeNull());
 
     act(() => result.current.dismiss());
     expect(result.current.milestone).toBeNull();
@@ -159,7 +175,7 @@ describe('useMilestoneCelebration', () => {
     await act(async () => {
       await queryClient.invalidateQueries({queryKey: queryKeys.progress});
     });
-    await settle();
+    await refetched(3);
     expect(result.current.milestone).toBeNull();
   });
 
@@ -175,9 +191,7 @@ describe('useMilestoneCelebration', () => {
         {wrapper: makeWrapper(makeClient())},
       );
 
-      await settle();
-
-      expect(result.current.milestone?.slug).toBe('m3');
+      await waitFor(() => expect(result.current.milestone?.slug).toBe('m3'));
     });
 
     // The other half of the deal: whatever the previous screen celebrated is in
@@ -189,7 +203,7 @@ describe('useMilestoneCelebration', () => {
         {wrapper: makeWrapper(makeClient())},
       );
 
-      await settle();
+      await readingLanded(result);
 
       expect(result.current.milestone).toBeNull();
       expect(notifee.displayNotification).not.toHaveBeenCalled();
@@ -202,10 +216,8 @@ describe('useMilestoneCelebration', () => {
         wrapper: makeWrapper(makeClient()),
       });
 
-      await settle();
-
       // `before` has two unlocked; the furthest one wins.
-      expect(result.current.milestone?.slug).toBe('m2');
+      await waitFor(() => expect(result.current.milestone?.slug).toBe('m2'));
     });
 
     test('a re-render cannot reseed the baseline and re-arm the modal', async () => {
@@ -214,16 +226,17 @@ describe('useMilestoneCelebration', () => {
         () => useMilestoneCelebration(['m1', 'm2']),
         {wrapper: makeWrapper(queryClient)},
       );
-      await settle();
+      await readingLanded(result);
       jest.mocked(getProgress).mockResolvedValue(after);
       await act(async () => {
         await queryClient.invalidateQueries({queryKey: queryKeys.progress});
       });
-      await settle();
+      await waitFor(() => expect(result.current.milestone).not.toBeNull());
       act(() => result.current.dismiss());
 
+      // rerender is act-wrapped, so the effects it triggers have already run by
+      // the time it returns; there is no request to wait for here.
       rerender(undefined);
-      await settle();
 
       expect(result.current.milestone).toBeNull();
     });
@@ -244,7 +257,7 @@ describe('useMilestoneCelebration', () => {
       const {result} = renderHook(() => useMilestoneCelebration(), {
         wrapper: makeWrapper(makeClient()),
       });
-      await settle();
+      await readingLanded(result);
 
       expect(result.current.seenMilestones()).toEqual(['m1', 'm2']);
     });
@@ -254,13 +267,12 @@ describe('useMilestoneCelebration', () => {
       const {result} = renderHook(() => useMilestoneCelebration(), {
         wrapper: makeWrapper(queryClient),
       });
-      await settle();
+      await readingLanded(result);
       jest.mocked(getProgress).mockResolvedValue(after);
       await act(async () => {
         await queryClient.invalidateQueries({queryKey: queryKeys.progress});
       });
-      await settle();
-      expect(result.current.milestone?.slug).toBe('m3');
+      await waitFor(() => expect(result.current.milestone?.slug).toBe('m3'));
 
       expect(result.current.seenMilestones()).toEqual(['m1', 'm2', 'm3']);
     });
@@ -269,16 +281,15 @@ describe('useMilestoneCelebration', () => {
   test('pushes the milestone when the app is in the background', async () => {
     setAppState('background');
     const queryClient = makeClient();
-    renderHook(() => useMilestoneCelebration(), {
+    const {result} = renderHook(() => useMilestoneCelebration(), {
       wrapper: makeWrapper(queryClient),
     });
-    await settle();
+    await readingLanded(result);
 
     jest.mocked(getProgress).mockResolvedValue(after);
     await act(async () => {
       await queryClient.invalidateQueries({queryKey: queryKeys.progress});
     });
-    await settle();
 
     await waitFor(() =>
       expect(notifee.displayNotification).toHaveBeenCalledWith(
@@ -298,15 +309,14 @@ describe('useMilestoneCelebration', () => {
     const {result} = renderHook(() => useMilestoneCelebration(), {
       wrapper: makeWrapper(queryClient),
     });
-    await settle();
+    await readingLanded(result);
 
     jest.mocked(getProgress).mockResolvedValue(after);
     await act(async () => {
       await queryClient.invalidateQueries({queryKey: queryKeys.progress});
     });
-    await settle();
 
-    expect(result.current.milestone?.slug).toBe('m3');
+    await waitFor(() => expect(result.current.milestone?.slug).toBe('m3'));
     expect(notifee.displayNotification).not.toHaveBeenCalled();
   });
 });
