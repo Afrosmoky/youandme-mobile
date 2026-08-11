@@ -4,7 +4,10 @@
   "private": true,
   "scripts": {
     "android": "react-native run-android",
+    "build:android:release": "cd android && ./gradlew assembleRelease",
+    "bundle:android:release": "cd android && ./gradlew bundleRelease",
     "ios": "react-native run-ios",
+    "build:ios:release": "react-native run-ios --mode Release",
     "lint": "eslint .",
     "start": "react-native start",
     "test": "jest"

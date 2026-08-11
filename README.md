@@ -1,5 +1,46 @@
 This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
 
+# Builds and the API address
+
+**The backend a build talks to is decided by the build type, not by a flag you
+pass.** There is nothing to remember and nothing to set:
+
+| Build | API base URL |
+| --- | --- |
+| Debug (`yarn ios`, `yarn android`, running from Xcode or Android Studio) | `http://localhost:8000/api/v1` on iOS, `http://10.0.2.2:8000/api/v1` on Android — the machine running Metro |
+| Release (any of the commands below, **and** Xcode's Product ▸ Archive, **and** Android Studio's signed bundle) | `https://jaity.app/api/v1` |
+
+This is keyed on `__DEV__`, which the bundler sets from the build type, so a
+release build pointing at a laptop cannot be produced — including from the IDEs,
+which is where TestFlight archives and signed bundles actually come from and
+which is exactly what an `.env`-plus-npm-script scheme would not have covered.
+`src/config/api.ts` is the only place the address lives, and
+`src/config/api.test.ts` fails the suite if a non-dev build could ever resolve to
+`localhost`, `10.0.2.2` or plain http.
+
+To point a **development** build at some other backend (a tunnel, a staging
+box), edit the URL in `src/config/api.ts` — the same way `AD_REWARD_ENABLED` in
+`src/config/features.ts` is edited. It is deliberate that this takes a code
+change: it is rare, local, and must never be the mechanism that decides what a
+shipped build talks to.
+
+## Release builds
+
+```sh
+yarn build:android:release    # APK  -> android/app/build/outputs/apk/release
+yarn bundle:android:release   # AAB  -> android/app/build/outputs/bundle/release
+yarn build:ios:release        # Release build onto the simulator/device
+```
+
+For a store build, Xcode (Product ▸ Archive) and Android Studio work too and
+pick up the same address, which is the point.
+
+> Android release is still signed with the debug keystore (the template
+> default). That blocks Play distribution and is tracked separately (#26,
+> keystore + signing + Play Internal) — it is not something this configuration
+> changes.
+
+
 # Getting Started
 
 > **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.

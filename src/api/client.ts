@@ -1,16 +1,13 @@
 import axios from 'axios';
-import { Platform } from 'react-native';
+import { API_BASE_URL } from '../config/api';
 
-// iOS simulator reaches the host backend via localhost; the Android emulator
-// maps the host machine to 10.0.2.2. Override both with JAITY_API_URL when
-// pointing at a non-local backend.
-const defaultBaseURL =
-  Platform.OS === 'android'
-    ? 'http://10.0.2.2:8000/api/v1'
-    : 'http://localhost:8000/api/v1';
-
+// The address comes from the build type (see src/config/api.ts). It used to
+// read process.env.JAITY_API_URL with a platform default behind it, which
+// promised an override that could never happen: nothing inlines env vars into
+// this bundle, so that lookup was always undefined and every release build
+// shipped with localhost baked in.
 export const apiClient = axios.create({
-  baseURL: process.env.JAITY_API_URL ?? defaultBaseURL,
+  baseURL: API_BASE_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
