@@ -245,48 +245,36 @@ export function LocalGameSetupScreen({ navigation }: Props) {
         return;
       }
 
-      setDeckError(null);
-      setBusy(true);
-      try {
-        if (
-          stored &&
-          matchesSetup(stored, { player1, player2: name, categorySlug })
-        ) {
-          navigation.navigate('LocalGame');
-          return;
-        }
-
-        const questions = await fetchGameDeck(categorySlug);
-        if (questions.length === 0) {
-          // A couple who has played everything in a category has succeeded at
-          // the game. Say so here rather than opening a game with no cards.
-          setDeckError(pl.localGame.deckEmpty);
-          return;
-        }
-
-        await saveLocalGameState(
-          startLocalGame({
-            player1,
-            player2: name,
-            categorySlug,
-            questions,
-            // Shuffled per session, so a couple meets a different slice of the
-            // twenty across sessions instead of the same first two every time.
-            // Here rather than in buildQueue: sequencing stays deterministic,
-            // and the order is the caller's call. Resuming reads the queue back
-            // from disk already sealed, so it never reshuffles.
-            challenges: shuffle(CHALLENGES),
-            startedAt: new Date().toISOString(),
-          }),
-        );
+      if (
+        stored &&
+        matchesSetup(stored, { player1, player2: name, categorySlug })
+      ) {
+        setDeckError(null);
         navigation.navigate('LocalGame');
-      } catch (err) {
-        setDeckError(parseApiError(err, pl.localGame.deckError).topLevel);
-      } finally {
-        setBusy(false);
+        return;
       }
+
+      if (stored) {
+        Alert.alert(pl.localGame.overwriteTitle, pl.localGame.overwriteMessage, [
+          // Cancelling carries no action at all: the paused game is still on
+          // disk and its card is still on screen, offering to resume.
+          { text: pl.localGame.overwriteCancel, style: 'cancel' },
+          {
+            text: pl.localGame.overwriteConfirm,
+            style: 'destructive',
+            // Not awaited, and it cannot reject: dealFresh answers every
+            // failure with a message on the screen.
+            onPress: () => {
+              dealFresh(name, categorySlug, categoryName);
+            },
+          },
+        ]);
+        return;
+      }
+
+      await dealFresh(name, categorySlug, categoryName);
     },
-    [navigation, player1, player2, stored],
+    [dealFresh, navigation, player1, player2, stored],
   );
 
   const discard = useCallback(async () => {

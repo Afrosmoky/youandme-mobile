@@ -189,6 +189,25 @@ describe('unreadable stored values', () => {
     expect(restored?.cursor).toBe(state.cursor);
   });
 
+  // The upgrade case for the resume card's category line. A game dealt before
+  // the name was recorded must still be resumable — the card falls back to the
+  // slug, and a state that would not parse would end the game instead.
+  test('a game dealt before the category name was recorded still loads', async () => {
+    const state = midSession();
+    const legacy = JSON.stringify(
+      { version: LOCAL_GAME_STATE_VERSION, state },
+      (key, value) => (key === 'categoryName' ? undefined : value),
+    );
+    expect(legacy).not.toContain('categoryName');
+
+    await kv.set(LOCAL_GAME_STATE_KEY, legacy);
+    const restored = await loadLocalGameState();
+
+    expect(restored?.categoryName).toBeNull();
+    expect(restored?.categorySlug).toBe('randka');
+    expect(restored?.cursor).toBe(state.cursor);
+  });
+
   test('a queue item of an unknown kind is dropped and cleared', async () => {
     await kv.set(
       LOCAL_GAME_STATE_KEY,

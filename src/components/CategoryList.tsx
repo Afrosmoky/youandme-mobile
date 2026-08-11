@@ -7,8 +7,13 @@ import { Theme, useTheme } from '../theme';
 import { pl } from '../i18n/pl';
 
 type Props = {
-  // Called with the chosen category's slug, or null for "mix".
-  onSelect: (slug: string | null) => void;
+  // Called with the chosen category's slug and its name, both null for "mix".
+  //
+  // The name is here because this component is the one place that HAS it: a
+  // caller that wants to show what was chosen (P10's setup, on its resume card)
+  // would otherwise have to run the categories query a second time just to map
+  // the slug back. Callers that do not care simply take one argument.
+  onSelect: (slug: string | null, name: string | null) => void;
   // Blocks every tile while the caller is busy with the previous choice.
   disabled?: boolean;
   // Shown above the list. Omit on a screen that already has a heading.
@@ -85,7 +90,7 @@ export function CategoryList({
         renderItem={({ item }) => (
           <Card
             testID={`category-${item.slug}`}
-            onPress={() => onSelect(item.slug)}
+            onPress={() => onSelect(item.slug, item.name)}
             disabled={disabled}
             style={styles.categoryCard}>
             <View style={styles.categoryRow}>
@@ -103,7 +108,7 @@ export function CategoryList({
           <Card
             testID="category-mix"
             variant="gold"
-            onPress={() => onSelect(null)}
+            onPress={() => onSelect(null, null)}
             disabled={disabled}
             style={styles.mixCard}>
             <Text style={styles.mixName}>{pl.categoryPicker.mixButton}</Text>

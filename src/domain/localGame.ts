@@ -37,6 +37,13 @@ export type LocalGameState = {
   player1: string;
   player2: string;
   categorySlug: string | null;
+  // The category as the couple chose it, snapshotted at the deal. Null means the
+  // mix deck (there is no category to name) or a session dealt before this field
+  // existed. Carried rather than looked up: the resume card is the only place a
+  // couple can see WHICH game is waiting, and it must be able to say so without
+  // the categories list — which is a request that can be loading, or fail, and
+  // which no longer carries a category the backend has since retired.
+  categoryName: string | null;
 
   queue: QueueItem[];
   cursor: number;
@@ -120,6 +127,7 @@ export function startLocalGame(params: {
   player1: string;
   player2: string;
   categorySlug: string | null;
+  categoryName?: string | null;
   questions: Question[];
   challenges?: Challenge[];
   interval?: number;
@@ -129,6 +137,7 @@ export function startLocalGame(params: {
     player1: params.player1,
     player2: params.player2,
     categorySlug: params.categorySlug,
+    categoryName: params.categoryName ?? null,
     queue: buildQueue(params.questions, params.challenges, params.interval),
     cursor: 0,
     activePlayer: 'p1',
@@ -341,6 +350,10 @@ export function primaryAction(state: LocalGameState): 'pass' | 'next' {
  * The same guard as the demo (player1 / player2 / deck): change the partner or
  * the category and the queue on disk answers a different question, so it is
  * started over rather than resumed.
+ *
+ * On the slug, not the name: the name is what the slug was CALLED when the game
+ * was dealt, so comparing it would restart a session because the backend renamed
+ * a category.
  */
 export function matchesSetup(
   state: LocalGameState,

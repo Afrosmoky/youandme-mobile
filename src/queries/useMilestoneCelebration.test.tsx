@@ -163,6 +163,109 @@ describe('useMilestoneCelebration', () => {
     expect(result.current.milestone).toBeNull();
   });
 
+  // S3d: a screen that takes over mid-watch says what it already knows, and the
+  // first reading here becomes a real diff instead of a seed. This is the whole
+  // mechanism behind celebrating a milestone earned by the last card of a local
+  // session, whose report only comes back after the couple has been moved on.
+  describe('with a baseline handed over by another screen', () => {
+    test('the first reading is a diff, not a seed', async () => {
+      jest.mocked(getProgress).mockResolvedValue(after);
+      const {result} = renderHook(
+        () => useMilestoneCelebration(['m1', 'm2']),
+        {wrapper: makeWrapper(makeClient())},
+      );
+
+      await settle();
+
+      expect(result.current.milestone?.slug).toBe('m3');
+    });
+
+    // The other half of the deal: whatever the previous screen celebrated is in
+    // the set it hands over, so it cannot be celebrated a second time here.
+    test('nothing in the handed-over set can fire', async () => {
+      jest.mocked(getProgress).mockResolvedValue(after);
+      const {result} = renderHook(
+        () => useMilestoneCelebration(['m1', 'm2', 'm3']),
+        {wrapper: makeWrapper(makeClient())},
+      );
+
+      await settle();
+
+      expect(result.current.milestone).toBeNull();
+      expect(notifee.displayNotification).not.toHaveBeenCalled();
+    });
+
+    // "The other screen saw the map and nothing was unlocked" is a baseline, and
+    // an empty array must not read as "no baseline was passed".
+    test('an empty baseline is a baseline, not an absence', async () => {
+      const {result} = renderHook(() => useMilestoneCelebration([]), {
+        wrapper: makeWrapper(makeClient()),
+      });
+
+      await settle();
+
+      // `before` has two unlocked; the furthest one wins.
+      expect(result.current.milestone?.slug).toBe('m2');
+    });
+
+    test('a re-render cannot reseed the baseline and re-arm the modal', async () => {
+      const queryClient = makeClient();
+      const {result, rerender} = renderHook(
+        () => useMilestoneCelebration(['m1', 'm2']),
+        {wrapper: makeWrapper(queryClient)},
+      );
+      await settle();
+      jest.mocked(getProgress).mockResolvedValue(after);
+      await act(async () => {
+        await queryClient.invalidateQueries({queryKey: queryKeys.progress});
+      });
+      await settle();
+      act(() => result.current.dismiss());
+
+      rerender(undefined);
+      await settle();
+
+      expect(result.current.milestone).toBeNull();
+    });
+  });
+
+  // What a screen hands on when it navigates: everything it started with plus
+  // everything it has celebrated since.
+  describe('seenMilestones', () => {
+    test('is undefined until a reading has landed', () => {
+      const {result} = renderHook(() => useMilestoneCelebration(), {
+        wrapper: makeWrapper(makeClient()),
+      });
+
+      expect(result.current.seenMilestones()).toBeUndefined();
+    });
+
+    test('is the whole unlocked set once the map has been read', async () => {
+      const {result} = renderHook(() => useMilestoneCelebration(), {
+        wrapper: makeWrapper(makeClient()),
+      });
+      await settle();
+
+      expect(result.current.seenMilestones()).toEqual(['m1', 'm2']);
+    });
+
+    test('grows with what was celebrated, so the next screen skips it', async () => {
+      const queryClient = makeClient();
+      const {result} = renderHook(() => useMilestoneCelebration(), {
+        wrapper: makeWrapper(queryClient),
+      });
+      await settle();
+      jest.mocked(getProgress).mockResolvedValue(after);
+      await act(async () => {
+        await queryClient.invalidateQueries({queryKey: queryKeys.progress});
+      });
+      await settle();
+      expect(result.current.milestone?.slug).toBe('m3');
+
+      expect(result.current.seenMilestones()).toEqual(['m1', 'm2', 'm3']);
+    });
+  });
+
   test('pushes the milestone when the app is in the background', async () => {
     setAppState('background');
     const queryClient = makeClient();

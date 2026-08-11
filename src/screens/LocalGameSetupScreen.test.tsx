@@ -1,10 +1,15 @@
 import React from 'react';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { fireEvent, screen, waitFor } from '@testing-library/react-native';
+import { Alert, type AlertButton } from 'react-native';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { renderWithQueryClient } from '../test/renderWithQueryClient';
 import { LocalGameSetupScreen } from './LocalGameSetupScreen';
 import { listCategories } from '../api/categories';
-import { fetchGameDeck, reportPlayedCards } from '../api/localGame';
+import {
+  type DeckExhaustion,
+  fetchGameDeck,
+  reportPlayedCards,
+} from '../api/localGame';
 import { useAuth } from '../auth/AuthContext';
 import { startLocalGame } from '../domain/localGame';
 import {
@@ -72,7 +77,7 @@ describe('LocalGameSetupScreen', () => {
     jest.clearAllMocks();
     await clearLocalGameState();
     jest.mocked(listCategories).mockResolvedValue(categories);
-    jest.mocked(fetchGameDeck).mockResolvedValue([question(1), question(2)]);
+    jest.mocked(fetchGameDeck).mockResolvedValue(deck([question(1), question(2)]));
     jest
       .mocked(reportPlayedCards)
       .mockResolvedValue({ playedTotal: 0, newlyPlayed: 0 });
@@ -153,14 +158,29 @@ describe('LocalGameSetupScreen', () => {
     expect(stored?.player1).toBe('piotr_s');
     expect(stored?.player2).toBe('Wiktoria');
     expect(stored?.categorySlug).toBe('randka');
+    // Snapshotted at the deal, so the resume card can name what is waiting
+    // without going back to the categories list for it.
+    expect(stored?.categoryName).toBe('Randka');
     expect(stored?.queue).toHaveLength(2);
     expect(stored?.cursor).toBe(0);
   });
 
+  test('the mix deck is stored as no category at all', async () => {
+    renderScreen();
+    fireEvent.press(await screen.findByTestId('category-mix'));
+
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('LocalGame'));
+
+    const stored = await loadLocalGameState();
+    expect(stored?.categorySlug).toBeNull();
+    expect(stored?.categoryName).toBeNull();
+  });
+
   // An exhausted category is a success, not a failure — and it must not open a
-  // game with nothing in it.
-  test('an empty deck says so instead of opening an empty game', async () => {
-    jest.mocked(fetchGameDeck).mockResolvedValue([]);
+  // game with nothing in it. With no reason to go on this is all the screen can
+  // say; the three reasons that CAN be told apart have their own suite below.
+  test('an empty deck with no reason falls back to the neutral message', async () => {
+    jest.mocked(fetchGameDeck).mockResolvedValue(deck([]));
     renderScreen();
 
     fireEvent.press(await screen.findByTestId('category-randka'));
@@ -369,13 +389,39 @@ describe('LocalGameSetupScreen — a paused game', () => {
     >);
   });
 
-  test('offers to resume, naming the partner and the position', async () => {
+  // The category is on the card because there is one slot: this line is the only
+  // place the couple can see WHICH game is waiting for them.
+  test('offers to resume, naming the partner, the category and the position', async () => {
     await saveLocalGameState(paused());
     renderScreen();
 
     expect(
       await screen.findByTestId('local-game-resume-summary'),
-    ).toHaveTextContent(pl.localGame.resumeSummary('Wiktoria', 1, 3));
+    ).toHaveTextContent(
+      pl.localGame.resumeSummary('Wiktoria', 'Randka', 1, 3),
+    );
+  });
+
+  test('a mixed deck is named as one', async () => {
+    await saveLocalGameState(paused(null, null));
+    renderScreen();
+
+    expect(
+      await screen.findByTestId('local-game-resume-summary'),
+    ).toHaveTextContent(
+      pl.localGame.resumeSummary('Wiktoria', pl.localGame.resumeMix, 1, 3),
+    );
+  });
+
+  // A session dealt before the name was recorded: the slug is a poor name, and
+  // still better than dropping the line that says what is waiting.
+  test('a session with no recorded name falls back to its slug', async () => {
+    await saveLocalGameState(paused('randka', null));
+    renderScreen();
+
+    expect(
+      await screen.findByTestId('local-game-resume-summary'),
+    ).toHaveTextContent(pl.localGame.resumeSummary('Wiktoria', 'randka', 1, 3));
   });
 
   test('resuming opens the game without dealing a new deck', async () => {
@@ -412,6 +458,70 @@ describe('LocalGameSetupScreen — a paused game', () => {
     expect(fetchGameDeck).not.toHaveBeenCalled();
   });
 
+  test('the same setup is picked up without a warning', async () => {
+    await saveLocalGameState(paused());
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('category-randka'));
+
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('LocalGame'));
+    expect(alert).not.toHaveBeenCalled();
+  });
+
+  // One slot: this deal ends the paused game, and nothing on a category tile
+  // says so. Asking is the only alternative to a second slot.
+  test('a different setup warns before it overwrites the paused game', async () => {
+    await saveLocalGameState(paused());
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('category-mix'));
+
+    await waitFor(() =>
+      expect(alert).toHaveBeenCalledWith(
+        pl.localGame.overwriteTitle,
+        pl.localGame.overwriteMessage,
+        expect.any(Array),
+      ),
+    );
+    // Nothing has happened yet — the deck is dealt on the answer, not on the
+    // question.
+    expect(fetchGameDeck).not.toHaveBeenCalled();
+    expect((await loadLocalGameState())?.categorySlug).toBe('randka');
+  });
+
+  test('cancelling the warning leaves the paused game where it was', async () => {
+    await saveLocalGameState(paused());
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('category-mix'));
+    await waitFor(() => expect(alert).toHaveBeenCalled());
+
+    // The cancel button carries no action at all: dismissing IS doing nothing.
+    const cancel = overwriteButtons()?.find(
+      button => button.text === pl.localGame.overwriteCancel,
+    );
+    expect(cancel?.style).toBe('cancel');
+    expect(cancel?.onPress).toBeUndefined();
+
+    expect(fetchGameDeck).not.toHaveBeenCalled();
+    expect(navigate).not.toHaveBeenCalled();
+    expect((await loadLocalGameState())?.categorySlug).toBe('randka');
+    expect(screen.getByTestId('local-game-resume')).toBeOnTheScreen();
+  });
+
+  test('confirming the warning deals the new game over the old one', async () => {
+    await saveLocalGameState(paused());
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('category-mix'));
+    await waitFor(() => expect(alert).toHaveBeenCalled());
+    await confirmOverwrite();
+
+    await waitFor(() => expect(fetchGameDeck).toHaveBeenCalledWith(null));
+    expect(navigate).toHaveBeenCalledWith('LocalGame');
+    expect((await loadLocalGameState())?.categorySlug).toBeNull();
+  });
+
   test('a different partner deals a fresh deck', async () => {
     await saveLocalGameState(paused());
     renderScreen();
@@ -421,6 +531,8 @@ describe('LocalGameSetupScreen — a paused game', () => {
       'Ala',
     );
     fireEvent.press(screen.getByTestId('category-randka'));
+    await waitFor(() => expect(alert).toHaveBeenCalled());
+    await confirmOverwrite();
 
     await waitFor(() => expect(fetchGameDeck).toHaveBeenCalledWith('randka'));
     expect((await loadLocalGameState())?.player2).toBe('Ala');
@@ -511,8 +623,30 @@ describe('LocalGameSetupScreen — a paused game', () => {
     renderScreen();
 
     fireEvent.press(await screen.findByTestId('category-mix'));
+    await waitFor(() => expect(alert).toHaveBeenCalled());
+    await confirmOverwrite();
 
     await waitFor(() => expect(fetchGameDeck).toHaveBeenCalledWith(null));
     expect((await loadLocalGameState())?.categorySlug).toBeNull();
+  });
+
+  // A finished session is not a paused one: the mount effect clears it, so
+  // nothing is offered back and nothing is at risk of being overwritten.
+  test('a finished session neither offers a resume nor warns', async () => {
+    await saveLocalGameState({
+      ...paused(),
+      cursor: 3,
+      playedUlids: ['Q1', 'Q2', 'Q3'],
+      pendingReport: [],
+    });
+    renderScreen();
+
+    const mix = await screen.findByTestId('category-mix');
+    await waitFor(() => expect(screen.queryByTestId('local-game-resume')).toBeNull());
+
+    fireEvent.press(mix);
+
+    await waitFor(() => expect(fetchGameDeck).toHaveBeenCalledWith(null));
+    expect(alert).not.toHaveBeenCalled();
   });
 });

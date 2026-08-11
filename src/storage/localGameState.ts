@@ -69,6 +69,12 @@ const stateSchema: z.ZodType<LocalGameState> = z
     player1: z.string(),
     player2: z.string(),
     categorySlug: z.string().nullable(),
+    // Version stays at 1 for the third time, and for the same reason as
+    // `options` and `pendingReport` below: a session dealt by the previous build
+    // has no such key, and requiring it would end a game in progress on upgrade.
+    // Null then reads as "no name recorded", which the resume card answers with
+    // the slug it does have.
+    categoryName: z.string().nullable().optional().default(null),
     queue: z.array(queueItemSchema),
     cursor: z.number(),
     activePlayer: z.union([z.literal('p1'), z.literal('p2')]),

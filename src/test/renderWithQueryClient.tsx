@@ -12,17 +12,27 @@ import { ThemeProvider } from '../theme';
 // The client is returned alongside the render result so a test can assert on it
 // (e.g. spy on invalidateQueries) — it is the same client the rendered hooks use
 // via useQueryClient().
-export function renderWithQueryClient(ui: ReactElement) {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      // Disable cache garbage collection on both queries and mutations: with a
-      // finite gcTime the client schedules a setTimeout that outlives the test
-      // and makes Jest warn about a worker failing to exit. Infinity schedules
-      // no timer. retry: false makes a rejected call fail fast into onError.
-      queries: { retry: false, gcTime: Infinity },
-      mutations: { retry: false, gcTime: Infinity },
-    },
-  });
+//
+// An existing client can be passed in to keep the cache across two renders, for
+// the one thing a fresh-client-per-render cannot express: a screen handing over
+// to another screen the way the navigator does it, with the in-flight requests
+// of the first one landing in the second one's cache (S3d).
+export function renderWithQueryClient(
+  ui: ReactElement,
+  existingClient?: QueryClient,
+) {
+  const queryClient =
+    existingClient ??
+    new QueryClient({
+      defaultOptions: {
+        // Disable cache garbage collection on both queries and mutations: with a
+        // finite gcTime the client schedules a setTimeout that outlives the test
+        // and makes Jest warn about a worker failing to exit. Infinity schedules
+        // no timer. retry: false makes a rejected call fail fast into onError.
+        queries: { retry: false, gcTime: Infinity },
+        mutations: { retry: false, gcTime: Infinity },
+      },
+    });
   return {
     queryClient,
     ...render(

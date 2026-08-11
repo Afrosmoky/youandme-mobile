@@ -1,6 +1,6 @@
 import React from 'react';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { renderWithQueryClient } from '../test/renderWithQueryClient';
 import { LocalGameSummaryScreen } from './LocalGameSummaryScreen';
 import { reportPlayedCards } from '../api/localGame';
@@ -16,6 +16,7 @@ import {
   loadLocalGameState,
   saveLocalGameState,
 } from '../storage/localGameState';
+import { queryKeys } from '../queries/queryKeys';
 import type { RootStackParamList } from '../navigation/types';
 import type { Progress, Question } from '../domain/types';
 import { pl } from '../i18n/pl';
@@ -54,10 +55,10 @@ const progressWith = (unlocked: boolean): Progress => ({
 const popTo = jest.fn();
 const replace = jest.fn();
 
-function makeProps(): Props {
+function makeProps(params?: { seenMilestones?: string[] }): Props {
   return {
     navigation: { popTo, replace, setOptions: jest.fn(), navigate: jest.fn() },
-    route: { key: 'LocalGameSummary', name: 'LocalGameSummary', params: undefined },
+    route: { key: 'LocalGameSummary', name: 'LocalGameSummary', params },
   } as unknown as Props;
 }
 
@@ -82,8 +83,8 @@ const playedOut = () => {
   return confirmReported(state, state.pendingReport);
 };
 
-const renderScreen = () =>
-  renderWithQueryClient(<LocalGameSummaryScreen {...makeProps()} />);
+const renderScreen = (params?: { seenMilestones?: string[] }) =>
+  renderWithQueryClient(<LocalGameSummaryScreen {...makeProps(params)} />);
 
 // S3c turned this screen into a read. The report moved onto every transition,
 // the celebration onto the card that earned it, and the clearing of the state
@@ -134,21 +135,6 @@ describe('LocalGameSummaryScreen', () => {
     expect((await loadLocalGameState())?.pendingReport).toEqual(['Q3']);
   });
 
-  // The milestone was celebrated on the card that earned it — a second modal
-  // here would celebrate the same thing twice.
-  test('does not celebrate a milestone a second time', async () => {
-    jest
-      .mocked(getProgress)
-      .mockResolvedValueOnce(progressWith(false))
-      .mockResolvedValue(progressWith(true));
-    await saveLocalGameState(playedOut());
-    renderScreen();
-
-    await screen.findByTestId('local-game-summary-questions');
-    await waitFor(() => expect(getProgress).not.toHaveBeenCalled());
-    expect(screen.queryByText(pl.celebration.milestoneTitle)).toBeNull();
-  });
-
   // P10 read the state twice — once for the counters, once from the effect that
   // reported — and the second read landed after the session had been cleared,
   // which bounced the couple off their own summary. Nothing clears the state
@@ -168,5 +154,114 @@ describe('LocalGameSummaryScreen', () => {
     renderScreen();
 
     await waitFor(() => expect(replace).toHaveBeenCalledWith('LocalGameSetup'));
+  });
+});
+
+// S3d: the one milestone the game screen cannot celebrate is the one earned by
+// the LAST card — its report is still in flight when the couple is moved here.
+// This screen finishes that case, and the baseline in the route params is what
+// keeps it from finishing any of the others a second time.
+describe('LocalGameSummaryScreen — the milestone of the last card', () => {
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    await clearLocalGameState();
+    jest
+      .mocked(reportPlayedCards)
+      .mockResolvedValue({ playedTotal: 10, newlyPlayed: 1 });
+    jest.mocked(getProgress).mockResolvedValue(progressWith(false));
+    await saveLocalGameState(playedOut());
+  });
+
+  // The unlock is already in the map by the time this screen reads it — the
+  // report answered while the navigator was still swapping the screens.
+  test('celebrates an unlock the game screen never saw', async () => {
+    jest.mocked(getProgress).mockResolvedValue(progressWith(true));
+    renderScreen({ seenMilestones: [] });
+
+    expect(
+      await screen.findByText(pl.celebration.milestoneTitle),
+    ).toBeOnTheScreen();
+    expect(
+      screen.getByText(pl.celebration.milestoneBody('Kamień 10')),
+    ).toBeOnTheScreen();
+  });
+
+  // The usual case, and the reason the hook is mounted before the counters are
+  // read: the map only moves once the last report has come back, which is after
+  // the couple is already looking at their summary.
+  test('celebrates an unlock that arrives after the screen is up', async () => {
+    const { queryClient } = renderScreen({ seenMilestones: [] });
+    await screen.findByTestId('local-game-summary-questions');
+    expect(screen.queryByText(pl.celebration.milestoneTitle)).toBeNull();
+
+    // What the report does when it answers: useReportPlayedCards invalidates
+    // progress, and the refetch brings the unlock.
+    jest.mocked(getProgress).mockResolvedValue(progressWith(true));
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.progress });
+    });
+
+    expect(
+      await screen.findByText(pl.celebration.milestoneTitle),
+    ).toBeOnTheScreen();
+  });
+
+  // The invariant this whole slice is balanced on: a milestone the game screen
+  // already put a modal on is in the set it hands over, and must not appear
+  // again — the couple would be congratulated twice for one card.
+  test('does not celebrate what the game screen already celebrated', async () => {
+    jest.mocked(getProgress).mockResolvedValue(progressWith(true));
+    renderScreen({ seenMilestones: ['m10'] });
+
+    await screen.findByTestId('local-game-summary-questions');
+    await waitFor(() => expect(getProgress).toHaveBeenCalled());
+    expect(screen.queryByText(pl.celebration.milestoneTitle)).toBeNull();
+  });
+
+  // Reached without a game screen to hand anything over (a finished session
+  // found on disk): there is no way to tell an unlock earned five minutes ago
+  // from one earned last month, so nothing is celebrated.
+  test('with no baseline it celebrates nothing, however full the map', async () => {
+    jest.mocked(getProgress).mockResolvedValue(progressWith(true));
+    renderScreen();
+
+    await screen.findByTestId('local-game-summary-questions');
+    await waitFor(() => expect(getProgress).toHaveBeenCalled());
+    expect(screen.queryByText(pl.celebration.milestoneTitle)).toBeNull();
+  });
+
+  test('the modal closes onto the summary and stays closed', async () => {
+    const { queryClient } = renderScreen({ seenMilestones: [] });
+    // The first reading has to land before the report's invalidation, or the
+    // two collapse into one in-flight fetch and the unlock is never asked for.
+    await screen.findByTestId('local-game-summary-questions');
+    jest.mocked(getProgress).mockResolvedValue(progressWith(true));
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.progress });
+    });
+    await screen.findByText(pl.celebration.milestoneTitle);
+
+    fireEvent.press(screen.getByTestId('celebration-dismiss'));
+
+    await waitFor(() =>
+      expect(screen.queryByText(pl.celebration.milestoneTitle)).toBeNull(),
+    );
+    expect(screen.getByTestId('local-game-summary-questions')).toBeOnTheScreen();
+
+    // A later reading of the same map is not a second unlock.
+    await act(async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.progress });
+    });
+    expect(screen.queryByText(pl.celebration.milestoneTitle)).toBeNull();
+  });
+
+  // Celebrating is watching, not playing: this screen still sends nothing.
+  test('watching the map does not make this screen report', async () => {
+    jest.mocked(getProgress).mockResolvedValue(progressWith(true));
+    renderScreen({ seenMilestones: [] });
+
+    await screen.findByText(pl.celebration.milestoneTitle);
+    expect(reportPlayedCards).not.toHaveBeenCalled();
+    expect(replace).not.toHaveBeenCalled();
   });
 });

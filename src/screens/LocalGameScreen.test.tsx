@@ -1,9 +1,16 @@
 import React from 'react';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { fireEvent, screen, waitFor } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react-native';
 import { renderWithQueryClient } from '../test/renderWithQueryClient';
 import { LocalGameScreen } from './LocalGameScreen';
-import { startLocalGame } from '../domain/localGame';
+import { LocalGameSummaryScreen } from './LocalGameSummaryScreen';
+import { isFinished, startLocalGame } from '../domain/localGame';
 import {
   clearLocalGameState,
   loadLocalGameState,
@@ -264,8 +271,27 @@ describe('LocalGameScreen', () => {
     fireEvent.press(await screen.findByTestId('local-game-skip'));
 
     await waitFor(() =>
-      expect(replace).toHaveBeenCalledWith('LocalGameSummary'),
+      expect(replace).toHaveBeenCalledWith(
+        'LocalGameSummary',
+        // What travels with it is the celebration baseline — see the S3d suite.
+        expect.any(Object),
+      ),
     );
+  });
+
+  // What the setup screen reads to decide whether there is anything to resume.
+  // A session that reached the summary but left an unfinished state on disk is
+  // a game the couple is offered back after they have already been told it is
+  // over — the regression S3 shipped with (see the save-in-flight test below).
+  test('the end of the queue leaves a session marked finished on disk', async () => {
+    await saveLocalGameState(session(1));
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('local-game-skip'));
+
+    await waitFor(() => expect(replace).toHaveBeenCalled());
+    const stored = await loadLocalGameState();
+    expect(stored && isFinished(stored)).toBe(true);
   });
 
   // The app killed on the last card: the session is over but was never
@@ -386,6 +412,74 @@ describe('LocalGameScreen — saving a card as a memory', () => {
       await screen.findByTestId('local-game-save-error'),
     ).toBeOnTheScreen();
     expect((await loadLocalGameState())?.savedMemoryUlids).toEqual([]);
+  });
+
+  // The save is the third thing on this screen that answers after a round trip
+  // (the like and the report are the others), and it now follows the same rule:
+  // it writes onto the session as it is NOW. Writing back the snapshot it
+  // started from would rewind the couple to the card they tapped save on.
+  test('a save landing after the couple moved on does not rewind them', async () => {
+    let finish: (memory: Memory) => void = () => {};
+    jest
+      .mocked(createLocalMemory)
+      .mockReturnValue(new Promise(resolve => (finish = resolve)));
+    await saveLocalGameState(session(20));
+    renderScreen();
+    await answerBoth();
+
+    fireEvent.press(screen.getByTestId('local-game-save'));
+    // Still in flight, and the couple is done with this card.
+    fireEvent.press(screen.getByTestId('local-game-primary'));
+    await waitFor(() =>
+      expect(screen.getByTestId('local-game-question')).toHaveTextContent(
+        'Pytanie 2?',
+      ),
+    );
+
+    finish({} as Memory);
+
+    // The card is recorded as saved — it was — and nothing else moved back.
+    await waitFor(async () =>
+      expect((await loadLocalGameState())?.savedMemoryUlids).toEqual(['Q1']),
+    );
+    const stored = await loadLocalGameState();
+    expect(stored?.cursor).toBe(1);
+    expect(stored?.playedUlids).toEqual(['Q1']);
+    expect(screen.getByTestId('local-game-question')).toHaveTextContent(
+      'Pytanie 2?',
+    );
+  });
+
+  // The regression itself: the couple saves the LAST card and taps on without
+  // waiting for the request. The save then answered to a session that had
+  // already finished and wrote the unfinished one back over it — leaving a
+  // playable game on disk, which the setup screen dutifully offered to resume
+  // after the summary had told them the game was over.
+  test('a save in flight cannot unfinish the session that ended under it', async () => {
+    let finish: (memory: Memory) => void = () => {};
+    jest
+      .mocked(createLocalMemory)
+      .mockReturnValue(new Promise(resolve => (finish = resolve)));
+    await saveLocalGameState(session(1));
+    const view = renderScreen();
+    await answerBoth();
+
+    fireEvent.press(screen.getByTestId('local-game-save'));
+    fireEvent.press(screen.getByTestId('local-game-primary'));
+    await waitFor(() =>
+      expect(replace).toHaveBeenCalledWith(
+        'LocalGameSummary',
+        expect.any(Object),
+      ),
+    );
+
+    // What the navigator does on replace, while the request is still open.
+    view.unmount();
+    finish({} as Memory);
+    await new Promise(resolve => setImmediate(resolve));
+
+    const stored = await loadLocalGameState();
+    expect(stored && isFinished(stored)).toBe(true);
   });
 
   // Saving is not playing: the map moves on the report, not here.
@@ -627,6 +721,53 @@ describe('LocalGameScreen — liking a card', () => {
 
     await screen.findByTestId('local-game-challenge-title');
     expect(screen.queryByTestId('local-game-like')).toBeNull();
+    expect(screen.queryByTestId('local-game-like-mirror')).toBeNull();
+  });
+
+  // S_polish moved the heart into the card's two corners. It is still ONE like:
+  // the screen hands the frame a single state and a single toggle, so the corner
+  // the couple happens to reach for cannot matter.
+  test('the mirrored heart shows the same state as the first', async () => {
+    await saveLocalGameState(likedSession());
+    renderScreen();
+
+    expect(await screen.findByTestId('local-game-like')).toHaveTextContent(
+      FILLED,
+    );
+    expect(screen.getByTestId('local-game-like-mirror')).toHaveTextContent(
+      FILLED,
+    );
+  });
+
+  test('tapping the mirrored heart is the same one like', async () => {
+    await saveLocalGameState(session(20));
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('local-game-like-mirror'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('local-game-like')).toHaveTextContent(FILLED),
+    );
+    // One call, not two — and it reaches the queue on disk exactly as a tap on
+    // the other corner would.
+    expect(likeQuestion).toHaveBeenCalledTimes(1);
+    expect(likeQuestion).toHaveBeenCalledWith('Q1');
+    expect(await likedOnDisk('Q1')).toBe(true);
+  });
+
+  // Both corners are the same in-flight guard: the pair is one control.
+  test('the mirrored heart is dead while a call is in flight', async () => {
+    jest.mocked(likeQuestion).mockReturnValue(new Promise(() => {}));
+    await saveLocalGameState(session(20));
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('local-game-like'));
+    await waitFor(() =>
+      expect(screen.getByTestId('local-game-like')).toHaveTextContent(FILLED),
+    );
+    fireEvent.press(screen.getByTestId('local-game-like-mirror'));
+
+    expect(likeQuestion).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -835,7 +976,10 @@ describe('LocalGameScreen — reporting as they play', () => {
     fireEvent.press(await screen.findByTestId('local-game-skip'));
 
     await waitFor(() => expect(reportPlayedCards).toHaveBeenCalledWith(['Q1']));
-    expect(replace).toHaveBeenCalledWith('LocalGameSummary');
+    expect(replace).toHaveBeenCalledWith(
+      'LocalGameSummary',
+      expect.any(Object),
+    );
     await waitFor(async () => expect(await pendingOnDisk()).toEqual(['Q1']));
 
     // What the navigator does on replace, while the request is still open.
@@ -932,6 +1076,136 @@ describe('LocalGameScreen — celebrating a milestone mid-game', () => {
   });
 });
 
+// S3d: the last card of a session is reported like any other — fired, not
+// awaited — so the couple is on the summary before its answer comes back. The
+// milestone it may have earned is therefore celebrated THERE, and what makes
+// that possible without celebrating anything twice is the baseline this screen
+// hands over when it navigates.
+describe('LocalGameScreen — the milestone of the last card', () => {
+  // TanStack notifies its observers off a timer, so a resolved fetch is not yet
+  // an observed one — and the baseline the screen hands on only exists once the
+  // hook has actually seen the map.
+  const mapRead = async () => {
+    await waitFor(() => expect(getProgress).toHaveBeenCalled());
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
+  };
+
+  const summaryProps = (params: unknown) =>
+    ({
+      navigation: { popTo, replace, setOptions: jest.fn(), navigate: jest.fn() },
+      route: { key: 'S', name: 'LocalGameSummary', params },
+    }) as unknown as React.ComponentProps<typeof LocalGameSummaryScreen>;
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    await clearLocalGameState();
+  });
+
+  // The price of the fix must not be paid by every other session: a last card
+  // that earns nothing still leaves the moment it is tapped.
+  test('the transition does not wait for the report to answer', async () => {
+    jest.mocked(reportPlayedCards).mockReturnValue(new Promise(() => {}));
+    await saveLocalGameState(session(1));
+    renderScreen();
+    await mapRead();
+
+    fireEvent.press(screen.getByTestId('local-game-skip'));
+
+    // Gone, with the report still open behind them.
+    await waitFor(() =>
+      expect(replace).toHaveBeenCalledWith('LocalGameSummary', {
+        seenMilestones: [],
+      }),
+    );
+    expect(reportPlayedCards).toHaveBeenCalledWith(['Q1']);
+  });
+
+  // The seam itself, played out the way the navigator does it: the game screen
+  // is unmounted while its last report is still in flight, and the answer lands
+  // in a cache the summary screen then reads.
+  test('a milestone earned by the last card is celebrated on the summary', async () => {
+    jest
+      .mocked(getProgress)
+      .mockResolvedValueOnce(progressWith(false))
+      .mockResolvedValue(progressWith(true));
+    let finish: (result: { playedTotal: number; newlyPlayed: number }) => void =
+      () => {};
+    jest
+      .mocked(reportPlayedCards)
+      .mockReturnValue(new Promise(resolve => (finish = resolve)));
+    await saveLocalGameState(session(1));
+    const view = renderScreen();
+    await mapRead();
+
+    fireEvent.press(screen.getByTestId('local-game-skip'));
+    await waitFor(() => expect(replace).toHaveBeenCalled());
+    const handedOver = replace.mock.calls[0][1];
+
+    view.unmount();
+    finish({ playedTotal: 10, newlyPlayed: 1 });
+    await act(async () => {
+      await new Promise(resolve => setImmediate(resolve));
+    });
+
+    // Same client, because that is what the navigator keeps: the invalidation
+    // fired by the report of a screen that no longer exists is what the summary
+    // picks up.
+    renderWithQueryClient(
+      <LocalGameSummaryScreen {...summaryProps(handedOver)} />,
+      view.queryClient,
+    );
+
+    expect(
+      await screen.findByText(pl.celebration.milestoneBody('Kamień 10')),
+    ).toBeOnTheScreen();
+  });
+
+  // The other side of the same coin: what WAS celebrated mid-game travels in the
+  // baseline, so the summary cannot celebrate it again.
+  test('what was celebrated mid-game travels in the baseline', async () => {
+    jest
+      .mocked(getProgress)
+      .mockResolvedValueOnce(progressWith(false))
+      .mockResolvedValue(progressWith(true));
+    await saveLocalGameState(session(2));
+    renderScreen();
+    await mapRead();
+
+    // First card: the milestone is celebrated here, on the card that earned it.
+    fireEvent.press(screen.getByTestId('local-game-skip'));
+    await screen.findByText(pl.celebration.milestoneTitle);
+    fireEvent.press(screen.getByTestId('celebration-dismiss'));
+
+    // Last card: it goes on the handover, and the summary skips it.
+    fireEvent.press(screen.getByTestId('local-game-skip'));
+
+    await waitFor(() =>
+      expect(replace).toHaveBeenCalledWith('LocalGameSummary', {
+        seenMilestones: ['m10'],
+      }),
+    );
+  });
+
+  // Nothing was ever read, so nothing can be told apart: the couple sees the
+  // milestone on the map instead of in a modal. Better than congratulating them
+  // for a milestone they earned last month.
+  test('an unread map hands over no baseline at all', async () => {
+    jest.mocked(getProgress).mockReturnValue(new Promise(() => {}));
+    await saveLocalGameState(session(1));
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('local-game-skip'));
+
+    await waitFor(() =>
+      expect(replace).toHaveBeenCalledWith('LocalGameSummary', {
+        seenMilestones: undefined,
+      }),
+    );
+  });
+});
+
 // S2: 14 cards in the deck are answered by picking from a list. The picker is a
 // different way of writing the same answer — everything past it (the turn, the
 // save, the report) must not be able to tell the difference.
@@ -968,6 +1242,32 @@ describe('LocalGameScreen — cards answered by picking', () => {
     await screen.findByTestId('local-game-options');
 
     expect(screen.getAllByRole('checkbox')).toHaveLength(3);
+  });
+
+  // An open card says whose turn it is in the field's placeholder; a picker has
+  // no such place, and two people over one phone were left guessing who picks.
+  test('the picker names the player whose turn it is', async () => {
+    await saveLocalGameState(choiceSession(false));
+    renderScreen();
+
+    expect(
+      await screen.findByText(pl.localGame.pickOne('piotr_s')),
+    ).toBeOnTheScreen();
+
+    fireEvent.press(screen.getByTestId('local-game-primary'));
+
+    expect(
+      await screen.findByText(pl.localGame.pickOne('Wiktoria')),
+    ).toBeOnTheScreen();
+  });
+
+  test('a multiple-choice card names the player too', async () => {
+    await saveLocalGameState(choiceSession(true));
+    renderScreen();
+
+    expect(
+      await screen.findByText(pl.localGame.pickMany('piotr_s')),
+    ).toBeOnTheScreen();
   });
 
   test('an open card keeps the write toggle', async () => {

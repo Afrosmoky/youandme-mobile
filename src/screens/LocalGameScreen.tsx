@@ -86,7 +86,7 @@ export function LocalGameScreen({ navigation }: Props) {
   // baseline, so it has to happen before the first report moves it. On the
   // summary screen (where P10 kept it) that ordering had to be constructed by
   // hand; here the couple gives it to us for free by playing a card.
-  const { milestone, dismiss } = useMilestoneCelebration();
+  const { milestone, dismiss, seenMilestones } = useMilestoneCelebration();
 
   // `state` as of the last committed render, for the two things that resume AFTER
   // an await — the like round trip (S3b) and the report (S3c). By the time either
@@ -119,7 +119,9 @@ export function LocalGameScreen({ navigation }: Props) {
       }
       if (isFinished(stored)) {
         // The app died on the last card: the session is over but never
-        // summarised, and its played cards were never reported.
+        // summarised, and its played cards were never reported. No baseline
+        // travels with it — this mount has watched nothing, and a summary that
+        // seeded itself off the couple's history would congratulate them for it.
         navigation.replace('LocalGameSummary');
         return;
       }
@@ -194,6 +196,13 @@ export function LocalGameScreen({ navigation }: Props) {
   //
   // Order matters and is the same as everywhere else here: disk first, request
   // second. A phone that dies between the two still knows what it owes.
+  //
+  // The last card leaves for the summary WITHOUT waiting for its own report
+  // (S3d): a card that earns nothing must not buy a spinner at the end of a
+  // game, and the client cannot know which card earns something without
+  // duplicating the backend's thresholds. What travels instead is the watch —
+  // the milestones this screen has already accounted for — so the summary can
+  // pick up the answer when it lands and celebrate exactly what is new in it.
   const transition = useCallback(
     async (next: LocalGameState) => {
       setWriting(false);
@@ -201,10 +210,12 @@ export function LocalGameScreen({ navigation }: Props) {
       await persist(next);
       flushPending(next.pendingReport);
       if (isFinished(next)) {
-        navigation.replace('LocalGameSummary');
+        navigation.replace('LocalGameSummary', {
+          seenMilestones: seenMilestones(),
+        });
       }
     },
-    [flushPending, navigation, persist],
+    [flushPending, navigation, persist, seenMilestones],
   );
 
   const onType = useCallback(
@@ -235,8 +246,29 @@ export function LocalGameScreen({ navigation }: Props) {
         playerBName: state.player2,
         answeredAt: new Date().toISOString(),
       });
+      // Onto the state as it is NOW, not the snapshot this save started from —
+      // the same rule as the like (S3b) and the report (S3c), and for the same
+      // reason: the answer lands after a round trip. Writing back the snapshot
+      // would undo every transition made while the request was open, and the
+      // card it undoes at the end of a session is the one that FINISHED it: the
+      // state on disk goes back to the last card, so the setup screen offers to
+      // resume a game the couple has already seen the summary of.
+      //
+      // Marking by ulid is what makes this safe on a state that has moved on —
+      // the save happened, so the card is saved wherever the queue is now, and
+      // markMemorySaved returns the state untouched if it already says so.
+      //
+      // Null means the screen is gone: the memory is on the server either way,
+      // and a late write must not resurrect a session the setup screen cleared.
+      const current = latestState.current;
+      if (current === null) {
+        return;
+      }
       // Persist, but leave the card as it is — the couple is still on it.
-      await persist(markMemorySaved(state, item.question.ulid));
+      const next = markMemorySaved(current, item.question.ulid);
+      if (next !== current) {
+        await persist(next);
+      }
     } catch (err) {
       setSaveError(parseApiError(err, pl.localGame.saveError).topLevel);
     }
@@ -324,9 +356,9 @@ export function LocalGameScreen({ navigation }: Props) {
 
   // Rendered on both layouts, because the milestone lands a beat AFTER the card
   // that earned it — by which time the couple may be on the next question or on
-  // a challenge. The one card it cannot reach is the last: that transition leaves
-  // for the summary immediately, so a milestone crossed by the final card of a
-  // session is shown on the map rather than celebrated.
+  // a challenge. The one card it cannot reach is the last, whose answer comes
+  // back to a screen that is already gone; the summary screen finishes that one
+  // (S3d), armed with the baseline handed to it in `transition`.
   const celebration = (
     <Celebration
       visible={milestone !== null}
@@ -363,77 +395,88 @@ export function LocalGameScreen({ navigation }: Props) {
 
   return (
     <ScreenContainer testID="local-game-screen">
-      <SectionLabel testID="local-game-header">
+      {/* Above the card, not in it: the counter and whose turn it is belong to
+          the session, while the card is one question. */}
+      <SectionLabel testID="local-game-header" style={styles.cardLabel}>
         {pl.localGame.cardHeader(counter.current, counter.total, activeName)}
       </SectionLabel>
 
-      {/* Only cards bought with a credit are marked; a badge on every card
-          would say nothing at all. */}
-      {item.question.isLocked && (
-        <Badge testID="local-game-unlocked" style={styles.unlockedBadge}>
-          {pl.question.unlockedBadge}
-        </Badge>
-      )}
+      {/* The heart belongs to the question and only to it, which is why it is
+          the CARD that carries it — in both corners, one like. */}
+      <GameCard
+        testID="local-game-card"
+        style={styles.card}
+        like={{
+          liked: item.question.liked,
+          onToggle: onToggleLike,
+          disabled: likePending,
+          testID: 'local-game-like',
+        }}>
+        {/* Only cards bought with a credit are marked; a badge on every card
+            would say nothing at all. */}
+        {item.question.isLocked && (
+          <Badge testID="local-game-unlocked" style={styles.unlockedBadge}>
+            {pl.question.unlockedBadge}
+          </Badge>
+        )}
 
-      {/* The heart belongs to the question, and only to it: a challenge is an
-          instruction the couple performs, not a card of the deck they can like
-          (there is nothing server-side to like it on). */}
-      <View style={styles.questionRow}>
         <Text testID="local-game-question" style={styles.question}>
           {item.question.body}
         </Text>
-        <LikeHeart
-          testID="local-game-like"
-          liked={item.question.liked}
-          onToggle={onToggleLike}
-          disabled={likePending}
-        />
-      </View>
 
-      {/* A card that came with options is answered by picking, and the picker is
-          on screen from the start — there is nothing optional about it to hide
-          behind a toggle, the way writing is optional on an open card. Both
-          paths write to the same place through onType, so the picked labels are
-          the answer text, and the turn, the save and the report never learn that
-          this card was different. */}
-      {item.question.options ? (
-        <OptionPicker
-          testID="local-game-options"
-          label={
-            item.question.options.multiple
-              ? pl.localGame.pickMany
-              : pl.localGame.pickOne
-          }
-          items={item.question.options.items}
-          multiple={item.question.options.multiple}
-          value={state.answers[state.activePlayer]}
-          onChange={onType}
-          style={styles.picker}
-        />
-      ) : (
-        <>
-          {writing ? (
-            <TextField
-              value={state.answers[state.activePlayer]}
-              onChangeText={onType}
-              placeholder={pl.localGame.answerPlaceholder(activeName)}
-              multiline
-              testID="local-game-answer"
-            />
-          ) : null}
+        {/* A card that came with options is answered by picking, and the picker
+            is on screen from the start — there is nothing optional about it to
+            hide behind a toggle, the way writing is optional on an open card.
+            Both paths write to the same place through onType, so the picked
+            labels are the answer text, and the turn, the save and the report
+            never learn that this card was different.
 
-          <OutlineButton
-            testID="local-game-write-toggle"
-            title={
-              writing
-                ? pl.localGame.writeToggleHide
-                : pl.localGame.writeToggleShow
+            The one thing the picker has to say for itself is whose turn it is:
+            an open card carries the active player in the field's placeholder,
+            and a picker has no such place. So it goes above the options. */}
+        {item.question.options ? (
+          <OptionPicker
+            testID="local-game-options"
+            label={
+              item.question.options.multiple
+                ? pl.localGame.pickMany(activeName)
+                : pl.localGame.pickOne(activeName)
             }
-            onPress={() => setWriting(current => !current)}
-            style={styles.writeToggle}
+            items={item.question.options.items}
+            multiple={item.question.options.multiple}
+            value={state.answers[state.activePlayer]}
+            onChange={onType}
+            style={styles.picker}
           />
-        </>
-      )}
+        ) : (
+          <>
+            {writing ? (
+              <TextField
+                value={state.answers[state.activePlayer]}
+                onChangeText={onType}
+                placeholder={pl.localGame.answerPlaceholder(activeName)}
+                multiline
+                testID="local-game-answer"
+              />
+            ) : null}
+
+            {/* Demoted from a button to a line of text, because that is what it
+                is: writing is optional, and an outlined button competes with
+                the two real actions below the card. Same toggle, same state. */}
+            <TouchableOpacity
+              testID="local-game-write-toggle"
+              onPress={() => setWriting(current => !current)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={styles.writeToggle}>
+              <Text style={styles.writeToggleText}>
+                {writing
+                  ? pl.localGame.writeToggleHide
+                  : pl.localGame.writeToggleShow}
+              </Text>
+            </TouchableOpacity>
+          </>
+        )}
+      </GameCard>
 
       {saveError && (
         <Text testID="local-game-save-error" style={styles.error}>
@@ -441,26 +484,45 @@ export function LocalGameScreen({ navigation }: Props) {
         </Text>
       )}
 
-      {/* Secondary, and live only once BOTH have written: a memory from the
-          local game is the pair of answers. Writing stays optional, which is
-          exactly why progress counts cards played rather than cards saved. */}
-      {alreadySaved ? (
-        <Badge testID="local-game-saved" style={styles.savedBadge}>
-          {pl.localGame.savedBadge}
-        </Badge>
-      ) : (
-        <OutlineButton
-          testID="local-game-save"
-          title={pl.localGame.saveButton}
-          onPress={onSave}
-          loading={saveMemory.isPending}
-          disabled={!canSaveMemory(state) || saveMemory.isPending}
-          style={styles.save}
-        />
-      )}
+      {/* The two secondary actions share a row under the card, and the one
+          primary action spans the width below them.
 
-      {/* The one primary action, at the bottom: hand the phone over while
-          player one holds it, move on once player two has had their turn. */}
+          The save is live only once BOTH have written: a memory from the local
+          game is the pair of answers. Writing stays optional, which is exactly
+          why progress counts cards played rather than cards saved. Once saved,
+          the badge takes the button's place IN THE ROW rather than above it, so
+          the footer does not jump the moment a card is kept.
+
+          Skipping is the same transition as moving on — the couple left the card
+          behind either way, which is what the report counts. It sits next to the
+          save rather than under the primary button, where it read as an
+          afterthought. */}
+      <View style={styles.footerRow}>
+        {alreadySaved ? (
+          <Badge testID="local-game-saved" style={styles.footerSlot}>
+            {pl.localGame.savedBadge}
+          </Badge>
+        ) : (
+          <OutlineButton
+            testID="local-game-save"
+            title={pl.localGame.saveButton}
+            onPress={onSave}
+            loading={saveMemory.isPending}
+            disabled={!canSaveMemory(state) || saveMemory.isPending}
+            style={styles.footerSlot}
+          />
+        )}
+
+        <OutlineButton
+          testID="local-game-skip"
+          title={pl.localGame.skipButton}
+          onPress={() => transition(advance(state))}
+          style={[styles.footerSlot, styles.footerSlotRight]}
+        />
+      </View>
+
+      {/* Hand the phone over while player one holds it, move on once player two
+          has had their turn. */}
       <GoldButton
         testID="local-game-primary"
         title={
@@ -469,15 +531,6 @@ export function LocalGameScreen({ navigation }: Props) {
         onPress={() =>
           transition(action === 'pass' ? passTurn(state) : advance(state))
         }
-        style={styles.primary}
-      />
-
-      {/* Skipping is the same transition as moving on — the couple left the
-          card behind either way, which is what the report counts. */}
-      <OutlineButton
-        testID="local-game-skip"
-        title={pl.localGame.skipButton}
-        onPress={() => transition(advance(state))}
       />
 
       {celebration}
@@ -499,28 +552,33 @@ const createStyles = (theme: Theme) => {
       fontSize: typography.size.bodySm,
       color: colors.gold.primary,
     },
-    unlockedBadge: {
-      marginTop: spacing.md,
+    cardLabel: {
+      marginBottom: spacing.md,
     },
-    questionRow: {
-      flexDirection: 'row',
-      alignItems: 'flex-start',
-      marginTop: spacing.lg,
-      marginBottom: spacing.xxl,
+    card: {
+      marginBottom: spacing.xl,
+    },
+    unlockedBadge: {
+      alignSelf: 'flex-start',
+      marginBottom: spacing.md,
     },
     question: {
-      flex: 1,
       fontFamily: typography.family.heading,
       fontSize: typography.size.h2,
       color: colors.text.primary,
       lineHeight: typography.size.h2 * 1.3,
-      marginRight: spacing.md,
+      marginBottom: spacing.xl,
     },
     writeToggle: {
-      marginBottom: spacing.lg,
+      alignSelf: 'flex-start',
+    },
+    writeToggleText: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.bodySm,
+      color: colors.gold.primary,
     },
     picker: {
-      marginBottom: spacing.lg,
+      marginBottom: 0,
     },
     error: {
       fontFamily: typography.family.body,
@@ -528,21 +586,22 @@ const createStyles = (theme: Theme) => {
       color: colors.burgundy.accent,
       marginBottom: spacing.md,
     },
-    save: {
-      marginBottom: spacing.xl,
-    },
-    savedBadge: {
-      marginBottom: spacing.xl,
-      alignSelf: 'flex-start',
-    },
-    primary: {
+    footerRow: {
+      flexDirection: 'row',
+      alignItems: 'stretch',
       marginBottom: spacing.md,
+    },
+    // Equal halves, so neither secondary action reads as the bigger one.
+    footerSlot: {
+      flex: 1,
+    },
+    footerSlotRight: {
+      marginLeft: spacing.md,
     },
     challengeTitle: {
       fontFamily: typography.family.heading,
       fontSize: typography.size.h2,
       color: colors.gold.primary,
-      marginTop: spacing.lg,
       marginBottom: spacing.lg,
     },
     challengeBody: {
@@ -550,7 +609,6 @@ const createStyles = (theme: Theme) => {
       fontSize: typography.size.body,
       color: colors.text.primary,
       lineHeight: typography.size.body * 1.5,
-      marginBottom: spacing.xxl,
     },
   });
 };
