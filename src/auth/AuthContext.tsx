@@ -8,6 +8,10 @@ import React, {
 import { setAuthToken } from '../api/client';
 import * as authApi from '../api/auth';
 import { fetchMe } from '../api/profile';
+import {
+  bindDeviceToAccount,
+  clearDeviceLocalGameData,
+} from '../storage/deviceLocal';
 import { clearToken, loadToken, saveToken } from './storage';
 import { AuthResponse, Couple, User } from '../domain/types';
 
@@ -64,6 +68,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo<AuthContextValue>(() => {
     const applyAuth = async (data: AuthResponse) => {
+      // Before anything can render on the new session: the local game is
+      // device-local and account-blind, so a session left by another account on
+      // this phone gets dropped here rather than offered as a resume.
+      await bindDeviceToAccount(data.user.ulid);
       setAuthToken(data.token);
       await saveToken(data.token);
       setUser(data.user);
@@ -90,6 +98,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await authApi.logout();
         } catch {
           // Best-effort: clear local state even if the request fails.
+        }
+        try {
+          // The local game lives on the device, not on the account: player
+          // two's name and both typed answers would otherwise be waiting for
+          // whoever signs in next. Cleared before the token, so an app killed
+          // mid-sign-out cannot leave the game behind with the session gone.
+          await clearDeviceLocalGameData();
+        } catch {
+          // Best-effort as well — a failing store must not keep the user signed
+          // in. bindDeviceToAccount catches this on the next sign-in.
         }
         await clearToken();
         setAuthToken(null);
