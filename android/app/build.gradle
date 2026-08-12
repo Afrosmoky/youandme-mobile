@@ -79,6 +79,57 @@ def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 // from android/sentry.properties.
 apply from: new File(["node", "--print", "require.resolve('@sentry/react-native/package.json')"].execute().text.trim(), "../sentry.gradle")
 
+/**
+ * Release signing (P12). Neither the keystore nor its passwords live in the
+ * repository: android/app/jaity-release.keystore and android/keystore.properties
+ * are both gitignored. Every value is resolved in the same order:
+ *
+ *   1. environment variable (CI, or `export` in a local shell),
+ *   2. android/keystore.properties (local dev — see keystore.properties.example),
+ *   3. Gradle property (~/.gradle/gradle.properties or `-P` on the command line).
+ *
+ * Only the passwords are secret; store path and key alias have working defaults,
+ * so a local release build needs just the two password entries.
+ */
+def keystorePropertiesFile = rootProject.file("keystore.properties")
+def keystoreProperties = new Properties()
+if (keystorePropertiesFile.exists()) {
+    keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
+}
+
+def releaseSigningValue = { String key, String fallback ->
+    def value = System.getenv(key) ?: keystoreProperties.getProperty(key) ?: project.findProperty(key)
+    def trimmed = value?.toString()?.trim()
+    trimmed ? trimmed : fallback
+}
+
+def releaseStoreFile = releaseSigningValue("JAITY_RELEASE_STORE_FILE", "jaity-release.keystore")
+def releaseStorePassword = releaseSigningValue("JAITY_RELEASE_STORE_PASSWORD", null)
+def releaseKeyAlias = releaseSigningValue("JAITY_RELEASE_KEY_ALIAS", "jaity")
+// keytool defaults the key password to the store password when created with
+// -storepass alone, so fall back to it instead of forcing a duplicated entry.
+def releaseKeyPassword = releaseSigningValue("JAITY_RELEASE_KEY_PASSWORD", releaseStorePassword)
+def hasReleaseSigning = releaseStorePassword != null &&
+        releaseKeyPassword != null &&
+        file(releaseStoreFile).exists()
+
+// Fail loudly instead of shipping an unsigned (or debug-signed) bundle: without
+// the secrets the release variant has no usable signing config, and an AAB that
+// silently falls back to the debug key is rejected by Play at upload time.
+gradle.taskGraph.whenReady { graph ->
+    def buildsRelease = graph.allTasks.any {
+        it.project == project && it.name.toLowerCase().contains("release")
+    }
+    if (buildsRelease && !hasReleaseSigning) {
+        throw new GradleException(
+                "Release signing is not configured. Provide JAITY_RELEASE_STORE_PASSWORD " +
+                "(and JAITY_RELEASE_KEY_PASSWORD if the key password differs) via the " +
+                "environment or android/keystore.properties, and make sure " +
+                "android/app/${releaseStoreFile} exists. " +
+                "See android/keystore.properties.example.")
+    }
+}
+
 android {
     ndkVersion rootProject.ext.ndkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
@@ -99,15 +150,19 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        release {
+            storeFile file(releaseStoreFile)
+            storePassword releaseStorePassword
+            keyAlias releaseKeyAlias
+            keyPassword releaseKeyPassword
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            signingConfig signingConfigs.release
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }

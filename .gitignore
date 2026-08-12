@@ -35,6 +35,13 @@ local.properties
 !debug.keystore
 .kotlin/
 
+# Podpis release (P12) — upload key i jego hasla. Sam keystore lapie juz regula
+# *.keystore wyzej, ale trzymamy jawny wpis, zeby poluzowanie tamtej reguly nie
+# wciagnelo klucza do repo. Hasla siedza w keystore.properties (wzorzec:
+# android/keystore.properties.example) albo w zmiennych srodowiskowych.
+/android/app/jaity-release.keystore
+/android/keystore.properties
+
 # node.js
 #
 node_modules/
