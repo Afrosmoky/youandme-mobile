@@ -355,7 +355,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = org.reactjs.native.example.YouandmeMobile;
+				PRODUCT_BUNDLE_IDENTIFIER = app.jaity.mobile;
 				PRODUCT_NAME = YouandmeMobile;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -385,7 +385,7 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = org.reactjs.native.example.YouandmeMobile;
+				PRODUCT_BUNDLE_IDENTIFIER = app.jaity.mobile;
 				PRODUCT_NAME = YouandmeMobile;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_VERSION = 5.0;
@@ -470,7 +470,7 @@
 					"-DFOLLY_HAVE_CLOCK_GETTIME=1",
 					"-DRCT_REMOVE_LEGACY_ARCH=1",
 				);
-				"PRODUCT_BUNDLE_IDENTIFIER[sdk=*]" = org.reactjs.native.example.YouandmeMobile;
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=*]" = app.jaity.mobile;
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -548,7 +548,7 @@
 					"-DFOLLY_HAVE_CLOCK_GETTIME=1",
 					"-DRCT_REMOVE_LEGACY_ARCH=1",
 				);
-				"PRODUCT_BUNDLE_IDENTIFIER[sdk=*]" = org.reactjs.native.example.YouandmeMobile;
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=*]" = app.jaity.mobile;
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;

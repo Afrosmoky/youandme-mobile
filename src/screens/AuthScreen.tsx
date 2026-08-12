@@ -39,7 +39,7 @@ type AuthNav = NativeStackNavigationProp<RootStackParamList, 'Auth'>;
 const GOOGLE_WEB_CLIENT_ID =
   '1050573934208-6s4a631jirskdjgpmlt5pbmu4sa9fnn5.apps.googleusercontent.com';
 const GOOGLE_IOS_CLIENT_ID =
-  '1050573934208-9op7d68meh7jov11j6tu7spjocjs3fss.apps.googleusercontent.com';
+  '1050573934208-9bkc5dv1jedoin87p8l5k281e343i2o1.apps.googleusercontent.com';
 
 export function AuthScreen() {
   const theme = useTheme();
