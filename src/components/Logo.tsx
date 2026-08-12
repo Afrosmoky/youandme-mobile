@@ -9,8 +9,8 @@ type Props = {
   testID?: string;
 };
 
-// Brand wordmark "ja & ty" in Belleza: the ampersand in gold, the words in the
-// primary text colour. Fixed brand text, not user-facing copy.
+// Brand wordmark "ja & ty" in Belleza, gold throughout. Fixed brand text, not
+// user-facing copy.
 export function Logo({ size, style, testID }: Props) {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
@@ -30,9 +30,11 @@ const createStyles = (theme: Theme) => {
       fontFamily: typography.family.display,
       fontSize: typography.size.display,
     },
+    // Words and ampersand share the gold; they stay separate spans because the
+    // wordmark is one place the two may yet part ways.
     word: {
       fontFamily: typography.family.display,
-      color: colors.text.primary,
+      color: colors.gold.primary,
     },
     amp: {
       fontFamily: typography.family.display,
