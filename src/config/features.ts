@@ -21,3 +21,18 @@
  *     app.json).
  */
 export const AD_REWARD_ENABLED = false;
+
+/**
+ * Whether to offer social sign-in (Google today, Apple once it lands).
+ *
+ * OFF for the beta. The Google flow is written, wired and tested end to end —
+ * GoogleSignin.configure, the token exchange through AuthContext, the backend's
+ * /auth/google — but iOS still needs Apple Sign-In next to it before the App
+ * Store will take the build, and shipping Google alone would teach beta testers
+ * a way in that the store build then takes away.
+ *
+ * Nothing behind this flag is deleted: flip it to true and the button comes
+ * back exactly as it was. Until then AuthScreen shows a "coming soon" line in
+ * its place, so the empty spot reads as pending rather than missing.
+ */
+export const SOCIAL_LOGIN_ENABLED = false;

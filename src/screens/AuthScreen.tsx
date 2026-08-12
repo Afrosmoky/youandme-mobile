@@ -25,6 +25,7 @@ import { OutlineButton } from '../components/OutlineButton';
 import { GlowBackground } from '../components/GlowBackground';
 import { Logo } from '../components/Logo';
 import { parseApiError, FieldErrors } from '../api/errors';
+import { SOCIAL_LOGIN_ENABLED } from '../config/features';
 import { validateNickname } from '../domain/validation';
 import { RootStackParamList } from '../navigation/types';
 import { Theme, useTheme } from '../theme';
@@ -266,14 +267,23 @@ export function AuthScreen() {
         />
       )}
       {isRegister && (
-        <TextField
-          testID="auth-referrer"
-          value={referrer}
-          onChangeText={onReferrerChange}
-          placeholder={pl.auth.referrerPlaceholder}
-          error={referrerError ?? fieldErrors.referrer_nickname}
-          autoCapitalize="none"
-        />
+        <>
+          <TextField
+            testID="auth-referrer"
+            value={referrer}
+            onChangeText={onReferrerChange}
+            placeholder={pl.auth.referrerPlaceholder}
+            error={referrerError ?? fieldErrors.referrer_nickname}
+            autoCapitalize="none"
+            style={styles.referrerField}
+          />
+          {/* The field alone never said what it is for. The bonus is symmetric
+              and paid by the backend (REFERRAL_BONUS = 5 on both halves), so
+              the promise is one the server actually keeps. */}
+          <Text testID="auth-referrer-reward" style={styles.referrerReward}>
+            {pl.auth.referrerReward}
+          </Text>
+        </>
       )}
 
       {!isRegister && (
@@ -296,13 +306,23 @@ export function AuthScreen() {
         style={styles.submit}
       />
 
-      <OutlineButton
-        testID="auth-google"
-        title={pl.auth.googleSignIn}
-        onPress={onGoogleSignIn}
-        loading={googleSubmitting}
-        style={styles.google}
-      />
+      {/* Hidden for the beta (see SOCIAL_LOGIN_ENABLED). Everything behind the
+          flag stays wired — configure, the handler, the token exchange — so the
+          button returns with a single flip. The line in its place says the
+          absence is temporary rather than leaving a hole under the submit. */}
+      {SOCIAL_LOGIN_ENABLED ? (
+        <OutlineButton
+          testID="auth-google"
+          title={pl.auth.googleSignIn}
+          onPress={onGoogleSignIn}
+          loading={googleSubmitting}
+          style={styles.google}
+        />
+      ) : (
+        <Text testID="auth-social-soon" style={styles.socialSoon}>
+          {pl.auth.socialSoon}
+        </Text>
+      )}
 
       <TouchableOpacity onPress={toggleMode} style={styles.switch}>
         <Text style={styles.switchText}>
@@ -362,6 +382,24 @@ const createStyles = (theme: Theme) => {
     },
     google: {
       marginTop: spacing.md,
+    },
+    // The reward line belongs to the field above it, so the field gives up its
+    // own bottom gap and the line carries it instead.
+    referrerField: {
+      marginBottom: spacing.xs,
+    },
+    referrerReward: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.bodySm,
+      color: colors.text.secondary,
+      marginBottom: spacing.lg,
+    },
+    socialSoon: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.bodySm,
+      color: colors.text.secondary,
+      textAlign: 'center',
+      marginTop: spacing.lg,
     },
     switch: {
       marginTop: spacing.lg,

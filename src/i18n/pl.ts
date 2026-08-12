@@ -31,10 +31,18 @@ export const pl = {
     nicknameReserved: 'Ta nazwa jest zarezerwowana',
     referrerPlaceholder: 'Nick osoby polecającej (opcjonalnie)',
     referrerSelf: 'To Twój własny nick',
+    // Symetryczna nagroda za polecenie. Liczba jest z backendu (REFERRAL_BONUS
+    // = 5 w AuthController i AwardPendingReferrerAction) — nie zmieniać tu bez
+    // zmiany tam. Kredyt odblokowuje jedno zamknięte pytanie, więc „kart" mówi
+    // to samo co „kredytów", tylko językiem gry.
+    referrerReward: 'Wpiszcie nick — oboje dostaniecie +5 kart',
     forgotPassword: 'Zapomniałem hasła',
     googleSignIn: 'Zaloguj przez Google',
     googleSignInError: 'Logowanie przez Google się nie powiodło.',
     googleCancelled: 'Logowanie przez Google zostało anulowane.',
+    // Zastępuje przycisk Google, gdy SOCIAL_LOGIN_ENABLED === false. Mówi
+    // „wkrótce", a nie nic, żeby puste miejsce czytało się jako plan.
+    socialSoon: 'Logowanie przez Google i Apple — wkrótce dostępne',
   },
 
   profile: {
@@ -289,6 +297,11 @@ export const pl = {
     // a obrysowany przycisk konkurował z dwoma realnymi akcjami pod kartą.
     writeToggleShow: '+ dopisz odpowiedź',
     writeToggleHide: 'Ukryj pole',
+    // Powód, dla którego ktoś miałby chcieć pisać: zapis wspomnienia jest żywy
+    // dopiero, gdy OBOJE mają wpisaną odpowiedź (canSaveMemory), a bez tej
+    // linijki nigdzie tego nie widać. Drobne i obok przełącznika — pisanie
+    // zostaje dodatkiem, tak jak w S_polish.
+    writeMemoryHint: 'Odpowiadając pisemnie, możecie zapisać wspomnienie',
     answerPlaceholder: (player: string) => `Odpowiedź: ${player}`,
     passButton: 'Przekaż kolejkę',
     nextButton: 'Następne pytanie',

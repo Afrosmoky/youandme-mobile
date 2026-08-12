@@ -486,6 +486,14 @@ export function LocalGameScreen({ navigation }: Props) {
                   : pl.localGame.writeToggleShow}
               </Text>
             </TouchableOpacity>
+
+            {/* Why anyone would open that field: the save below only comes
+                alive once both have written. Kept smaller and dimmer than the
+                toggle itself, so it explains the option without promoting it
+                above the two real actions under the card. */}
+            <Text testID="local-game-write-hint" style={styles.writeHint}>
+              {pl.localGame.writeMemoryHint}
+            </Text>
           </>
         )}
       </GameCard>
@@ -588,6 +596,12 @@ const createStyles = (theme: Theme) => {
       fontFamily: typography.family.body,
       fontSize: typography.size.bodySm,
       color: colors.gold.primary,
+    },
+    writeHint: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.label,
+      color: colors.text.secondary,
+      marginTop: spacing.xs,
     },
     picker: {
       marginBottom: 0,

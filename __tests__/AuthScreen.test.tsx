@@ -9,6 +9,17 @@ import {pl} from '../src/i18n/pl';
 
 jest.mock('../src/auth/AuthContext', () => ({useAuth: jest.fn()}));
 
+// Social sign-in is behind a build-time constant, so the tests need it both
+// ways: hidden for the beta (off) and back in place (on). Same getter trick as
+// RewardsScreen — babel reads the named import at each use site, so the binding
+// stays live.
+let mockSocialLoginEnabled = false;
+jest.mock('../src/config/features', () => ({
+  get SOCIAL_LOGIN_ENABLED() {
+    return mockSocialLoginEnabled;
+  },
+}));
+
 describe('AuthScreen', () => {
   const login = jest.fn();
   const register = jest.fn();
@@ -16,6 +27,7 @@ describe('AuthScreen', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockSocialLoginEnabled = false;
     login.mockResolvedValue(undefined);
     register.mockResolvedValue(undefined);
     signInWithGoogle.mockResolvedValue(undefined);
@@ -360,9 +372,33 @@ describe('AuthScreen', () => {
     expect(await screen.findByText(pl.common.serverError)).toBeOnTheScreen();
   });
 
-  test('Google sign-in exchanges the idToken via AuthContext', async () => {
+  test('hides the Google button behind the flag and says it is coming', () => {
     renderWithQueryClient(<AuthScreen />);
 
+    expect(screen.queryByTestId('auth-google')).toBeNull();
+    expect(screen.getByTestId('auth-social-soon')).toHaveTextContent(
+      pl.auth.socialSoon,
+    );
+  });
+
+  test('shows the referral reward next to the referrer field', () => {
+    renderWithQueryClient(<AuthScreen />);
+
+    // Register-only: the field it explains does not exist in login mode.
+    expect(screen.queryByTestId('auth-referrer-reward')).toBeNull();
+
+    fireEvent.press(screen.getByText(pl.auth.switchToRegister));
+
+    expect(screen.getByTestId('auth-referrer-reward')).toHaveTextContent(
+      pl.auth.referrerReward,
+    );
+  });
+
+  test('Google sign-in exchanges the idToken via AuthContext', async () => {
+    mockSocialLoginEnabled = true;
+    renderWithQueryClient(<AuthScreen />);
+
+    expect(screen.queryByTestId('auth-social-soon')).toBeNull();
     fireEvent.press(screen.getByTestId('auth-google'));
 
     // The mocked GoogleSignin.signIn returns a fake idToken; on success the

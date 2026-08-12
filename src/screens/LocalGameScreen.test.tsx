@@ -215,6 +215,15 @@ describe('LocalGameScreen', () => {
     expect(screen.getByTestId('local-game-answer')).toBeOnTheScreen();
   });
 
+  test('the write toggle says what writing is good for', async () => {
+    await saveLocalGameState(session(20));
+    renderScreen();
+
+    expect(await screen.findByTestId('local-game-write-hint')).toHaveTextContent(
+      pl.localGame.writeMemoryHint,
+    );
+  });
+
   test('what one player types belongs to their turn only', async () => {
     await saveLocalGameState(session(20));
     renderScreen();
