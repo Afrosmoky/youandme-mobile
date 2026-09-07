@@ -40,6 +40,7 @@ const weeklyRitual: WeeklyRitual = {
   },
   startedOn: '2026-07-12',
   dayOfWeek: 3,
+  completed: false,
 };
 
 const navigate = jest.fn();

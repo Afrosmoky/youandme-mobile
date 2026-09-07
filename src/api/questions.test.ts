@@ -1,5 +1,5 @@
 import type { AxiosResponse } from 'axios';
-import { fetchNextQuestion } from './questions';
+import { fetchNextQuestion, listLikedQuestions } from './questions';
 import { apiClient } from './client';
 
 jest.mock('./client', () => ({
@@ -114,5 +114,65 @@ describe('fetchNextQuestion', () => {
 
     expect(result.question).toBeNull();
     expect(result.sessionComplete).toBe(true);
+  });
+});
+
+describe('listLikedQuestions', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  test('maps the page and its cursors', async () => {
+    jest.mocked(apiClient.get).mockResolvedValue(
+      res({
+        data: [rawQuestion],
+        meta: { next_cursor: 'cur_2', prev_cursor: null, per_page: 20 },
+      }),
+    );
+
+    const page = await listLikedQuestions();
+
+    expect(page.questions[0].body).toBe('Co cię ostatnio rozśmieszyło?');
+    expect(page.nextCursor).toBe('cur_2');
+    expect(page.prevCursor).toBeNull();
+  });
+
+  test('passes the cursor through and asks for one page, not the lot', async () => {
+    jest.mocked(apiClient.get).mockResolvedValue(
+      res({
+        data: [],
+        meta: { next_cursor: null, prev_cursor: null, per_page: 20 },
+      }),
+    );
+
+    await listLikedQuestions('cur_2');
+
+    expect(apiClient.get).toHaveBeenCalledWith('/questions/liked', {
+      params: { cursor: 'cur_2', per_page: 20 },
+    });
+  });
+
+  // The card comes off the same builder as /questions/next, so is_locked and
+  // options ride along. is_locked here means "a paid card you own" — the backend
+  // drops cards the couple has not unlocked before it pages — so the screen
+  // renders it as the unlocked badge, never as something withheld.
+  test('carries is_locked and options off the shared card shape', async () => {
+    jest.mocked(apiClient.get).mockResolvedValue(
+      res({
+        data: [
+          {
+            ...rawQuestion,
+            liked: true,
+            is_locked: true,
+            options: { items: ['Tak', 'Nie'], multiple: false },
+          },
+        ],
+        meta: { next_cursor: null, prev_cursor: null, per_page: 20 },
+      }),
+    );
+
+    const page = await listLikedQuestions();
+
+    expect(page.questions[0].isLocked).toBe(true);
+    expect(page.questions[0].liked).toBe(true);
+    expect(page.questions[0].options?.items).toEqual(['Tak', 'Nie']);
   });
 });

@@ -17,6 +17,11 @@ export const queryKeys = {
   memoriesList: (favoritesOnly: boolean) =>
     ['memories', 'list', { favoritesOnly }] as const,
   memory: (ulid: string) => ['memories', 'detail', ulid] as const,
+  // 3B. The other half of the P5 heart: the list it writes to. Invalidated by
+  // every like and unlike, from all three screens that carry a question heart —
+  // without that the default 30s staleTime lets a couple tap the heart, read
+  // "you will find it in your history", walk straight there and not find it.
+  likedQuestions: ['liked-questions'] as const,
   verificationStatus: ['verification-status'] as const,
   dailyCard: ['daily-card'] as const,
   weeklyRitual: ['weekly-ritual'] as const,

@@ -329,12 +329,20 @@ export const rawWeeklyRitualSchema = z.object({
   }),
   started_on: z.string(),
   day_of_week: z.number(),
+  // 3B: "we did it", or not yet. Optional with a false default, and the reason
+  // is deploy ordering rather than a shared schema this time: only this endpoint
+  // serves the field, but an app can reach a backend that predates it. Required
+  // would fail the parse and leave the ritual screen spinning forever; falling
+  // back to "not done" leaves a button that answers 404 on the first tap, which
+  // the screen already knows how to absorb.
+  completed: z.boolean().optional().default(false),
 });
 
 export type WeeklyRitual = {
   ritual: { ulid: string; title: string; body: string };
   startedOn: string;
   dayOfWeek: number;
+  completed: boolean;
 };
 
 export function mapRawWeeklyRitual(
@@ -348,6 +356,7 @@ export function mapRawWeeklyRitual(
     },
     startedOn: raw.started_on,
     dayOfWeek: raw.day_of_week,
+    completed: raw.completed,
   };
 }
 
