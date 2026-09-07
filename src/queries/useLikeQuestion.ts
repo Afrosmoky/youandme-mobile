@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { likeQuestion, unlikeQuestion } from '../api/likes';
 import { DailyCard } from '../domain/types';
 import { queryKeys } from './queryKeys';
+import { useQuestionLikeFeedback } from './useQuestionLikeFeedback';
 
 // P5 Slice 1b: toggle the like on the daily card's question. The like state
 // rides along inside the daily card (queryKeys.dailyCard), so there is no
@@ -38,6 +39,9 @@ function setLikedInCache(
 
 export function useLikeQuestion() {
   const queryClient = useQueryClient();
+  // Refreshes the liked list and raises the toast — see the hook for why the
+  // invalidation is not optional.
+  const feedback = useQuestionLikeFeedback();
   return useMutation({
     mutationFn: ({ ulid, liked }: LikeVariables) =>
       liked ? unlikeQuestion(ulid) : likeQuestion(ulid),
@@ -57,6 +61,7 @@ export function useLikeQuestion() {
       // Reconcile with server truth. In the happy path this equals the
       // optimistic value, so nothing flickers.
       setLikedInCache(queryClient, result.liked);
+      feedback(result.liked);
     },
   });
 }

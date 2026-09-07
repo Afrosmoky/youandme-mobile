@@ -10,6 +10,7 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import {renderWithQueryClient} from '../src/test/renderWithQueryClient';
+import {queryKeys} from '../src/queries/queryKeys';
 import {ThemeProvider} from '../src/theme';
 import {QuestionScreen} from '../src/screens/QuestionScreen';
 import {fetchNextQuestion} from '../src/api/questions';
@@ -21,7 +22,6 @@ import {
 } from '../src/api/sessions';
 import {likeQuestion, unlikeQuestion} from '../src/api/likes';
 import {getProgress} from '../src/api/progress';
-import {queryKeys} from '../src/queries/queryKeys';
 import type {Milestone, Progress} from '../src/domain/types';
 import type {RootStackParamList} from '../src/navigation/types';
 import {pl} from '../src/i18n/pl';
@@ -351,6 +351,28 @@ describe('QuestionScreen', () => {
     expect(await screen.findByTestId('question-error')).toHaveTextContent(
       'Odpowiedź jest wymagana.',
     );
+  });
+
+  // The heart writes to the server; something has to tell the liked list. The
+  // default 30s staleTime means that without this the couple can heart a card,
+  // read the toast pointing at their history, walk there and not find it. Three
+  // screens carry a question heart and each wires this by hand, so each needs
+  // its own guard — a hole in one of them looks exactly like the bug 3B fixes.
+  test('hearting refreshes the liked list', async () => {
+    jest.mocked(likeQuestion).mockResolvedValue({liked: true});
+    const {queryClient} = renderWithQueryClient(<QuestionScreen {...makeProps()} />);
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries');
+
+    fireEvent.press(await screen.findByTestId('question-like'));
+
+    await waitFor(() =>
+      expect(invalidate).toHaveBeenCalledWith({
+        queryKey: queryKeys.likedQuestions,
+      }),
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
   });
 
   test('tapping the heart optimistically flips the local like', async () => {

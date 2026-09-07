@@ -19,6 +19,7 @@ import {
   skipCurrentQuestion,
 } from '../api/sessions';
 import { likeQuestion, unlikeQuestion } from '../api/likes';
+import { useQuestionLikeFeedback } from '../queries/useQuestionLikeFeedback';
 import { parseApiError } from '../api/errors';
 import { useSaveMemory } from '../queries/useSaveMemory';
 import { useMilestoneCelebration } from '../queries/useMilestoneCelebration';
@@ -49,6 +50,7 @@ export function QuestionScreen({ navigation }: Props) {
   // and a DELETE (mirrors the daily card's isPending guard).
   const [liked, setLiked] = useState(false);
   const [likePending, setLikePending] = useState(false);
+  const likeFeedback = useQuestionLikeFeedback();
   // Saving a memory also invalidates the memories list (see useSaveMemory). The
   // local `submitting` flag still gates both save and skip identically.
   const saveMemory = useSaveMemory();
@@ -117,6 +119,10 @@ export function QuestionScreen({ navigation }: Props) {
         ? await unlikeQuestion(question.ulid)
         : await likeQuestion(question.ulid);
       setLiked(res.liked);
+      // This screen writes the heart straight to the API, outside TanStack, so
+      // the liked list has to be told by hand — otherwise the 30s staleTime
+      // hides what was just hearted from the history the toast points at.
+      likeFeedback(res.liked);
     } catch {
       setLiked(current);
     } finally {

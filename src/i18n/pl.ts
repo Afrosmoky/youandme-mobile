@@ -155,6 +155,9 @@ export const pl = {
     likedEmpty:
       'Nie macie jeszcze ulubionych pytań. Stuknijcie serce przy pytaniu, żeby je tu zachować.',
     likedLoadError: 'Nie udało się pobrać ulubionych pytań.',
+    // Toast po polubieniu — pokazywany tylko przy polubieniu, nigdy przy
+    // cofnięciu. Treść Piotra, bez zmian.
+    likedToast: 'Dodano do ulubionych — znajdziesz je w Historii',
     // "Odpowiedź Ola"
     player: (name: string) => `Odpowiedź ${name}`,
     origin: {

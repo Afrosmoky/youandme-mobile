@@ -3,6 +3,7 @@ import axios from 'axios';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {act, fireEvent, screen, waitFor} from '@testing-library/react-native';
 import {renderWithQueryClient} from '../src/test/renderWithQueryClient';
+import {queryKeys} from '../src/queries/queryKeys';
 import {DailyCardScreen} from '../src/screens/DailyCardScreen';
 import {getDailyCard, answerDailyCard} from '../src/api/dailyCard';
 import {likeQuestion} from '../src/api/likes';
@@ -96,6 +97,28 @@ describe('DailyCardScreen', () => {
     jest.mocked(getDailyCard).mockResolvedValue(card);
     jest.mocked(getProgress).mockResolvedValue(progressBefore);
     jest.mocked(axios.isAxiosError).mockReturnValue(false);
+  });
+
+  // The heart writes to the server; something has to tell the liked list. The
+  // default 30s staleTime means that without this the couple can heart a card,
+  // read the toast pointing at their history, walk there and not find it. Three
+  // screens carry a question heart and each wires this by hand, so each needs
+  // its own guard — a hole in one of them looks exactly like the bug 3B fixes.
+  test('hearting refreshes the liked list', async () => {
+    jest.mocked(likeQuestion).mockResolvedValue({liked: true});
+    const {queryClient} = renderWithQueryClient(<DailyCardScreen {...makeProps()} />);
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries');
+
+    fireEvent.press(await screen.findByTestId('daily-card-like'));
+
+    await waitFor(() =>
+      expect(invalidate).toHaveBeenCalledWith({
+        queryKey: queryKeys.likedQuestions,
+      }),
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
   });
 
   test('tapping the heart optimistically flips the like', async () => {

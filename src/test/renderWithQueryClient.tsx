@@ -2,6 +2,7 @@ import React, { ReactElement } from 'react';
 import { render } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from '../theme';
+import { ToastProvider } from '../components/Toast';
 
 // Renders a component tree wrapped in a QueryClientProvider for tests.
 //
@@ -12,6 +13,11 @@ import { ThemeProvider } from '../theme';
 // The client is returned alongside the render result so a test can assert on it
 // (e.g. spy on invalidateQueries) — it is the same client the rendered hooks use
 // via useQueryClient().
+//
+// ToastProvider is in the tree for the same reason it is in App.tsx: any screen
+// with a question heart raises a toast on a successful like, and useToast throws
+// outside a provider rather than quietly doing nothing. Mirroring the real tree
+// here beats every screen test having to know about it.
 //
 // An existing client can be passed in to keep the cache across two renders, for
 // the one thing a fresh-client-per-render cannot express: a screen handing over
@@ -37,7 +43,9 @@ export function renderWithQueryClient(
     queryClient,
     ...render(
       <ThemeProvider>
-        <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
+        <QueryClientProvider client={queryClient}>
+          <ToastProvider>{ui}</ToastProvider>
+        </QueryClientProvider>
       </ThemeProvider>,
     ),
   };

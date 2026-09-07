@@ -36,6 +36,7 @@ import {
 } from '../storage/localGameState';
 import { parseApiError } from '../api/errors';
 import { likeQuestion, unlikeQuestion } from '../api/likes';
+import { useQuestionLikeFeedback } from '../queries/useQuestionLikeFeedback';
 import { useSaveLocalMemory } from '../queries/useSaveLocalMemory';
 import { useReportPlayedCards } from '../queries/useReportPlayedCards';
 import { useMilestoneCelebration } from '../queries/useMilestoneCelebration';
@@ -75,6 +76,7 @@ export function LocalGameScreen({ navigation }: Props) {
   const [writing, setWriting] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [likePending, setLikePending] = useState(false);
+  const likeFeedback = useQuestionLikeFeedback();
   const saveMemory = useSaveLocalMemory();
   const report = useReportPlayedCards();
   // One report at a time. Every transition offers to settle what is owed, and
@@ -316,12 +318,16 @@ export function LocalGameScreen({ navigation }: Props) {
         ? await unlikeQuestion(ulid)
         : await likeQuestion(ulid);
       await writeLiked(ulid, res.liked);
+      // Same hand-wiring as QuestionScreen: the heart here goes to the API and
+      // to the session on disk, never through TanStack, so nothing else would
+      // refresh the liked list.
+      likeFeedback(res.liked);
     } catch {
       await writeLiked(ulid, liked);
     } finally {
       setLikePending(false);
     }
-  }, [likePending, state, writeLiked]);
+  }, [likeFeedback, likePending, state, writeLiked]);
 
   useLayoutEffect(() => {
     navigation.setOptions({

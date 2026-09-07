@@ -21,6 +21,7 @@ import {
   handlePushPress,
 } from './src/notifications/pushHandler';
 import { queryClient } from './src/queries/queryClient';
+import { ToastProvider } from './src/components/Toast';
 import { ThemeProvider } from './src/theme';
 
 // RN has no window-focus event; drive TanStack's focus signal from AppState so
@@ -74,26 +75,32 @@ function App() {
       <StatusBar barStyle="light-content" />
       <ThemeProvider>
         <QueryClientProvider client={queryClient}>
-          <AuthProvider>
-            <NavigationContainer
-              ref={navigationRef}
-              linking={linking}
-              // P11: the splash goes away here, and only here. `onReady` fires
-              // once a navigator is actually mounted — which cannot happen
-              // while AuthContext is still reading the token from the keychain,
-              // because RootNavigator returns a bare spinner instead of a stack
-              // until then. So this covers both branches: the couple sees the
-              // splash until either AuthScreen or Bootstrap is on screen.
-              //
-              // Deliberately NOT in BootstrapScreen: that one only exists in
-              // the authenticated stack, so a logged-out user would sit under
-              // the splash forever.
-              onReady={() => {
-                BootSplash.hide({ fade: true });
-              }}>
-              <RootNavigator />
-            </NavigationContainer>
-          </AuthProvider>
+          {/* Over the navigator, under the theme: the toast is drawn on top of
+              whatever screen is showing, and every screen can reach it. Inside
+              QueryClientProvider because the one thing that raises it — a
+              question's heart — invalidates a query in the same breath. */}
+          <ToastProvider>
+            <AuthProvider>
+              <NavigationContainer
+                ref={navigationRef}
+                linking={linking}
+                // P11: the splash goes away here, and only here. `onReady` fires
+                // once a navigator is actually mounted — which cannot happen
+                // while AuthContext is still reading the token from the keychain,
+                // because RootNavigator returns a bare spinner instead of a stack
+                // until then. So this covers both branches: the couple sees the
+                // splash until either AuthScreen or Bootstrap is on screen.
+                //
+                // Deliberately NOT in BootstrapScreen: that one only exists in
+                // the authenticated stack, so a logged-out user would sit under
+                // the splash forever.
+                onReady={() => {
+                  BootSplash.hide({ fade: true });
+                }}>
+                <RootNavigator />
+              </NavigationContainer>
+            </AuthProvider>
+          </ToastProvider>
         </QueryClientProvider>
       </ThemeProvider>
     </SafeAreaProvider>

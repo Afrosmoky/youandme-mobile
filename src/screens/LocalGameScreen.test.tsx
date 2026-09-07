@@ -22,6 +22,7 @@ import { reportPlayedCards } from '../api/localGame';
 import { getProgress } from '../api/progress';
 import type { RootStackParamList } from '../navigation/types';
 import { BACK_TO_SETUP } from '../navigation/backToSetup';
+import { queryKeys } from '../queries/queryKeys';
 import type { Challenge } from '../domain/challenges';
 import type { Memory, Progress, Question } from '../domain/types';
 import { pl } from '../i18n/pl';
@@ -629,6 +630,23 @@ describe('LocalGameScreen — liking a card', () => {
     );
     expect(likeQuestion).toHaveBeenCalledWith('Q1');
     expect(unlikeQuestion).not.toHaveBeenCalled();
+  });
+
+  // The third of the three hearts, and the one most easily forgotten: this
+  // screen writes the like to the API and to the session on disk, never through
+  // TanStack, so nothing refreshes the liked list unless this screen says so.
+  test('hearting refreshes the liked list', async () => {
+    await saveLocalGameState(session(20));
+    const { queryClient } = renderScreen();
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries');
+
+    fireEvent.press(await screen.findByTestId('local-game-like'));
+
+    await waitFor(() =>
+      expect(invalidate).toHaveBeenCalledWith({
+        queryKey: queryKeys.likedQuestions,
+      }),
+    );
   });
 
   test('tapping a liked card takes the like back', async () => {
