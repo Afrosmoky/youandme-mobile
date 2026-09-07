@@ -26,13 +26,26 @@ const [, , VIEWBOX_W, VIEWBOX_H] = nodesData.viewBox;
 // measuring text first. Roughly two lines plus the "jeszcze N" line.
 const LABEL_BLOCK_H = 64;
 
-// The "now" plate, in viewBox units relative to its node. Derived rather than
-// read from nodes.json: that file carries a `badge` rect only for node 5,
-// because node 5 is the one the illustration happened to draw as current. Same
-// for its `state` fields — they describe the example picture, not runtime.
-// Reading them would leave the badge homeless whenever any other node is the
-// current one.
-const BADGE = { dx: -21, dy: 34, w: 42, h: 16 };
+// Where the "now" plate sits: the offset from its node to the plate's CENTRE,
+// in viewBox units. Derived rather than read from nodes.json — that file carries
+// a `badge` rect only for node 5, because node 5 is the one the illustration
+// happened to draw as current, and reading it would leave the badge homeless
+// whenever any other node is the current one.
+//
+// Position only, no size. The plate used to be a scaled SVG <Rect> with the word
+// laid over it in a box of the same scaled width, and that pairing is what cut
+// "TERAZ" down to "TERA" on Android: the box shrank with the map (42 viewBox
+// units, so 33.6dp on a 360dp screen) while the word did not (fontSize 11 plus
+// letterSpacing 1.5 is a constant 39.4dp). Below roughly a 428dp screen the word
+// no longer fit, and Android clips what iOS lets overflow — which is exactly why
+// only the testers saw it. Plate and word are now one self-sizing View, so the
+// plate cannot be narrower than what it holds.
+const BADGE_CENTRE = { dx: 0, dy: 42 };
+
+// A transparent box the plate is centred in, big enough that no plausible word
+// reaches its edge. It exists so the pill can size itself to its text without
+// anything having to measure that text first.
+export const BADGE_BOX = { w: 140, h: 40 };
 
 // The artwork draws each trail segment as a symmetric cubic curve: it leaves
 // its node straight down, bulges halfway across, and arrives straight down into
@@ -153,7 +166,9 @@ export function ProgressMap({ progress, width }: Props) {
         );
       })}
 
-      {/* The plate itself is drawn in the SVG; only its word is text. */}
+      {/* Plate and word together. The outer box only positions; the pill inside
+          it takes its size from the text, which is what keeps the word whole on
+          a narrow screen. */}
       {nodes.map((node, index) => {
         const point = geometry[index];
         if (node.state !== 'current' || !point) {
@@ -164,16 +179,18 @@ export function ProgressMap({ progress, width }: Props) {
             key={`badge-${node.milestone.slug}`}
             testID={`progress-badge-${node.milestone.slug}`}
             style={[
-              styles.badge,
+              styles.badgeBox,
               {
-                left: (point.x + BADGE.dx) * scale,
-                top: (point.y + BADGE.dy) * scale,
-                width: BADGE.w * scale,
-                height: BADGE.h * scale,
+                left: (point.x + BADGE_CENTRE.dx) * scale - BADGE_BOX.w / 2,
+                top: (point.y + BADGE_CENTRE.dy) * scale - BADGE_BOX.h / 2,
               },
             ]}
             pointerEvents="none">
-            <Text style={styles.badgeText}>{pl.progress.nowBadge}</Text>
+            <View
+              testID={`progress-badge-plate-${node.milestone.slug}`}
+              style={styles.badge}>
+              <Text style={styles.badgeText}>{pl.progress.nowBadge}</Text>
+            </View>
           </View>
         );
       })}
@@ -233,16 +250,9 @@ function MilestoneNode({
           strokeWidth={2}
         />
         <Circle cx={x} cy={y} r={6} fill={colors.gold.primary} />
-        {/* Same constant as the word laid over it, so plate and text cannot
-            drift apart. */}
-        <Rect
-          x={x + BADGE.dx}
-          y={y + BADGE.dy}
-          width={BADGE.w}
-          height={BADGE.h}
-          rx={3}
-          fill={colors.burgundy.base}
-        />
+        {/* The plate is NOT drawn here. It is the background of the View that
+            holds its word, below — one object, so it cannot end up narrower
+            than the text it is a plate for. */}
       </>
     );
   }
@@ -298,7 +308,7 @@ function trailDash(state: SegmentState): string | undefined {
 }
 
 const createStyles = (theme: Theme) => {
-  const { colors, typography, spacing, radius } = theme;
+  const { colors, typography, spacing } = theme;
   return StyleSheet.create({
     label: {
       position: 'absolute',
@@ -338,11 +348,23 @@ const createStyles = (theme: Theme) => {
       color: colors.gold.primary,
       marginTop: spacing.xs,
     },
-    badge: {
+    // Positions only. Deliberately roomy and transparent: it never clips, which
+    // is the whole point of it existing rather than the pill being placed
+    // directly.
+    badgeBox: {
       position: 'absolute',
-      borderRadius: radius.sm,
+      width: BADGE_BOX.w,
+      height: BADGE_BOX.h,
       alignItems: 'center',
       justifyContent: 'center',
+    },
+    // The plate. No width and no height on purpose — it takes both from the
+    // word inside it, and a fixed size here is exactly the bug that cut the last
+    // letter off on Android. `rx={3}` in the artwork, so 3 rather than radius.sm.
+    badge: {
+      backgroundColor: colors.burgundy.base,
+      borderRadius: 3,
+      paddingHorizontal: spacing.xs,
     },
     badgeText: {
       fontFamily: typography.family.body,

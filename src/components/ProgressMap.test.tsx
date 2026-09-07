@@ -3,7 +3,7 @@ import {StyleSheet} from 'react-native';
 import {Path} from 'react-native-svg';
 import {render, screen} from '@testing-library/react-native';
 import {ThemeProvider} from '../theme';
-import {ProgressMap} from './ProgressMap';
+import {BADGE_BOX, ProgressMap} from './ProgressMap';
 import nodesData from '../assets/progressMap/nodes.json';
 import type {Milestone, Progress} from '../domain/types';
 
@@ -115,22 +115,44 @@ describe('ProgressMap layout', () => {
     expect(style.right).toBe(VIEWBOX_W - rightNode.label.x);
   });
 
-  // The badge rect is derived from the node position rather than read from
-  // nodes.json, because the file only carries one — for node 5, the node the
-  // illustration happened to draw as current. Checking the derived placement
+  // The badge placement is derived from the node position rather than read from
+  // nodes.json, because the file only carries one rect — for node 5, the node
+  // the illustration happened to draw as current. Checking the derived placement
   // against that one recorded rect is what proves the derivation matches the
   // artwork.
-  test('places and scales the "now" badge as the artwork does', () => {
+  //
+  // Centres, not edges: the plate is no longer a box of the artwork's width (see
+  // the plate test below), so its centre is the only part of that rect the
+  // rendering still promises to match.
+  test('centres the "now" badge where the artwork puts it', () => {
     const currentNode = nodesData.nodes[4];
     expect(currentNode.badge).not.toBeNull();
 
     renderMap(VIEWBOX_W / 2);
 
     const style = flatStyle('progress-badge-m5');
-    expect(style.left).toBe(currentNode.badge!.x / 2);
-    expect(style.top).toBe(currentNode.badge!.y / 2);
-    expect(style.width).toBe(currentNode.badge!.w / 2);
-    expect(style.height).toBe(currentNode.badge!.h / 2);
+    const badge = currentNode.badge!;
+    expect(style.left + BADGE_BOX.w / 2).toBe((badge.x + badge.w / 2) / 2);
+    expect(style.top + BADGE_BOX.h / 2).toBe((badge.y + badge.h / 2) / 2);
+  });
+
+  // The regression guard for the Android clipping that cut "TERAZ" to "TERA":
+  // the plate took the artwork's width, which scales down with the screen, while
+  // its word is a constant 11px plus letter spacing and does not. Below roughly
+  // a 428dp screen the word no longer fitted, and Android clips where iOS lets
+  // text overflow — so only the testers ever saw it.
+  //
+  // This asserts the shape of the fix, not the fix: whether the word actually
+  // renders whole is a question for a device, and is checked by hand on Android
+  // at 360dp and 412dp. What it does catch is somebody giving the plate a fixed
+  // size again, which is the only way the bug comes back.
+  test('lets the "now" plate size itself to its word', () => {
+    renderMap(VIEWBOX_W / 2);
+
+    const plate = flatStyle('progress-badge-plate-m5');
+    expect(plate.width).toBeUndefined();
+    expect(plate.height).toBeUndefined();
+    expect(plate.paddingHorizontal).toBeGreaterThan(0);
   });
 
   // ...and the reason the derivation matters: any node can be the current one.
