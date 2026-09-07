@@ -10,11 +10,7 @@ import {
 import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import {
-  GoogleSignin,
-  isErrorWithCode,
-  statusCodes,
-} from '@react-native-google-signin/google-signin';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { useAuth } from '../auth/AuthContext';
 import { useLogin } from '../queries/useLogin';
 import { useRegister } from '../queries/useRegister';
@@ -29,6 +25,7 @@ import { SOCIAL_LOGIN_ENABLED } from '../config/features';
 import { validateNickname } from '../domain/validation';
 import { RootStackParamList } from '../navigation/types';
 import { Theme, useTheme } from '../theme';
+import { describeGoogleSignInError } from '../auth/googleSignInError';
 import { pl } from '../i18n/pl';
 
 type Mode = 'login' | 'register';
@@ -215,14 +212,11 @@ export function AuthScreen() {
       await signInWithGoogle(response.data.idToken);
       // On success the token changes and RootNavigator swaps to QuestionScreen.
     } catch (err) {
-      if (
-        isErrorWithCode(err) &&
-        err.code === statusCodes.SIGN_IN_CANCELLED
-      ) {
-        Alert.alert(pl.appTitle, pl.auth.googleCancelled);
-        return;
-      }
-      Alert.alert(pl.appTitle, pl.auth.googleSignInError);
+      // One sentence per outcome, not one sentence for all of them — see
+      // describeGoogleSignInError. A misconfigured build and a cancelled tap
+      // used to look identical, which is how DEVELOPER_ERROR survived a whole
+      // beta as "logowanie nie działa".
+      Alert.alert(pl.appTitle, describeGoogleSignInError(err));
     } finally {
       setGoogleSubmitting(false);
     }

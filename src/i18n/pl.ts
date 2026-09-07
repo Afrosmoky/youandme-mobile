@@ -38,8 +38,21 @@ export const pl = {
     referrerReward: 'Wpiszcie nick — oboje dostaniecie +5 kart',
     forgotPassword: 'Zapomniałem hasła',
     googleSignIn: 'Zaloguj przez Google',
+    // Fallback, gdy błąd nie pochodzi z biblioteki Google (np. padła wymiana
+    // tokenu z naszym backendem albo sieć) — nie ma wtedy kodu do pokazania.
     googleSignInError: 'Logowanie przez Google się nie powiodło.',
     googleCancelled: 'Logowanie przez Google zostało anulowane.',
+    googlePlayServices:
+      'Logowanie przez Google wymaga aktualnych Usług Google Play. Zaktualizujcie je i spróbujcie ponownie.',
+    // DEVELOPER_ERROR (10): ta wersja aplikacji nie jest zarejestrowana w
+    // projekcie Google — wina po naszej stronie, nie użytkownika, więc copy
+    // kieruje na działającą drogę zamiast kazać próbować dalej.
+    googleConfigError: (code: string) =>
+      `Logowanie przez Google jest niedostępne w tej wersji aplikacji (kod ${code}). Zalogujcie się e-mailem — naprawimy to w kolejnej aktualizacji.`,
+    // Reszta: kod idzie do komunikatu, żeby kolejne zgłoszenie od testera było
+    // faktem, a nie zagadką.
+    googleSignInErrorCode: (code: string) =>
+      `Logowanie przez Google się nie powiodło (kod ${code}).`,
     // Zastępuje przycisk Google, gdy SOCIAL_LOGIN_ENABLED === false. Mówi
     // „wkrótce", a nie nic, żeby puste miejsce czytało się jako plan.
     socialSoon: 'Logowanie przez Google i Apple — wkrótce dostępne',
