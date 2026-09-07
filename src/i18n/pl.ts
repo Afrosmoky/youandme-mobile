@@ -395,6 +395,13 @@ export const pl = {
     headerTitle: 'Rytuał tygodnia',
     // "dzień 3 z 7"
     day: (day: number) => `dzień ${day} z 7`,
+    // Przycisk odznaczenia (3B). Liczba mnoga, bo reszta apki mówi do pary
+    // („Odpowiedzcie dziś"). Robocze, do potwierdzenia przez Wiktorię.
+    completeButton: 'Zrobiliśmy to',
+    completedButton: 'Zrobione ✓',
+    // Błąd INNY niż 404. Czterysta cztery to przekroczenie granicy tygodnia
+    // przy otwartej apce — wtedy cicho przeładowujemy rytuał i nic nie mówimy.
+    completeError: 'Nie udało się zapisać. Spróbujcie jeszcze raz.',
   },
 
   // P5 share. Copy is a neutral placeholder pending Wiktoria's sign-off (#36) —
