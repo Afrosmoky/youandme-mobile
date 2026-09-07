@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "1050573934208-0uemio3h4iu03irmid4pmvoicvfll5b0.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.youandmemobile",
+            "certificate_hash": "149aaa987c86c6ad62a8ecfd083112390497d7eb"
+          }
+        },
+        {
           "client_id": "1050573934208-5m7g7qhgu9p8i19hu2dci96ibg0ni2ku.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
