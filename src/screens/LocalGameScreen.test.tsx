@@ -21,6 +21,7 @@ import { likeQuestion, unlikeQuestion } from '../api/likes';
 import { reportPlayedCards } from '../api/localGame';
 import { getProgress } from '../api/progress';
 import type { RootStackParamList } from '../navigation/types';
+import { BACK_TO_SETUP } from '../navigation/backToSetup';
 import type { Challenge } from '../domain/challenges';
 import type { Memory, Progress, Question } from '../domain/types';
 import { pl } from '../i18n/pl';
@@ -79,10 +80,21 @@ const challenge: Challenge = {
 
 const popTo = jest.fn();
 const replace = jest.fn();
+const reset = jest.fn();
+// Captured rather than ignored: the "Wróć do menu" button is a headerRight, so
+// it only exists in what the screen hands the navigator. Rendering that is the
+// only way to press it without standing up a whole navigator.
+const setOptions = jest.fn();
 
 function makeProps(): Props {
   return {
-    navigation: { popTo, replace, setOptions: jest.fn(), navigate: jest.fn() },
+    navigation: {
+      popTo,
+      replace,
+      reset,
+      setOptions,
+      navigate: jest.fn(),
+    },
     route: { key: 'LocalGame', name: 'LocalGame', params: undefined },
   } as unknown as Props;
 }
@@ -136,7 +148,7 @@ describe('LocalGameScreen', () => {
   test('with nothing stored it sends the couple back to the setup', async () => {
     renderScreen();
 
-    await waitFor(() => expect(replace).toHaveBeenCalledWith('LocalGameSetup'));
+    await waitFor(() => expect(reset).toHaveBeenCalledWith(BACK_TO_SETUP));
   });
 
   test('the primary button hands the phone over, then moves on', async () => {
@@ -354,6 +366,27 @@ describe('LocalGameScreen', () => {
     );
 
     expect(await loadLocalGameState()).not.toBeNull();
+  });
+
+  // A GUARD, NOT A PROOF. What actually has to hold is that leaving a game
+  // flushes whatever it still owes the server, and that happens in the setup
+  // screen's mount effect — a real mount, which a mocked navigator never
+  // performs. So this cannot observe the flush; it can only pin the one call
+  // shape that produces the mount. Swap the reset for popTo('LocalGameSetup')
+  // and the couple silently starts losing played cards, with every test still
+  // green. The flush itself is verified by hand, on a device, with the network
+  // off — see BACK_TO_SETUP for why the shape is what it is.
+  test('leaving mid-game resets to a NEW setup screen, not back onto the old one', async () => {
+    await saveLocalGameState(session(20));
+    renderScreen();
+
+    await screen.findByTestId('local-game-question');
+    const options = setOptions.mock.calls.at(-1)?.[0];
+    renderWithQueryClient(options.headerRight());
+    fireEvent.press(screen.getByTestId('local-game-pause'));
+
+    expect(reset).toHaveBeenCalledWith(BACK_TO_SETUP);
+    expect(popTo).not.toHaveBeenCalled();
   });
 });
 
@@ -1130,7 +1163,13 @@ describe('LocalGameScreen — the milestone of the last card', () => {
 
   const summaryProps = (params: unknown) =>
     ({
-      navigation: { popTo, replace, setOptions: jest.fn(), navigate: jest.fn() },
+      navigation: {
+        popTo,
+        replace,
+        reset,
+        setOptions: jest.fn(),
+        navigate: jest.fn(),
+      },
       route: { key: 'S', name: 'LocalGameSummary', params },
     }) as unknown as React.ComponentProps<typeof LocalGameSummaryScreen>;
 

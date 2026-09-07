@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
+import { BACK_TO_SETUP } from '../navigation/backToSetup';
 import { LocalGameSummary, summarise } from '../domain/localGame';
 import { loadLocalGameState } from '../storage/localGameState';
 import { useMilestoneCelebration } from '../queries/useMilestoneCelebration';
@@ -62,7 +63,7 @@ export function LocalGameSummaryScreen({ navigation, route }: Props) {
         return;
       }
       if (stored === null) {
-        navigation.replace('LocalGameSetup');
+        navigation.reset(BACK_TO_SETUP);
         return;
       }
       setSummary(summarise(stored));
@@ -102,7 +103,7 @@ export function LocalGameSummaryScreen({ navigation, route }: Props) {
       <GoldButton
         testID="local-game-play-again"
         title={pl.localGame.playAgainButton}
-        onPress={() => navigation.replace('LocalGameSetup')}
+        onPress={() => navigation.reset(BACK_TO_SETUP)}
         style={styles.playAgain}
       />
       <OutlineButton

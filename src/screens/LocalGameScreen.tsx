@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
+import { BACK_TO_SETUP } from '../navigation/backToSetup';
 import {
   LocalGameState,
   advance,
@@ -114,7 +115,7 @@ export function LocalGameScreen({ navigation }: Props) {
       }
       if (stored === null) {
         // Nothing to play — the only honest place to be is the setup screen.
-        navigation.replace('LocalGameSetup');
+        navigation.reset(BACK_TO_SETUP);
         return;
       }
       if (isFinished(stored)) {
@@ -329,12 +330,15 @@ export function LocalGameScreen({ navigation }: Props) {
       headerShadowVisible: false,
       title: pl.localGame.headerTitle,
       // Leaving is a pause, not an end: the state stays on disk and the setup
-      // screen offers it back.
+      // screen offers it back. It goes to setup rather than Home now, and the
+      // reset is what keeps that safe — see BACK_TO_SETUP, and note that the
+      // flush this protects cannot be covered by a test, because navigation is
+      // mocked and the trigger is a real mount.
       // eslint-disable-next-line react/no-unstable-nested-components
       headerRight: () => (
         <TouchableOpacity
           testID="local-game-pause"
-          onPress={() => navigation.popTo('Home')}>
+          onPress={() => navigation.reset(BACK_TO_SETUP)}>
           <Text style={styles.headerButton}>{pl.localGame.pauseButton}</Text>
         </TouchableOpacity>
       ),

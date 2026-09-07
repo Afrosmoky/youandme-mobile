@@ -18,6 +18,7 @@ import {
 } from '../storage/localGameState';
 import { queryKeys } from '../queries/queryKeys';
 import type { RootStackParamList } from '../navigation/types';
+import { BACK_TO_SETUP } from '../navigation/backToSetup';
 import type { Progress, Question } from '../domain/types';
 import { pl } from '../i18n/pl';
 
@@ -54,10 +55,17 @@ const progressWith = (unlocked: boolean): Progress => ({
 
 const popTo = jest.fn();
 const replace = jest.fn();
+const reset = jest.fn();
 
 function makeProps(params?: { seenMilestones?: string[] }): Props {
   return {
-    navigation: { popTo, replace, setOptions: jest.fn(), navigate: jest.fn() },
+    navigation: {
+      popTo,
+      replace,
+      reset,
+      setOptions: jest.fn(),
+      navigate: jest.fn(),
+    },
     route: { key: 'LocalGameSummary', name: 'LocalGameSummary', params },
   } as unknown as Props;
 }
@@ -153,7 +161,21 @@ describe('LocalGameSummaryScreen', () => {
   test('with nothing stored it sends the couple back to the setup', async () => {
     renderScreen();
 
-    await waitFor(() => expect(replace).toHaveBeenCalledWith('LocalGameSetup'));
+    await waitFor(() => expect(reset).toHaveBeenCalledWith(BACK_TO_SETUP));
+  });
+
+  // The same guard as on the game screen, and the more travelled path of the
+  // two: a couple reaches the end of a deck more often than it walks out of a
+  // game. Same caveat — it pins the call shape that causes the setup screen to
+  // mount, and cannot see the flush that mount performs.
+  test('playing again resets to a NEW setup screen, not back onto the old one', async () => {
+    await saveLocalGameState(playedOut());
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('local-game-play-again'));
+
+    expect(reset).toHaveBeenCalledWith(BACK_TO_SETUP);
+    expect(replace).not.toHaveBeenCalled();
   });
 });
 

@@ -106,15 +106,17 @@ export function RootNavigator() {
             component={LocalGameScreen}
             options={{
               title: pl.localGame.headerTitle,
-              // No back arrow, no swipe: "Przerwij" (→ Home) is the only way out
-              // of a game in progress. Going back would land on a still-mounted
+              // No back arrow, no swipe: "Wróć do menu" is the only way out of a
+              // game in progress. Going back would land on a still-mounted
               // LocalGameSetup holding the session it read when IT mounted —
               // stale by then. The resume card would be missing, the
               // matchesSetup guard would compare against null and overwrite a
               // game in progress with a fresh deck, and the pending report would
               // never flush (all three hang off the same mount effect).
-              // Leaving via Home unwinds the setup screen too, so the next entry
-              // always re-reads what is actually on disk.
+              // "Wróć do menu" resets the stack to Home + a NEW setup screen
+              // rather than returning to the old one (see BACK_TO_SETUP), so the
+              // next entry always re-reads what is actually on disk — the same
+              // guarantee leaving via Home used to give.
               headerBackVisible: false,
               gestureEnabled: false,
             }}
