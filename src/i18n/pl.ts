@@ -199,10 +199,10 @@ export const pl = {
     localGameTitle: 'Gra na jednym telefonie',
     localGameHint: 'Grajcie obok siebie, na zmianę',
     // Dwa tryby obok siebie: jeden gra się dziś, drugi jest zapowiedziany.
-    // Kafel zostaje widoczny, żeby ścieżka gry zdalnej nie zniknęła z mapy
+    // Kafel zostaje widoczny, żeby ścieżka gry na odległość nie zniknęła z mapy
     // aplikacji między teraz a etapem II.
-    remoteGameTitle: 'Gra zdalna',
-    remoteGameHint: 'Każde na swoim telefonie',
+    remoteGameTitle: 'Gra na odległość',
+    remoteGameHint: 'Bądźcie blisko mimo dzielących was kilometrów',
   },
 
   // Ekran po kliknięciu linku weryfikacyjnego z maila. Weryfikacja dzieje się na
@@ -220,7 +220,7 @@ export const pl = {
   // teksty dla poszczególnych wejść. Robocze, do dopracowania przez Wiktorię.
   comingSoon: {
     badge: 'Wkrótce',
-    remoteGameTitle: 'Gra zdalna',
+    remoteGameTitle: 'Gra na odległość',
     remoteGameBody:
       'Grajcie razem, każde na swoim telefonie — pytania, odpowiedzi i wspomnienia na odległość. Pracujemy nad tym.',
   },
@@ -307,7 +307,7 @@ export const pl = {
     nextButton: 'Następne pytanie',
     challengeDoneButton: 'Zrobione',
     skipButton: 'Pomiń',
-    pauseButton: 'Przerwij',
+    pauseButton: 'Wróć do menu',
     saveButton: 'Zapisz wspomnienie',
     savedBadge: 'Wspomnienie zapisane',
     saveError: 'Nie udało się zapisać wspomnienia.',
