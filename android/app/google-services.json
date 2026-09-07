@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "1050573934208-n4o4ueehs50jvvp3bi71bt6nfnliu5t3.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.youandmemobile",
+            "certificate_hash": "6897d48e7fde4faf6f396435da36a3664864e995"
+          }
+        },
+        {
           "client_id": "1050573934208-6s4a631jirskdjgpmlt5pbmu4sa9fnn5.apps.googleusercontent.com",
           "client_type": 3
         }
