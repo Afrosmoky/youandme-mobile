@@ -33,6 +33,7 @@ import {
   loadLocalGameState,
   saveLocalGameState,
 } from '../storage/localGameState';
+import { loadPartnerName, savePartnerName } from '../storage/partnerName';
 import { CategoryList } from '../components/CategoryList';
 import { Card } from '../components/Card';
 import { GoldButton } from '../components/GoldButton';
@@ -70,6 +71,11 @@ export function LocalGameSetupScreen({ navigation }: Props) {
   // Seeded from the couple's stored partner name, which is the right guess most
   // of the time — and editable, because the backend is explicit that the local
   // game's second player and partner_name_local may legitimately differ.
+  //
+  // The name typed into the last game wins over it, and is read from the device
+  // in the mount effect below because storage is async. Nothing renders until
+  // that effect has finished, so there is no window in which the couple could be
+  // typing over an answer that is still on its way.
   const [player2, setPlayer2] = useState(couple?.partnerNameLocal ?? '');
   const [nameError, setNameError] = useState<string | null>(null);
   const [deckError, setDeckError] = useState<string | null>(null);
@@ -87,9 +93,19 @@ export function LocalGameSetupScreen({ navigation }: Props) {
   useEffect(() => {
     let active = true;
     (async () => {
-      let saved = await loadLocalGameState();
+      // Read alongside the session rather than in an effect of its own: both are
+      // one disk read on the way into this screen, and splitting them would mean
+      // two spinners' worth of state for one wait.
+      const [loaded, remembered] = await Promise.all([
+        loadLocalGameState(),
+        loadPartnerName(),
+      ]);
+      let saved = loaded;
       if (!active) {
         return;
+      }
+      if (remembered !== null) {
+        setPlayer2(remembered);
       }
 
       // The safety net for the live report (S3c), and it runs before anything
@@ -200,6 +216,16 @@ export function LocalGameSetupScreen({ navigation }: Props) {
           startedAt: new Date().toISOString(),
         });
         await saveLocalGameState(fresh);
+        // Remembered here rather than as the couple types, so what comes back
+        // next time is a name they actually played a game with — not whatever
+        // the field happened to hold when they changed their mind and left.
+        //
+        // Best-effort, and deliberately NOT awaited into the try below: the deck
+        // is dealt and on disk by now, so a store that fails must cost the couple
+        // a convenience, not the game. Awaiting it here would send a storage
+        // failure to the catch and tell them the questions could not be fetched,
+        // over a session that had in fact just been dealt.
+        savePartnerName(player2Name).catch(() => {});
         // This screen stays mounted under the game, so what it believes is on
         // disk has to keep up: leave the old session here and a second tap on
         // the same category would warn about — and then redeal over — the game

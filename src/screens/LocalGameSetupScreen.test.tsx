@@ -17,6 +17,7 @@ import {
   loadLocalGameState,
   saveLocalGameState,
 } from '../storage/localGameState';
+import { loadPartnerName, savePartnerName } from '../storage/partnerName';
 import type { RootStackParamList } from '../navigation/types';
 import type { Couple, Question, User } from '../domain/types';
 import { pl } from '../i18n/pl';
@@ -76,6 +77,9 @@ describe('LocalGameSetupScreen', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     await clearLocalGameState();
+    // The mock store outlives the test, and this key now decides what the name
+    // field starts with — so a value left by one test would seed the next.
+    await savePartnerName('');
     jest.mocked(listCategories).mockResolvedValue(categories);
     jest.mocked(fetchGameDeck).mockResolvedValue(deck([question(1), question(2)]));
     jest
@@ -101,6 +105,46 @@ describe('LocalGameSetupScreen', () => {
       'value',
       'Wiktoria',
     );
+  });
+
+  // Precedence, and the reason for it: the profile field is a statement about
+  // the relationship, the remembered name is what was typed into the last game.
+  // The more recent explicit act wins, which is also what the web version does.
+  test('the name from the last game wins over the couple field', async () => {
+    await savePartnerName('Ala');
+    renderScreen();
+
+    expect(await screen.findByTestId('local-game-player2')).toHaveProp(
+      'value',
+      'Ala',
+    );
+  });
+
+  test('remembers the name once a game is actually dealt', async () => {
+    renderScreen();
+    fireEvent.changeText(
+      await screen.findByTestId('local-game-player2'),
+      'Ala',
+    );
+    fireEvent.press(screen.getByTestId('category-randka'));
+
+    await waitFor(async () => expect(await loadPartnerName()).toBe('Ala'));
+  });
+
+  // Written on the deal rather than as they type, so what comes back next time
+  // is a name they played a game with — not one they typed and thought better
+  // of. A deck that never arrives leaves nothing behind.
+  test('remembers nothing when the deal fails', async () => {
+    jest.mocked(fetchGameDeck).mockRejectedValue(new Error('offline'));
+    renderScreen();
+    fireEvent.changeText(
+      await screen.findByTestId('local-game-player2'),
+      'Ala',
+    );
+    fireEvent.press(screen.getByTestId('category-randka'));
+
+    await screen.findByTestId('category-list-error');
+    expect(await loadPartnerName()).toBeNull();
   });
 
   test('refuses to start without a name for player two', async () => {

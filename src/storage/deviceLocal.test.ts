@@ -1,8 +1,10 @@
 import {
   LAST_ACCOUNT_KEY,
+  LAST_COUPLE_KEY,
   bindDeviceToAccount,
   clearDeviceLocalGameData,
 } from './deviceLocal';
+import { loadPartnerName, savePartnerName } from './partnerName';
 import { kv } from './kv';
 import { loadLocalGameState, saveLocalGameState } from './localGameState';
 import { startLocalGame } from '../domain/localGame';
@@ -37,6 +39,7 @@ beforeEach(async () => {
   // The mock store lives for the module registry's lifetime, not the test's.
   await clearDeviceLocalGameData();
   await kv.remove(LAST_ACCOUNT_KEY);
+  await kv.remove(LAST_COUPLE_KEY);
 });
 
 describe('clearDeviceLocalGameData', () => {
@@ -48,6 +51,17 @@ describe('clearDeviceLocalGameData', () => {
     expect(await loadLocalGameState()).toBeNull();
   });
 
+  // The remembered name is the other half of what a sign-out has to take with
+  // it: offering the next person on this phone the previous partner's name is
+  // the worst thing this form can do.
+  test('drops the remembered partner name', async () => {
+    await savePartnerName('Wiktoria');
+
+    await clearDeviceLocalGameData();
+
+    expect(await loadPartnerName()).toBeNull();
+  });
+
   test('does nothing when there is no game to drop', async () => {
     await expect(clearDeviceLocalGameData()).resolves.toBeUndefined();
     expect(await loadLocalGameState()).toBeNull();
@@ -56,21 +70,36 @@ describe('clearDeviceLocalGameData', () => {
 
 describe('bindDeviceToAccount', () => {
   test('a game left by another account is cleared on sign-in', async () => {
-    await bindDeviceToAccount('u_01');
+    await bindDeviceToAccount('u_01', 'c_01');
     await saveLocalGameState(session());
 
-    await bindDeviceToAccount('u_99');
+    await bindDeviceToAccount('u_99', 'c_99');
 
     expect(await loadLocalGameState()).toBeNull();
   });
 
   test('the same account signing back in keeps its paused game', async () => {
-    await bindDeviceToAccount('u_01');
+    await bindDeviceToAccount('u_01', 'c_01');
     await saveLocalGameState(session());
 
-    await bindDeviceToAccount('u_01');
+    await bindDeviceToAccount('u_01', 'c_01');
 
     expect((await loadLocalGameState())?.player2).toBe('Wiktoria');
+  });
+
+  // The barrier the account ulid cannot see: same person, same account, paired
+  // with somebody else since. Nothing about the account changed, so only the
+  // couple ulid can tell — and without it the setup screen would greet the new
+  // relationship with the previous partner's name already typed in.
+  test('a new couple under the same account clears what the last one left', async () => {
+    await bindDeviceToAccount('u_01', 'c_01');
+    await saveLocalGameState(session());
+    await savePartnerName('Wiktoria');
+
+    await bindDeviceToAccount('u_01', 'c_02');
+
+    expect(await loadLocalGameState()).toBeNull();
+    expect(await loadPartnerName()).toBeNull();
   });
 
   // A device that upgrades into this build has no owner recorded, and the game
@@ -78,7 +107,7 @@ describe('bindDeviceToAccount', () => {
   test('a game with no owner recorded is cleared', async () => {
     await saveLocalGameState(session());
 
-    await bindDeviceToAccount('u_01');
+    await bindDeviceToAccount('u_01', 'c_01');
 
     expect(await loadLocalGameState()).toBeNull();
   });

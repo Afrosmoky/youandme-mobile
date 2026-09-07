@@ -25,6 +25,7 @@ import { ErrorState } from '../components/ErrorState';
 import { SectionLabel } from '../components/SectionLabel';
 import { GoldButton } from '../components/GoldButton';
 import { OutlineButton } from '../components/OutlineButton';
+import { savePartnerName } from '../storage/partnerName';
 import { claimShareReward } from '../api/share';
 import { claimRatingReward } from '../api/rating';
 import { parseApiError, FieldErrors } from '../api/errors';
@@ -162,6 +163,15 @@ export function ProfileScreen({ navigation }: Props) {
       onSuccess: ({ user: updatedUser, couple: updatedCouple }) => {
         setUser(updatedUser);
         setCouple(updatedCouple);
+        // The game setup screen prefers the name typed into the last game over
+        // this field, so editing it here has to reach that copy too — otherwise
+        // saving a new partner name would look like it had done nothing the next
+        // time a game starts. Only when the field was actually part of the save,
+        // and best-effort: a failing store must not turn a saved profile into an
+        // error on screen, and the next dealt game writes the name again anyway.
+        if (payload.partner_name_local !== undefined) {
+          savePartnerName(updatedCouple.partnerNameLocal ?? '').catch(() => {});
+        }
         Alert.alert(pl.appTitle, pl.profile.savedToast);
       },
       onError: err => {

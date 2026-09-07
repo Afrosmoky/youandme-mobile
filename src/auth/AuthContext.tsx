@@ -68,10 +68,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo<AuthContextValue>(() => {
     const applyAuth = async (data: AuthResponse) => {
-      // Before anything can render on the new session: the local game is
-      // device-local and account-blind, so a session left by another account on
-      // this phone gets dropped here rather than offered as a resume.
-      await bindDeviceToAccount(data.user.ulid);
+      // Before anything can render on the new session: the local game and the
+      // remembered partner name are device-local and account-blind, so whatever
+      // another account — or another couple — left on this phone gets dropped
+      // here rather than offered as a resume or filled into the setup form.
+      await bindDeviceToAccount(data.user.ulid, data.couple.ulid);
       setAuthToken(data.token);
       await saveToken(data.token);
       setUser(data.user);
