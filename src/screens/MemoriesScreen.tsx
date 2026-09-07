@@ -19,6 +19,8 @@ import { ErrorState } from '../components/ErrorState';
 import { SectionLabel } from '../components/SectionLabel';
 import { Badge } from '../components/Badge';
 import { LikeHeart } from '../components/LikeHeart';
+import { Tabs } from '../components/Tabs';
+import { LikedQuestionList } from '../components/LikedQuestionList';
 import { Theme, useTheme } from '../theme';
 import { pl } from '../i18n/pl';
 
@@ -51,9 +53,18 @@ function originLabel(origin: string): string {
   }
 }
 
+// Two tabs, because a hearted QUESTION (P5, couple_question_likes) and a
+// favourite MEMORY (P9, memories.is_favorite) are two different things wearing
+// the same icon. Wiktoria's split, and the one her web version has.
+const TAB_QUESTIONS = 'questions';
+const TAB_MEMORIES = 'memories';
+
 export function MemoriesScreen({ navigation }: Props) {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  // Memories stay the landing tab: they are what this screen has always been,
+  // and what the Home tile has always led to.
+  const [tab, setTab] = useState<string>(TAB_MEMORIES);
   // The filter is a query of its own, not a client-side filter: the server
   // narrows the same list, so paging keeps working past the first page.
   const [favoritesOnly, setFavoritesOnly] = useState(false);
@@ -119,15 +130,14 @@ export function MemoriesScreen({ navigation }: Props) {
     });
   }, [navigation, styles, theme]);
 
-  if (isLoading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator color={theme.colors.gold.primary} />
-      </View>
-    );
-  }
-
-  return (
+  // Built rather than returned, so the tab bar below renders over every state
+  // this tab can be in — including the first load. Returning a bare spinner
+  // here would hide the way to the other tab behind it.
+  const memoriesTab = isLoading ? (
+    <View style={styles.centered}>
+      <ActivityIndicator color={theme.colors.gold.primary} />
+    </View>
+  ) : (
     <FlatList
       testID="memories-list"
       style={styles.list}
@@ -242,11 +252,33 @@ export function MemoriesScreen({ navigation }: Props) {
       )}
     />
   );
+
+  return (
+    <View style={styles.screen}>
+      {/* Above the list, not inside it: a tab bar that scrolls away is a tab bar
+          you cannot get back to without scrolling up. The favourites filter
+          below stays where it was, inside the memories list. */}
+      <Tabs
+        testID="history-tab"
+        items={[
+          { key: TAB_QUESTIONS, label: pl.memories.tabQuestions },
+          { key: TAB_MEMORIES, label: pl.memories.tabMemories },
+        ]}
+        value={tab}
+        onChange={setTab}
+      />
+      {tab === TAB_QUESTIONS ? <LikedQuestionList /> : memoriesTab}
+    </View>
+  );
 }
 
 const createStyles = (theme: Theme) => {
   const { colors, typography, spacing } = theme;
   return StyleSheet.create({
+    screen: {
+      flex: 1,
+      backgroundColor: colors.bg.base,
+    },
     list: {
       backgroundColor: colors.bg.base,
     },

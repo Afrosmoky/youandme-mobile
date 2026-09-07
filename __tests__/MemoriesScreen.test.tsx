@@ -5,6 +5,7 @@ import {act, fireEvent, screen, waitFor} from '@testing-library/react-native';
 import {renderWithQueryClient} from '../src/test/renderWithQueryClient';
 import {MemoriesScreen} from '../src/screens/MemoriesScreen';
 import {listMemories, setMemoryFavorite} from '../src/api/memories';
+import {listLikedQuestions} from '../src/api/questions';
 import {useAuth} from '../src/auth/AuthContext';
 import type {RootStackParamList} from '../src/navigation/types';
 import type {Memory} from '../src/domain/types';
@@ -15,6 +16,7 @@ jest.mock('../src/api/memories', () => ({
   setMemoryFavorite: jest.fn(),
 }));
 jest.mock('../src/auth/AuthContext', () => ({useAuth: jest.fn()}));
+jest.mock('../src/api/questions', () => ({listLikedQuestions: jest.fn()}));
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Memories'>;
 
@@ -50,6 +52,11 @@ describe('MemoriesScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     jest.mocked(axios.isAxiosError).mockReturnValue(false);
+    jest.mocked(listLikedQuestions).mockResolvedValue({
+      questions: [],
+      nextCursor: null,
+      prevCursor: null,
+    });
     jest.mocked(useAuth).mockReturnValue({
       user: null,
       couple: null,
@@ -322,5 +329,117 @@ describe('MemoriesScreen', () => {
       expect(screen.getByText(memory.answerA)).toBeOnTheScreen();
       expect(screen.queryByTestId('memories-error')).toBeNull();
     });
+  });
+
+  // A hearted QUESTION (P5) and a favourite MEMORY (P9) are two different things
+  // under one icon, so they get two tabs rather than one merged list. Wiktoria's
+  // split, and the one her web version has.
+  test('offers both halves of the history as tabs', async () => {
+    jest
+      .mocked(listMemories)
+      .mockResolvedValue({memories: [memory], nextCursor: null, prevCursor: null});
+
+    renderWithQueryClient(<MemoriesScreen {...makeProps()} />);
+
+    expect(await screen.findByTestId('history-tab-questions')).toHaveTextContent(
+      pl.memories.tabQuestions,
+    );
+    expect(screen.getByTestId('history-tab-memories')).toHaveTextContent(
+      pl.memories.tabMemories,
+    );
+    // Memories are what this screen has always been, so they stay the landing tab.
+    expect(await screen.findByText(memory.answerA)).toBeOnTheScreen();
+  });
+
+  test('the questions tab shows the hearted cards', async () => {
+    jest
+      .mocked(listMemories)
+      .mockResolvedValue({memories: [memory], nextCursor: null, prevCursor: null});
+    jest.mocked(listLikedQuestions).mockResolvedValue({
+      questions: [{...memory.question, liked: true}],
+      nextCursor: null,
+      prevCursor: null,
+    });
+
+    renderWithQueryClient(<MemoriesScreen {...makeProps()} />);
+    fireEvent.press(await screen.findByTestId('history-tab-questions'));
+
+    expect(
+      await screen.findByTestId('liked-question-body-q_01'),
+    ).toHaveTextContent(memory.question.body);
+    expect(listLikedQuestions).toHaveBeenCalled();
+  });
+
+  // Not a white screen: an empty favourites list is a normal state with
+  // something to say, and it says how to stop being empty.
+  test('an empty questions tab explains itself', async () => {
+    jest
+      .mocked(listMemories)
+      .mockResolvedValue({memories: [memory], nextCursor: null, prevCursor: null});
+
+    renderWithQueryClient(<MemoriesScreen {...makeProps()} />);
+    fireEvent.press(await screen.findByTestId('history-tab-questions'));
+
+    expect(await screen.findByTestId('liked-questions-empty')).toHaveTextContent(
+      pl.memories.likedEmpty,
+    );
+  });
+
+  // "It broke" and "there is nothing here" must not look the same — otherwise a
+  // dead connection reads as an invitation to tap a heart.
+  test('a failed questions tab reads as a failure, not as emptiness', async () => {
+    jest
+      .mocked(listMemories)
+      .mockResolvedValue({memories: [memory], nextCursor: null, prevCursor: null});
+    jest.mocked(listLikedQuestions).mockRejectedValue(new Error('offline'));
+
+    renderWithQueryClient(<MemoriesScreen {...makeProps()} />);
+    fireEvent.press(await screen.findByTestId('history-tab-questions'));
+
+    expect(await screen.findByTestId('liked-questions-error')).toBeOnTheScreen();
+    expect(screen.queryByTestId('liked-questions-empty')).toBeNull();
+  });
+
+  // is_locked on this list means "a paid card you own": the backend drops
+  // hearted cards the couple has not unlocked before it pages, so there is no
+  // withheld state. The body shows, with the same badge play uses.
+  test('a paid card shows its text with the unlocked badge', async () => {
+    jest
+      .mocked(listMemories)
+      .mockResolvedValue({memories: [memory], nextCursor: null, prevCursor: null});
+    jest.mocked(listLikedQuestions).mockResolvedValue({
+      questions: [{...memory.question, liked: true, isLocked: true}],
+      nextCursor: null,
+      prevCursor: null,
+    });
+
+    renderWithQueryClient(<MemoriesScreen {...makeProps()} />);
+    fireEvent.press(await screen.findByTestId('history-tab-questions'));
+
+    expect(
+      await screen.findByTestId('liked-question-body-q_01'),
+    ).toHaveTextContent(memory.question.body);
+    expect(
+      screen.getByTestId('liked-question-unlocked-q_01'),
+    ).toHaveTextContent(pl.question.unlockedBadge);
+  });
+
+  // Read-only in this slice: the list closes the hole on its own, and unhearting
+  // from here would need a second write path (see useLikeQuestion).
+  test('the questions tab carries no actions', async () => {
+    jest
+      .mocked(listMemories)
+      .mockResolvedValue({memories: [memory], nextCursor: null, prevCursor: null});
+    jest.mocked(listLikedQuestions).mockResolvedValue({
+      questions: [{...memory.question, liked: true}],
+      nextCursor: null,
+      prevCursor: null,
+    });
+
+    renderWithQueryClient(<MemoriesScreen {...makeProps()} />);
+    fireEvent.press(await screen.findByTestId('history-tab-questions'));
+
+    await screen.findByTestId('liked-question-body-q_01');
+    expect(screen.queryByTestId('liked-question-like-q_01')).toBeNull();
   });
 });

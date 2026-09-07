@@ -135,7 +135,14 @@ export const pl = {
   },
 
   memories: {
-    headerTitle: 'Wspomnienia',
+    // „Historia", nie „Wspomnienia": od 3B ekran ma dwie zakładki, a „Zapisane
+    // wspomnienia" pod nagłówkiem „Wspomnienia" byłoby tautologią. Nazwa trasy
+    // w nawigatorze zostaje — deep linki i pushRouter z P9 są tego niewarte.
+    headerTitle: 'Historia',
+    // Podział Wiktorii, ten sam co w jej wersji webowej. Dwa różne byty pod
+    // jednym sercem: polubione PYTANIE (P5) i ulubione WSPOMNIENIE (P9).
+    tabQuestions: 'Ulubione pytania',
+    tabMemories: 'Zapisane wspomnienia',
     logout: 'Wyloguj',
     empty: 'Nie masz jeszcze żadnych wspomnień.',
     // Osobny pusty stan dla filtra — „nie masz wspomnień" byłoby nieprawdą.
@@ -144,6 +151,10 @@ export const pl = {
     favoritesFilter: 'Pokaż ulubione',
     allFilter: 'Pokaż wszystkie',
     favoriteError: 'Nie udało się zmienić ulubionych.',
+    // Zakładka polubionych pytań (3B). Robocze, do potwierdzenia przez Wiktorię.
+    likedEmpty:
+      'Nie macie jeszcze ulubionych pytań. Stuknijcie serce przy pytaniu, żeby je tu zachować.',
+    likedLoadError: 'Nie udało się pobrać ulubionych pytań.',
     // "Odpowiedź Ola"
     player: (name: string) => `Odpowiedź ${name}`,
     origin: {
@@ -190,8 +201,8 @@ export const pl = {
     // solo z etapu II.
     sessionTitle: 'Sesja pytań',
     sessionHint: 'Wybierzcie kategorię i grajcie',
-    memoriesTitle: 'Wspomnienia',
-    memoriesHint: 'Wasze zapisane odpowiedzi',
+    memoriesTitle: 'Historia',
+    memoriesHint: 'Ulubione pytania i zapisane wspomnienia',
     deckTitle: 'Talia i nagrody',
     deckHint: 'Odblokujcie kolejne pytania',
     progressTitle: 'Wasza mapa',
