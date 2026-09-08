@@ -56,12 +56,14 @@ export function useLikeQuestion() {
       if (context?.previous) {
         queryClient.setQueryData(queryKeys.dailyCard, context.previous);
       }
+      // The heart going back on its own used to be the entire message.
+      feedback.failed();
     },
     onSuccess: result => {
       // Reconcile with server truth. In the happy path this equals the
       // optimistic value, so nothing flickers.
       setLikedInCache(queryClient, result.liked);
-      feedback(result.liked);
+      feedback.succeeded(result.liked);
     },
   });
 }

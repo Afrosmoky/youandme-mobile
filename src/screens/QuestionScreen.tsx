@@ -122,9 +122,10 @@ export function QuestionScreen({ navigation }: Props) {
       // This screen writes the heart straight to the API, outside TanStack, so
       // the liked list has to be told by hand — otherwise the 30s staleTime
       // hides what was just hearted from the history the toast points at.
-      likeFeedback(res.liked);
+      likeFeedback.succeeded(res.liked);
     } catch {
       setLiked(current);
+      likeFeedback.failed();
     } finally {
       setLikePending(false);
     }

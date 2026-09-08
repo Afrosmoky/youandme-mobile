@@ -402,6 +402,10 @@ describe('QuestionScreen', () => {
     await waitFor(() =>
       expect(screen.getByTestId('question-like')).toHaveTextContent('♡︎'),
     );
+    // ...and now it also says so. A heart that rolls back in silence reads as a
+    // heart that does not work; the message is the difference between "broken"
+    // and "not right now".
+    expect(screen.getByTestId('toast')).toHaveTextContent(pl.memories.likeError);
   });
 
   test('a milestone unlocked by the saved card celebrates it', async () => {

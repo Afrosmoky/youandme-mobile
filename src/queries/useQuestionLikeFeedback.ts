@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useToast } from '../components/Toast';
 import { queryKeys } from './queryKeys';
@@ -21,14 +21,22 @@ import { pl } from '../i18n/pl';
  * The toast runs in one direction only. "Added to favourites" over an unheart
  * would be a lie, and there is nothing to announce about taking something back.
  *
- * Takes the RESULTING state rather than the direction of the tap, so callers
- * pass what the server said and not what they assumed.
+ * `succeeded` takes the RESULTING state rather than the direction of the tap, so
+ * callers pass what the server said and not what they assumed.
+ *
+ * `failed` is the other half, and it is not symmetrical with the toast above: it
+ * fires in BOTH directions, because a heart that will not save and a heart that
+ * will not unsave are the same broken promise. Until now every failure rolled
+ * the heart back and said nothing at all, which reads as a heart that does not
+ * work — and the local game, the one mode designed to be played offline, is
+ * where that happens routinely. There is nothing to invalidate on this path:
+ * the server rejected the change, so the list is exactly as it was.
  */
 export function useQuestionLikeFeedback() {
   const queryClient = useQueryClient();
   const { show } = useToast();
 
-  return useCallback(
+  const succeeded = useCallback(
     (liked: boolean) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.likedQuestions });
       if (liked) {
@@ -37,4 +45,10 @@ export function useQuestionLikeFeedback() {
     },
     [queryClient, show],
   );
+
+  const failed = useCallback(() => {
+    show(pl.memories.likeError);
+  }, [show]);
+
+  return useMemo(() => ({ succeeded, failed }), [succeeded, failed]);
 }

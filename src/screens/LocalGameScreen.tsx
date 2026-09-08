@@ -321,9 +321,12 @@ export function LocalGameScreen({ navigation }: Props) {
       // Same hand-wiring as QuestionScreen: the heart here goes to the API and
       // to the session on disk, never through TanStack, so nothing else would
       // refresh the liked list.
-      likeFeedback(res.liked);
+      likeFeedback.succeeded(res.liked);
     } catch {
       await writeLiked(ulid, liked);
+      // The mode most likely to be played without a signal, and until now the
+      // one that said the least about it.
+      likeFeedback.failed();
     } finally {
       setLikePending(false);
     }

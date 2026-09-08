@@ -43,7 +43,7 @@ describe('useQuestionLikeFeedback', () => {
     const invalidate = jest.spyOn(queryClient, 'invalidateQueries');
     const {result} = renderIt(queryClient);
 
-    act(() => result.current(true));
+    act(() => result.current.succeeded(true));
 
     expect(invalidate).toHaveBeenCalledWith({
       queryKey: queryKeys.likedQuestions,
@@ -56,7 +56,7 @@ describe('useQuestionLikeFeedback', () => {
     const invalidate = jest.spyOn(queryClient, 'invalidateQueries');
     const {result} = renderIt(queryClient);
 
-    act(() => result.current(false));
+    act(() => result.current.succeeded(false));
 
     expect(invalidate).toHaveBeenCalledWith({
       queryKey: queryKeys.likedQuestions,
@@ -66,7 +66,7 @@ describe('useQuestionLikeFeedback', () => {
   test('says so, once, on a heart', () => {
     const {result} = renderIt(makeClient());
 
-    act(() => result.current(true));
+    act(() => result.current.succeeded(true));
 
     expect(screen.getByTestId('toast')).toHaveTextContent(
       pl.memories.likedToast,
@@ -78,8 +78,42 @@ describe('useQuestionLikeFeedback', () => {
   test('says nothing when a card is unhearted', () => {
     const {result} = renderIt(makeClient());
 
-    act(() => result.current(false));
+    act(() => result.current.succeeded(false));
 
     expect(screen.queryByTestId('toast')).toBeNull();
+  });
+
+  // Until now a failed heart rolled itself back and said nothing, which reads
+  // as a heart that does not work. The local game is the mode designed to be
+  // played offline, so that is where it happened routinely — and since 3B it
+  // would happen next to a favourites tab that stayed empty.
+  test('a failed heart says so', () => {
+    const {result} = renderIt(makeClient());
+
+    act(() => result.current.failed());
+
+    expect(screen.getByTestId('toast')).toHaveTextContent(pl.memories.likeError);
+  });
+
+  // Both directions: a heart that will not save and a heart that will not
+  // unsave are the same broken promise.
+  test('it says the same thing whichever way the tap went', () => {
+    const {result} = renderIt(makeClient());
+
+    act(() => result.current.failed());
+
+    expect(screen.getByTestId('toast')).toHaveTextContent(pl.memories.likeError);
+    expect(screen.queryByText(pl.memories.likedToast)).toBeNull();
+  });
+
+  // Nothing changed on the server, so there is nothing on the list to refresh.
+  test('a failure refreshes nothing', () => {
+    const queryClient = makeClient();
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries');
+    const {result} = renderIt(queryClient);
+
+    act(() => result.current.failed());
+
+    expect(invalidate).not.toHaveBeenCalled();
   });
 });

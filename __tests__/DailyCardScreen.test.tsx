@@ -154,6 +154,16 @@ describe('DailyCardScreen', () => {
     await waitFor(() =>
       expect(screen.getByTestId('daily-card-like')).toHaveTextContent('♡︎'),
     );
+    // ...and now it also says so. A heart that rolls back in silence reads as a
+    // heart that does not work; the message is the difference between "broken"
+    // and "not right now".
+    // waitFor, not a bare assertion: on this path onError runs from the
+    // mutation's own chain, so the toast lands a render after the rollback.
+    await waitFor(() =>
+      expect(screen.getByTestId('toast')).toHaveTextContent(
+        pl.memories.likeError,
+      ),
+    );
     await act(async () => {
       await Promise.resolve();
     });

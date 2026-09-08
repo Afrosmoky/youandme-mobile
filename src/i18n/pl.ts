@@ -171,6 +171,10 @@ export const pl = {
     // Toast po polubieniu — pokazywany tylko przy polubieniu, nigdy przy
     // cofnięciu. Treść Piotra, bez zmian.
     likedToast: 'Dodano do ulubionych — znajdziesz je w Historii',
+    // Nieudana zmiana serca — w OBIE strony. Bez tego offline serce mruga i
+    // gaśnie w ciszy, a od 3B jeszcze z pustą zakładką obok. Robocze, do
+    // potwierdzenia przez Wiktorię.
+    likeError: 'Nie udało się zapisać — spróbujcie ponownie z internetem',
     // "Odpowiedź Ola"
     player: (name: string) => `Odpowiedź ${name}`,
     origin: {

@@ -686,6 +686,10 @@ describe('LocalGameScreen — liking a card', () => {
     await waitFor(() =>
       expect(screen.getByTestId('local-game-like')).toHaveTextContent(OUTLINE),
     );
+    // ...and now it also says so. A heart that rolls back in silence reads as a
+    // heart that does not work; the message is the difference between "broken"
+    // and "not right now".
+    expect(screen.getByTestId('toast')).toHaveTextContent(pl.memories.likeError);
     expect(await likedOnDisk('Q1')).toBe(false);
   });
 
