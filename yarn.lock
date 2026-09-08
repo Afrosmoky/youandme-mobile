@@ -2437,6 +2437,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@invertase/react-native-apple-authentication@npm:2.5.1":
+  version: 2.5.1
+  resolution: "@invertase/react-native-apple-authentication@npm:2.5.1"
+  checksum: 10c0/04cc3e6fde99caea6cdb16bb50786afce141e5014939e9d51bfe29a21c0241d73eac529954ac4826851ce603f4d3e9f1b68cc54225e2df532ecd8021b7be4804
+  languageName: node
+  linkType: hard
+
 "@isaacs/fs-minipass@npm:^4.0.0":
   version: 4.0.1
   resolution: "@isaacs/fs-minipass@npm:4.0.1"
@@ -4246,6 +4253,7 @@ __metadata:
     "@babel/core": "npm:^7.25.2"
     "@babel/preset-env": "npm:^7.25.3"
     "@babel/runtime": "npm:^7.25.0"
+    "@invertase/react-native-apple-authentication": "npm:2.5.1"
     "@notifee/react-native": "npm:^9.1.8"
     "@react-native-async-storage/async-storage": "npm:^3.1.1"
     "@react-native-community/cli": "npm:20.1.0"
