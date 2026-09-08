@@ -447,7 +447,7 @@ describe('AuthScreen', () => {
     mockSocialLoginEnabled = true;
     signInWithGoogle.mockResolvedValue({
       isNewAccount: true,
-      email: 'ola.relay@privaterelay.appleid.com',
+      email: 'ola@wp.pl',
     });
     renderWithQueryClient(<AuthScreen />);
 
@@ -456,8 +456,34 @@ describe('AuthScreen', () => {
     await waitFor(() =>
       expect(Alert.alert).toHaveBeenCalledWith(
         pl.appTitle,
-        pl.auth.socialNewAccount('ola.relay@privaterelay.appleid.com'),
+        pl.auth.socialNewAccount('ola@wp.pl'),
       ),
+    );
+  });
+
+  // The case the whole notice exists for, end to end: Apple's hidden address
+  // creates an account under a relay that matches nothing, and quoting that
+  // string back would read as a bug to the one couple who most needs to
+  // understand what just happened.
+  test('a hidden Apple address is explained, not quoted', async () => {
+    mockSocialLoginEnabled = true;
+    signInWithApple.mockResolvedValue({
+      isNewAccount: true,
+      email: 'a1b2c3d4e5@privaterelay.appleid.com',
+    });
+    renderWithQueryClient(<AuthScreen />);
+
+    fireEvent.press(screen.getByTestId('auth-apple'));
+
+    await waitFor(() =>
+      expect(Alert.alert).toHaveBeenCalledWith(
+        pl.appTitle,
+        pl.auth.socialNewAccountHidden,
+      ),
+    );
+    expect(Alert.alert).not.toHaveBeenCalledWith(
+      pl.appTitle,
+      expect.stringContaining('a1b2c3d4e5'),
     );
   });
 

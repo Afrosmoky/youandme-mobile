@@ -74,6 +74,12 @@ export const pl = {
     // jedyny moment, w którym da się ją zawrócić, zanim uzna, że straciła dane.
     socialNewAccount: (email: string) =>
       `Założyliśmy nowe konto na adres ${email}. Jeśli macie już konto na inny adres, wylogujcie się i wejdźcie tamtym.`,
+    // Wariant dla „Ukryj mój adres" Apple. Adresu przekierowania NIE pokazujemy
+    // dosłownie — to ciąg losowych znaków, który czyta się jak błąd, a trafia
+    // dokładnie na parę, którą ten komunikat ma zawrócić. Nazywamy więc
+    // przyczynę zamiast adresu.
+    socialNewAccountHidden:
+      'Zalogowaliście się z ukrytym adresem Apple, więc powstało nowe, puste konto. Jeśli macie już konto, wróćcie i zalogujcie się swoim adresem.',
   },
 
   profile: {

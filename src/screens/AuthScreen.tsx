@@ -31,6 +31,7 @@ import { RootStackParamList } from '../navigation/types';
 import { Theme, useTheme } from '../theme';
 import { describeGoogleSignInError } from '../auth/googleSignInError';
 import { describeAppleSignInError } from '../auth/appleSignInError';
+import { newAccountNotice } from '../auth/socialAccountNotice';
 import { pl } from '../i18n/pl';
 
 type Mode = 'login' | 'register';
@@ -215,10 +216,13 @@ export function AuthScreen() {
    *
    * An Alert rather than the toast: this one has to be read, and it is the rare
    * case where making somebody dismiss a dialog is the correct cost.
+   *
+   * Which sentence it is depends on the address — see newAccountNotice, which
+   * owns the one case where the address must not be quoted back.
    */
   const noticeIfNewAccount = (outcome: SocialSignInOutcome) => {
     if (outcome.isNewAccount) {
-      Alert.alert(pl.appTitle, pl.auth.socialNewAccount(outcome.email));
+      Alert.alert(pl.appTitle, newAccountNotice(outcome.email));
     }
   };
 
