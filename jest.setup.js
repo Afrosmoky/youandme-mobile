@@ -66,6 +66,35 @@ jest.mock('@react-native-google-signin/google-signin', () => ({
   isErrorWithCode: jest.fn(() => false),
 }));
 
+// @invertase/react-native-apple-authentication: native module, and ESM-only on
+// top of it — the RN preset's transformIgnorePatterns covers `react-native` and
+// `@react-native*`, not `@invertase`, so an unmocked import fails to parse
+// before it ever fails to link. Mocked here for the same reason google-signin
+// is, with the enums the code actually reads: AppleError drives the message
+// mapper, the other two are the request options.
+jest.mock('@invertase/react-native-apple-authentication', () => {
+  const appleAuth = {
+    isSupported: true,
+    performRequest: jest.fn(() =>
+      Promise.resolve({ identityToken: 'mock-apple-token' }),
+    ),
+  };
+  return {
+    __esModule: true,
+    default: appleAuth,
+    appleAuth,
+    AppleError: {
+      UNKNOWN: '1000',
+      CANCELED: '1001',
+      INVALID_RESPONSE: '1002',
+      NOT_HANDLED: '1003',
+      FAILED: '1004',
+    },
+    AppleRequestOperation: { IMPLICIT: 0, LOGIN: 1, REFRESH: 2, LOGOUT: 3 },
+    AppleRequestScope: { EMAIL: 0, FULL_NAME: 1 },
+  };
+});
+
 // @react-navigation/native: screens under test receive `navigation` via props,
 // but mock the hooks too so anything reaching for them gets a no-op.
 jest.mock('@react-navigation/native', () => ({

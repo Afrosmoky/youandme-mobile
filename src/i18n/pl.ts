@@ -56,6 +56,24 @@ export const pl = {
     // Zastępuje przycisk Google, gdy SOCIAL_LOGIN_ENABLED === false. Mówi
     // „wkrótce", a nie nic, żeby puste miejsce czytało się jako plan.
     socialSoon: 'Logowanie przez Google i Apple — wkrótce dostępne',
+    appleSignIn: 'Zaloguj przez Apple',
+    appleCancelled: 'Logowanie przez Apple zostało anulowane.',
+    appleSignInError: 'Logowanie przez Apple się nie powiodło.',
+    // Próba w ogóle nie doszła do skutku (żądanie nieobsłużone albo odpowiedź
+    // nie do użycia) — to nie jest odmowa, więc zapraszamy do ponowienia
+    // zamiast mówić cokolwiek o koncie.
+    appleSignInRetry: 'Nie udało się zacząć logowania przez Apple. Spróbujcie jeszcze raz.',
+    // Pod OBOMA przyciskami. Adres jest tu jedyną rzeczą, która łączy logowanie
+    // społecznościowe z istniejącym kontem — backend dopina dostawcę po
+    // adresie, więc inny adres to nowe, puste konto. Dotyczy tak samo „Ukryj
+    // mój adres" w Apple, jak wybrania innego konta Google.
+    socialSameAddress:
+      'Użyjcie tego samego adresu, na który zakładaliście konto — inny adres założy nowe, puste konto.',
+    // Pokazywane TYLKO gdy backend odpowiedział 201, czyli konto powstało
+    // właśnie teraz. Dla nowej pary to zwykła informacja; dla osieroconej —
+    // jedyny moment, w którym da się ją zawrócić, zanim uzna, że straciła dane.
+    socialNewAccount: (email: string) =>
+      `Założyliśmy nowe konto na adres ${email}. Jeśli macie już konto na inny adres, wylogujcie się i wejdźcie tamtym.`,
   },
 
   profile: {

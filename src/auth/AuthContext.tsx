@@ -15,6 +15,14 @@ import {
 import { clearToken, loadToken, saveToken } from './storage';
 import { AuthResponse, Couple, User } from '../domain/types';
 
+// What a social sign-in tells the screen once the session is stored. The email
+// travels with it because it is the whole point of the message: naming the
+// address is what lets someone recognise it as the wrong one.
+export type SocialSignInOutcome = {
+  isNewAccount: boolean;
+  email: string;
+};
+
 type AuthContextValue = {
   user: User | null;
   // The user's couple (P3: auto-created at registration). Null until the first
@@ -24,8 +32,12 @@ type AuthContextValue = {
   loading: boolean;
   login: (input: authApi.LoginInput) => Promise<void>;
   register: (input: authApi.RegisterInput) => Promise<void>;
-  // Exchanges a Google ID token for a session and stores it like a login.
-  signInWithGoogle: (idToken: string) => Promise<void>;
+  // Exchanges a provider ID token for a session and stores it like a login.
+  // Both answer whether the account was CREATED by this sign-in rather than
+  // found — the screen says so out loud, because a couple who arrived on a new
+  // empty account instead of their own has no other way to notice.
+  signInWithGoogle: (idToken: string) => Promise<SocialSignInOutcome>;
+  signInWithApple: (idToken: string) => Promise<SocialSignInOutcome>;
   logout: () => Promise<void>;
   // Refetches the current user + couple from /me into the cache.
   refreshUser: () => Promise<void>;
@@ -92,7 +104,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await applyAuth(await authApi.register(input));
       },
       signInWithGoogle: async idToken => {
-        await applyAuth(await authApi.signInWithGoogle(idToken));
+        const { auth, isNewAccount } = await authApi.signInWithGoogle(idToken);
+        await applyAuth(auth);
+        return { isNewAccount, email: auth.user.email };
+      },
+      signInWithApple: async idToken => {
+        const { auth, isNewAccount } = await authApi.signInWithApple(idToken);
+        await applyAuth(auth);
+        return { isNewAccount, email: auth.user.email };
       },
       logout: async () => {
         try {

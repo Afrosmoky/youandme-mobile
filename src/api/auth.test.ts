@@ -1,13 +1,13 @@
 import type { AxiosResponse } from 'axios';
-import { register, login, signInWithGoogle } from './auth';
+import { register, login, signInWithGoogle, signInWithApple } from './auth';
 import { apiClient } from './client';
 
 jest.mock('./client', () => ({
   apiClient: { get: jest.fn(), post: jest.fn(), patch: jest.fn() },
 }));
 
-const res = (data: unknown): AxiosResponse =>
-  ({ data } as unknown as AxiosResponse);
+const res = (data: unknown, status = 200): AxiosResponse =>
+  ({ data, status } as unknown as AxiosResponse);
 
 const rawUser = {
   ulid: 'u_01',
@@ -118,6 +118,29 @@ describe('auth API', () => {
     expect(apiClient.post).toHaveBeenCalledWith('/auth/google', {
       id_token: 'google-id-token',
     });
-    expect(result.couple.ulid).toBe('c_01');
+    expect(result.auth.couple.ulid).toBe('c_01');
+  });
+
+  test('signInWithApple posts to its own path, same shape', async () => {
+    jest.mocked(apiClient.post).mockResolvedValue(res(authBody));
+
+    const result = await signInWithApple('apple-id-token');
+
+    expect(apiClient.post).toHaveBeenCalledWith('/auth/apple', {
+      id_token: 'apple-id-token',
+    });
+    expect(result.auth.couple.ulid).toBe('c_01');
+  });
+
+  // 201 means the backend created the account rather than finding one. It is the
+  // only signal that separates "welcome" from "you just landed on an empty
+  // account under an address that is not the one you registered with" — the
+  // account itself looks the same either way.
+  test('201 marks the account as newly created, 200 does not', async () => {
+    jest.mocked(apiClient.post).mockResolvedValue(res(authBody, 201));
+    expect((await signInWithApple('t')).isNewAccount).toBe(true);
+
+    jest.mocked(apiClient.post).mockResolvedValue(res(authBody, 200));
+    expect((await signInWithApple('t')).isNewAccount).toBe(false);
   });
 });

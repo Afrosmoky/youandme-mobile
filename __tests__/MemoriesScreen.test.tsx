@@ -65,6 +65,7 @@ describe('MemoriesScreen', () => {
       login: jest.fn(),
       register: jest.fn(),
       signInWithGoogle: jest.fn(),
+      signInWithApple: jest.fn(),
       logout: jest.fn(),
       refreshUser: jest.fn(),
       setUser: jest.fn(),

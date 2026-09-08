@@ -79,6 +79,7 @@ describe('ProfileScreen', () => {
       login: jest.fn(),
       register: jest.fn(),
       signInWithGoogle: jest.fn(),
+      signInWithApple: jest.fn(),
       logout,
       refreshUser: jest.fn(),
       setUser,

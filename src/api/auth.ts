@@ -61,13 +61,44 @@ export async function login(input: LoginInput): Promise<AuthResponse> {
   return mapAuthResponse(res.data);
 }
 
+/**
+ * A social sign-in, plus the one thing its status code says that its body does
+ * not: whether the account was created just now.
+ *
+ * The backend answers 201 for a brand-new account and 200 for one it found —
+ * either by the provider's `sub` or, failing that, by the email address, which
+ * is what lets somebody who registered by email sign in with Google onto their
+ * own account. Until now the client threw that distinction away.
+ *
+ * It matters because of the case that cannot be detected any other way: a couple
+ * who signs in with an address the account was NOT registered under gets a new,
+ * empty account rather than theirs, silently. Apple's "Hide My Email" produces
+ * exactly that (the relay address matches nothing), and so does picking the
+ * wrong Google account. A brand-new account is also empty, so nothing about the
+ * account itself can tell the two apart — only the address can, said out loud.
+ */
+export type SocialAuthResult = {
+  auth: AuthResponse;
+  isNewAccount: boolean;
+};
+
 // Exchanges a Google ID token for a Sanctum session. Same response shape as
 // login/register; a bad token answers 401 with { message }.
 export async function signInWithGoogle(
   idToken: string,
-): Promise<AuthResponse> {
+): Promise<SocialAuthResult> {
   const res = await apiClient.post('/auth/google', { id_token: idToken });
-  return mapAuthResponse(res.data);
+  return { auth: mapAuthResponse(res.data), isNewAccount: res.status === 201 };
+}
+
+// The same exchange for Apple. The backend verifies both tokens through the
+// provider's JWKS and resolves the account identically, so the only thing that
+// differs here is the path.
+export async function signInWithApple(
+  idToken: string,
+): Promise<SocialAuthResult> {
+  const res = await apiClient.post('/auth/apple', { id_token: idToken });
+  return { auth: mapAuthResponse(res.data), isNewAccount: res.status === 201 };
 }
 
 // Optional logout endpoint (first-slice.md 4.6); best-effort, callers ignore

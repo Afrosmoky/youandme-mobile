@@ -11,7 +11,11 @@ import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
-import { useAuth } from '../auth/AuthContext';
+import appleAuth, {
+  AppleRequestOperation,
+  AppleRequestScope,
+} from '@invertase/react-native-apple-authentication';
+import { useAuth, SocialSignInOutcome } from '../auth/AuthContext';
 import { useLogin } from '../queries/useLogin';
 import { useRegister } from '../queries/useRegister';
 import { PasswordInput } from '../components/PasswordInput';
@@ -26,6 +30,7 @@ import { validateNickname } from '../domain/validation';
 import { RootStackParamList } from '../navigation/types';
 import { Theme, useTheme } from '../theme';
 import { describeGoogleSignInError } from '../auth/googleSignInError';
+import { describeAppleSignInError } from '../auth/appleSignInError';
 import { pl } from '../i18n/pl';
 
 type Mode = 'login' | 'register';
@@ -42,7 +47,7 @@ const GOOGLE_IOS_CLIENT_ID =
 export function AuthScreen() {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const { signInWithGoogle } = useAuth();
+  const { signInWithGoogle, signInWithApple } = useAuth();
 
   const loginMutation = useLogin();
   const registerMutation = useRegister();
@@ -69,6 +74,7 @@ export function AuthScreen() {
   const [referrerError, setReferrerError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [googleSubmitting, setGoogleSubmitting] = useState(false);
+  const [appleSubmitting, setAppleSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Only one of the two fires per submit, so the OR keeps the button's
@@ -196,6 +202,26 @@ export function AuthScreen() {
     setFieldErrors({});
   };
 
+  /**
+   * Said only when the backend answered 201, i.e. it created the account rather
+   * than finding one.
+   *
+   * For a genuinely new couple this is ordinary, correct information. For a
+   * couple who signed in with the wrong address — Apple's "Hide My Email", or
+   * simply the other Google account — it is the ONLY moment they can be turned
+   * back, because a fresh account and a stranded one look identical from the
+   * inside: both are empty. Naming the address is the whole point; without it
+   * there is nothing to recognise as wrong.
+   *
+   * An Alert rather than the toast: this one has to be read, and it is the rare
+   * case where making somebody dismiss a dialog is the correct cost.
+   */
+  const noticeIfNewAccount = (outcome: SocialSignInOutcome) => {
+    if (outcome.isNewAccount) {
+      Alert.alert(pl.appTitle, pl.auth.socialNewAccount(outcome.email));
+    }
+  };
+
   // Google is always a sign-in (the backend creates the account on first use),
   // so the button behaves the same in login and register mode.
   const onGoogleSignIn = async () => {
@@ -209,7 +235,7 @@ export function AuthScreen() {
         Alert.alert(pl.appTitle, pl.auth.googleCancelled);
         return;
       }
-      await signInWithGoogle(response.data.idToken);
+      noticeIfNewAccount(await signInWithGoogle(response.data.idToken));
       // On success the token changes and RootNavigator swaps to QuestionScreen.
     } catch (err) {
       // One sentence per outcome, not one sentence for all of them — see
@@ -219,6 +245,40 @@ export function AuthScreen() {
       Alert.alert(pl.appTitle, describeGoogleSignInError(err));
     } finally {
       setGoogleSubmitting(false);
+    }
+  };
+
+  /**
+   * Sign in with Apple, iOS only.
+   *
+   * Apple's rule is an App Store rule — an app offering another social login has
+   * to offer this one — and it says nothing about Play, so Android keeps Google
+   * alone. That also spares us the library's Android path, which is a web flow
+   * needing a Services ID and a return domain.
+   *
+   * `identityToken` is what the backend verifies against Apple's JWKS; the name
+   * Apple sends once on first authorization is deliberately ignored, since the
+   * nickname is generated server-side from the address.
+   */
+  const onAppleSignIn = async () => {
+    setError(null);
+    setAppleSubmitting(true);
+    try {
+      const response = await appleAuth.performRequest({
+        requestedOperation: AppleRequestOperation.LOGIN,
+        requestedScopes: [AppleRequestScope.EMAIL, AppleRequestScope.FULL_NAME],
+      });
+      if (!response.identityToken) {
+        // Apple returned without a token. Nothing was refused and nothing
+        // failed, so it reads as an attempt that did not happen.
+        Alert.alert(pl.appTitle, pl.auth.appleSignInRetry);
+        return;
+      }
+      noticeIfNewAccount(await signInWithApple(response.identityToken));
+    } catch (err) {
+      Alert.alert(pl.appTitle, describeAppleSignInError(err));
+    } finally {
+      setAppleSubmitting(false);
     }
   };
 
@@ -305,13 +365,32 @@ export function AuthScreen() {
           button returns with a single flip. The line in its place says the
           absence is temporary rather than leaving a hole under the submit. */}
       {SOCIAL_LOGIN_ENABLED ? (
-        <OutlineButton
-          testID="auth-google"
-          title={pl.auth.googleSignIn}
-          onPress={onGoogleSignIn}
-          loading={googleSubmitting}
-          style={styles.google}
-        />
+        <>
+          <OutlineButton
+            testID="auth-google"
+            title={pl.auth.googleSignIn}
+            onPress={onGoogleSignIn}
+            loading={googleSubmitting}
+            style={styles.google}
+          />
+          {/* iOS only: Apple requires this button beside another social login in
+              the App Store, and says nothing about Play. */}
+          {Platform.OS === 'ios' && (
+            <OutlineButton
+              testID="auth-apple"
+              title={pl.auth.appleSignIn}
+              onPress={onAppleSignIn}
+              loading={appleSubmitting}
+              style={styles.google}
+            />
+          )}
+          {/* Under BOTH buttons, because the trap is the same for both: the
+              backend links a provider to an existing account by email address,
+              so any other address silently creates a new, empty one. */}
+          <Text testID="auth-social-hint" style={styles.socialHint}>
+            {pl.auth.socialSameAddress}
+          </Text>
+        </>
       ) : (
         <Text testID="auth-social-soon" style={styles.socialSoon}>
           {pl.auth.socialSoon}
@@ -387,6 +466,13 @@ const createStyles = (theme: Theme) => {
       fontSize: typography.size.bodySm,
       color: colors.text.secondary,
       marginBottom: spacing.lg,
+    },
+    socialHint: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.micro,
+      color: colors.text.muted,
+      textAlign: 'center',
+      marginTop: spacing.md,
     },
     socialSoon: {
       fontFamily: typography.family.body,

@@ -1,5 +1,5 @@
 import React from 'react';
-import {Alert} from 'react-native';
+import {Alert, Platform} from 'react-native';
 import axios from 'axios';
 import {fireEvent, screen, waitFor} from '@testing-library/react-native';
 import {renderWithQueryClient} from '../src/test/renderWithQueryClient';
@@ -24,13 +24,16 @@ describe('AuthScreen', () => {
   const login = jest.fn();
   const register = jest.fn();
   const signInWithGoogle = jest.fn();
+  const signInWithApple = jest.fn();
 
   beforeEach(() => {
     jest.clearAllMocks();
     mockSocialLoginEnabled = false;
     login.mockResolvedValue(undefined);
     register.mockResolvedValue(undefined);
-    signInWithGoogle.mockResolvedValue(undefined);
+    // The context now answers with the outcome of the sign-in, not void.
+    signInWithGoogle.mockResolvedValue({isNewAccount: false, email: 'ola@wp.pl'});
+    signInWithApple.mockResolvedValue({isNewAccount: false, email: 'ola@wp.pl'});
     jest.mocked(useAuth).mockReturnValue({
       user: null,
       couple: null,
@@ -39,6 +42,7 @@ describe('AuthScreen', () => {
       login,
       register,
       signInWithGoogle,
+      signInWithApple,
       logout: jest.fn(),
       refreshUser: jest.fn(),
       setUser: jest.fn(),
@@ -407,5 +411,85 @@ describe('AuthScreen', () => {
       expect(signInWithGoogle).toHaveBeenCalledWith('mock-id-token'),
     );
     expect(login).not.toHaveBeenCalled();
+  });
+
+  test('Apple sign-in exchanges its identityToken via AuthContext', async () => {
+    mockSocialLoginEnabled = true;
+    renderWithQueryClient(<AuthScreen />);
+
+    fireEvent.press(screen.getByTestId('auth-apple'));
+
+    await waitFor(() =>
+      expect(signInWithApple).toHaveBeenCalledWith('mock-apple-token'),
+    );
+    expect(signInWithGoogle).not.toHaveBeenCalled();
+  });
+
+  // The address is the only thing linking a social sign-in to an existing
+  // account, so the warning belongs under BOTH buttons — the trap is the same
+  // for Apple's "Hide My Email" and for picking the other Google account.
+  test('both buttons carry the same-address warning', () => {
+    mockSocialLoginEnabled = true;
+    renderWithQueryClient(<AuthScreen />);
+
+    expect(screen.getByTestId('auth-google')).toBeOnTheScreen();
+    expect(screen.getByTestId('auth-apple')).toBeOnTheScreen();
+    expect(screen.getByTestId('auth-social-hint')).toHaveTextContent(
+      pl.auth.socialSameAddress,
+    );
+  });
+
+  // 201 from the backend. For a genuinely new couple this is ordinary
+  // information; for one that signed in with the wrong address it is the only
+  // moment they can be turned back, because a fresh account and a stranded one
+  // are both empty and look identical from the inside.
+  test('a newly created account is announced, with the address used', async () => {
+    mockSocialLoginEnabled = true;
+    signInWithGoogle.mockResolvedValue({
+      isNewAccount: true,
+      email: 'ola.relay@privaterelay.appleid.com',
+    });
+    renderWithQueryClient(<AuthScreen />);
+
+    fireEvent.press(screen.getByTestId('auth-google'));
+
+    await waitFor(() =>
+      expect(Alert.alert).toHaveBeenCalledWith(
+        pl.appTitle,
+        pl.auth.socialNewAccount('ola.relay@privaterelay.appleid.com'),
+      ),
+    );
+  });
+
+  // Signing into an account that already existed is the ordinary case and must
+  // stay silent — the notice would otherwise fire on every single sign-in.
+  test('signing into an existing account says nothing', async () => {
+    mockSocialLoginEnabled = true;
+    renderWithQueryClient(<AuthScreen />);
+
+    fireEvent.press(screen.getByTestId('auth-google'));
+
+    await waitFor(() => expect(signInWithGoogle).toHaveBeenCalled());
+    expect(Alert.alert).not.toHaveBeenCalled();
+  });
+
+  // The decision this button rests on: Apple's requirement is an App Store
+  // requirement, so Play keeps Google alone. Showing it on Android would be a
+  // button leading to a flow we deliberately did not build — the library's
+  // Android path needs a Services ID and a return domain that do not exist.
+  test('Apple is not offered on Android', () => {
+    mockSocialLoginEnabled = true;
+    const original = Platform.OS;
+    Platform.OS = 'android';
+    try {
+      renderWithQueryClient(<AuthScreen />);
+
+      expect(screen.getByTestId('auth-google')).toBeOnTheScreen();
+      expect(screen.queryByTestId('auth-apple')).toBeNull();
+      // The warning is about the address, not about Apple, so it stays.
+      expect(screen.getByTestId('auth-social-hint')).toBeOnTheScreen();
+    } finally {
+      Platform.OS = original;
+    }
   });
 });
