@@ -227,7 +227,7 @@ export function RewardsScreen({ navigation }: Props) {
 }
 
 const createStyles = (theme: Theme) => {
-  const { colors, typography, spacing } = theme;
+  const { colors, typography, spacing, glow } = theme;
   return StyleSheet.create({
     centered: {
       flex: 1,
@@ -243,6 +243,7 @@ const createStyles = (theme: Theme) => {
       justifyContent: 'center',
     },
     headerTitle: {
+      ...glow.heading,
       fontFamily: typography.family.heading,
       fontSize: typography.size.h2,
       color: colors.text.primary,

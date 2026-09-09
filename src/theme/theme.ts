@@ -1,4 +1,4 @@
-import { colorSchemes, typography, spacing, radius } from './tokens';
+import { colorSchemes, typography, spacing, radius, glow } from './tokens';
 
 // A theme bundles one color scheme with the shared type/spacing/radius scales.
 // Colors are per-scheme; typography/spacing/radius are shared across schemes.
@@ -10,6 +10,9 @@ export type Theme = {
   typography: typeof typography;
   spacing: typeof spacing;
   radius: typeof radius;
+  // Named text-shadow sets (3C). Screens spread these; they never hold the
+  // numbers themselves, so the whole glow layer moves from one place.
+  glow: typeof glow;
 };
 
 export const darkTheme: Theme = {
@@ -18,6 +21,7 @@ export const darkTheme: Theme = {
   typography,
   spacing,
   radius,
+  glow,
 };
 
 export const themes = { dark: darkTheme } as const;

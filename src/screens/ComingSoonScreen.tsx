@@ -61,7 +61,7 @@ export function ComingSoonScreen({ navigation, route }: Props) {
 }
 
 const createStyles = (theme: Theme) => {
-  const { colors, typography, spacing } = theme;
+  const { colors, typography, spacing, glow } = theme;
   return StyleSheet.create({
     // Same trick as the empty/error states: the block centres itself, the
     // container gives it the room.
@@ -85,6 +85,7 @@ const createStyles = (theme: Theme) => {
       marginBottom: spacing.lg,
     },
     title: {
+      ...glow.heading,
       fontFamily: typography.family.heading,
       fontSize: typography.size.h2,
       color: colors.text.primary,
@@ -99,6 +100,7 @@ const createStyles = (theme: Theme) => {
       lineHeight: 24,
     },
     headerTitle: {
+      ...glow.heading,
       fontFamily: typography.family.heading,
       fontSize: typography.size.h2,
       color: colors.text.primary,

@@ -125,7 +125,7 @@ export function LocalGameSummaryScreen({ navigation, route }: Props) {
 }
 
 const createStyles = (theme: Theme) => {
-  const { colors, typography, spacing } = theme;
+  const { colors, typography, spacing, glow } = theme;
   return StyleSheet.create({
     centered: {
       flex: 1,
@@ -134,6 +134,7 @@ const createStyles = (theme: Theme) => {
       backgroundColor: colors.bg.base,
     },
     title: {
+      ...glow.heading,
       fontFamily: typography.family.heading,
       fontSize: typography.size.h1,
       color: colors.text.primary,

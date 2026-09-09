@@ -19,6 +19,7 @@ import { queryKeys } from '../queries/queryKeys';
 import { parseApiError } from '../api/errors';
 import { isStreakMilestone } from '../domain/streak';
 import { notifyStreakMilestone } from '../notifications/notifee';
+import { GlowBackground } from '../components/GlowBackground';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { GameCard } from '../components/GameCard';
 import { GoldButton } from '../components/GoldButton';
@@ -149,6 +150,11 @@ export function DailyCardScreen({ navigation }: Props) {
 
   return (
     <ScreenContainer testID="daily-card-screen">
+      {/* The same soft gold wash Home and the auth screens already carry, on the
+          three screens where a couple actually plays. It is a background layer
+          behind the card, not a glow on the text — the question itself stays
+          flat, which is the boundary this slice does not cross. */}
+      <GlowBackground size={320} intensity={0.28} style={styles.glow} />
       {/* The same frame, label and corner hearts as a card of the local game
           (S_polish): the daily question IS a card, and the two screens were
           drawing it two different ways. */}
@@ -229,8 +235,13 @@ export function DailyCardScreen({ navigation }: Props) {
 }
 
 const createStyles = (theme: Theme) => {
-  const { colors, typography, spacing, radius } = theme;
+  const { colors, typography, spacing, radius, glow } = theme;
   return StyleSheet.create({
+    // Pulled up behind the card rather than centred on the screen: the wash
+    // belongs over the heading, which is where the web puts it.
+    glow: {
+      top: -120,
+    },
     centered: {
       flex: 1,
       justifyContent: 'center',
@@ -238,6 +249,7 @@ const createStyles = (theme: Theme) => {
       backgroundColor: colors.bg.base,
     },
     headerTitle: {
+      ...glow.heading,
       fontFamily: typography.family.heading,
       fontSize: typography.size.h2,
       color: colors.text.primary,

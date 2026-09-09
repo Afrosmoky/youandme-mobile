@@ -40,6 +40,7 @@ import { useQuestionLikeFeedback } from '../queries/useQuestionLikeFeedback';
 import { useSaveLocalMemory } from '../queries/useSaveLocalMemory';
 import { useReportPlayedCards } from '../queries/useReportPlayedCards';
 import { useMilestoneCelebration } from '../queries/useMilestoneCelebration';
+import { GlowBackground } from '../components/GlowBackground';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { Badge } from '../components/Badge';
 import { Celebration } from '../components/Celebration';
@@ -420,6 +421,11 @@ export function LocalGameScreen({ navigation }: Props) {
 
   return (
     <ScreenContainer testID="local-game-screen">
+      {/* The same soft gold wash Home and the auth screens already carry, on the
+          three screens where a couple actually plays. It is a background layer
+          behind the card, not a glow on the text — the question itself stays
+          flat, which is the boundary this slice does not cross. */}
+      <GlowBackground size={320} intensity={0.28} style={styles.glow} />
       {/* Above the card, not in it: the counter and whose turn it is belong to
           the session, while the card is one question. */}
       <SectionLabel testID="local-game-header" style={styles.cardLabel}>
@@ -574,6 +580,11 @@ export function LocalGameScreen({ navigation }: Props) {
 const createStyles = (theme: Theme) => {
   const { colors, typography, spacing } = theme;
   return StyleSheet.create({
+    // Pulled up behind the card rather than centred on the screen: the wash
+    // belongs over the heading, which is where the web puts it.
+    glow: {
+      top: -120,
+    },
     centered: {
       flex: 1,
       justifyContent: 'center',

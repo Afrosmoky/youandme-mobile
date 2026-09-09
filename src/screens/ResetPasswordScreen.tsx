@@ -151,7 +151,7 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
 }
 
 const createStyles = (theme: Theme) => {
-  const { colors, typography, spacing } = theme;
+  const { colors, typography, spacing, glow } = theme;
   return StyleSheet.create({
     // Same recipe as AuthScreen and ForgotPassword: a short form centred on the
     // dark background, so KeyboardAvoidingView rather than ScreenContainer.
@@ -178,6 +178,7 @@ const createStyles = (theme: Theme) => {
       marginTop: spacing.xs,
     },
     headerTitle: {
+      ...glow.heading,
       fontFamily: typography.family.heading,
       fontSize: typography.size.h2,
       color: colors.text.primary,

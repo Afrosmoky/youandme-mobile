@@ -45,7 +45,7 @@ export function Celebration({ visible, title, body, onDismiss }: Props) {
 }
 
 const createStyles = (theme: Theme) => {
-  const { colors, typography, spacing, radius } = theme;
+  const { colors, typography, spacing, radius, glow } = theme;
   return StyleSheet.create({
     scrim: {
       flex: 1,
@@ -65,6 +65,7 @@ const createStyles = (theme: Theme) => {
       overflow: 'hidden',
     },
     title: {
+      ...glow.heading,
       fontFamily: typography.family.heading,
       fontSize: typography.size.h1,
       color: colors.gold.primary,

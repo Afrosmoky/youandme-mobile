@@ -127,7 +127,7 @@ export function CategoryList({
 }
 
 const createStyles = (theme: Theme) => {
-  const { colors, typography, spacing } = theme;
+  const { colors, typography, spacing, glow } = theme;
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -149,6 +149,7 @@ const createStyles = (theme: Theme) => {
       padding: spacing.lg,
     },
     title: {
+      ...glow.heading,
       fontFamily: typography.family.heading,
       fontSize: typography.size.h1,
       color: colors.text.primary,

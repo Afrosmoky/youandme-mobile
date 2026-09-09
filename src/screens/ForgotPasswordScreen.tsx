@@ -109,7 +109,7 @@ export function ForgotPasswordScreen({ navigation }: Props) {
 }
 
 const createStyles = (theme: Theme) => {
-  const { colors, typography, spacing } = theme;
+  const { colors, typography, spacing, glow } = theme;
   return StyleSheet.create({
     // Same recipe as AuthScreen: this stack centres a short form on the dark
     // background rather than scrolling a padded page, so it keeps the
@@ -128,6 +128,7 @@ const createStyles = (theme: Theme) => {
       marginTop: spacing.xs,
     },
     headerTitle: {
+      ...glow.heading,
       fontFamily: typography.family.heading,
       fontSize: typography.size.h2,
       color: colors.text.primary,

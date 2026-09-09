@@ -24,7 +24,7 @@ export function Logo({ size, style, testID }: Props) {
 }
 
 const createStyles = (theme: Theme) => {
-  const { colors, typography } = theme;
+  const { colors, typography, glow } = theme;
   return StyleSheet.create({
     base: {
       fontFamily: typography.family.display,
@@ -32,13 +32,19 @@ const createStyles = (theme: Theme) => {
     },
     // Words and ampersand share the gold; they stay separate spans because the
     // wordmark is one place the two may yet part ways.
+    // The glow goes on the spans rather than on `base`, because a text shadow set
+    // on a parent Text is not inherited by nested ones — the wordmark would come
+    // out flat. Widest of the three sets: at 44px the bloom is the signature,
+    // which is the whole reason the sizes get different radii.
     word: {
       fontFamily: typography.family.display,
       color: colors.gold.primary,
+      ...glow.logo,
     },
     amp: {
       fontFamily: typography.family.display,
       color: colors.gold.primary,
+      ...glow.logo,
     },
   });
 };

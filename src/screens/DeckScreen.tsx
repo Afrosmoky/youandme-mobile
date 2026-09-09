@@ -176,7 +176,7 @@ export function DeckScreen({ navigation }: Props) {
 }
 
 const createStyles = (theme: Theme) => {
-  const { colors, typography, spacing } = theme;
+  const { colors, typography, spacing, glow } = theme;
   return StyleSheet.create({
     list: {
       flex: 1,
@@ -198,6 +198,7 @@ const createStyles = (theme: Theme) => {
       backgroundColor: colors.bg.base,
     },
     headerTitle: {
+      ...glow.heading,
       fontFamily: typography.family.heading,
       fontSize: typography.size.h2,
       color: colors.text.primary,

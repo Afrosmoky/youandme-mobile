@@ -411,7 +411,7 @@ export function AuthScreen() {
 }
 
 const createStyles = (theme: Theme) => {
-  const { colors, typography, spacing } = theme;
+  const { colors, typography, spacing, glow } = theme;
   return StyleSheet.create({
     container: {
       flex: 1,
@@ -428,6 +428,7 @@ const createStyles = (theme: Theme) => {
       marginBottom: spacing.sm,
     },
     title: {
+      ...glow.heading,
       fontFamily: typography.family.heading,
       fontSize: typography.size.h2,
       color: colors.text.primary,
@@ -453,6 +454,7 @@ const createStyles = (theme: Theme) => {
       marginTop: spacing.xs,
     },
     headerTitle: {
+      ...glow.heading,
       fontFamily: typography.family.heading,
       fontSize: typography.size.h2,
       color: colors.text.primary,

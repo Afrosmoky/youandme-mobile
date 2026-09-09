@@ -147,7 +147,9 @@ export function HomeScreen({ navigation }: Props) {
           testID="home-ritual"
           onPress={() => navigation.navigate('Ritual')}
           style={styles.tile}>
-          <Text style={styles.ritualLabel}>{pl.home.ritualLabel}</Text>
+          <SectionLabel tone="bright" style={styles.ritualLabel}>
+            {pl.home.ritualLabel}
+          </SectionLabel>
           <Text style={styles.tileTitle}>{ritual.ritual.title}</Text>
           <Text style={styles.tileHint}>{teaser(ritual.ritual.body)}</Text>
           <Text testID="home-ritual-day" style={styles.ritualDay}>
@@ -219,12 +221,13 @@ export function HomeScreen({ navigation }: Props) {
 }
 
 const createStyles = (theme: Theme) => {
-  const { colors, typography, spacing } = theme;
+  const { colors, typography, spacing, glow } = theme;
   return StyleSheet.create({
     glow: {
       justifyContent: 'flex-start',
     },
     headerTitle: {
+      ...glow.heading,
       fontFamily: typography.family.heading,
       fontSize: typography.size.h2,
       color: colors.text.primary,
@@ -280,15 +283,12 @@ const createStyles = (theme: Theme) => {
       color: colors.text.secondary,
       marginTop: spacing.xs,
     },
-    // Ritual tile accent is text.bright (near-white), not gold — the gold tile
-    // is the daily card. Colour is the only distinction until the P11a style
-    // guide (Wiktoria, task #36) may assign the ritual its own token.
+    // Only the gap is left here. The rest of what this style used to hold was a
+    // hand-copy of SectionLabel differing in one colour, and it was the last
+    // place in the app where caps lived outside that component — now the `bright`
+    // tone (see SectionLabel: the gold tile is the daily card, so the ritual is
+    // deliberately near-white).
     ritualLabel: {
-      fontFamily: typography.family.heading,
-      fontSize: typography.size.label,
-      color: colors.text.bright,
-      letterSpacing: typography.letterSpacing.label,
-      textTransform: 'uppercase',
       marginBottom: spacing.sm,
     },
     ritualDay: {
