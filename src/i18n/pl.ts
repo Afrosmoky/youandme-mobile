@@ -286,6 +286,9 @@ export const pl = {
   // layout come in P11b, against Wiktoria's walkthrough video.
   localGame: {
     setupTitle: 'Gra na jednym telefonie',
+    // 3D: wybór kategorii schowany, więc jeden przycisk rozdaje całą talię.
+    // Robocze, do potwierdzenia przez Wiktorię.
+    startButton: 'Zacznijcie grę',
     setupHeaderTitle: 'Nowa gra',
     player1Label: 'Gracz 1',
     // Stands in for the nickname when /me has not answered yet.

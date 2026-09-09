@@ -34,8 +34,8 @@ import {
   saveLocalGameState,
 } from '../storage/localGameState';
 import { loadPartnerName, savePartnerName } from '../storage/partnerName';
-import { CategoryList } from '../components/CategoryList';
 import { Card } from '../components/Card';
+import { ScreenContainer } from '../components/ScreenContainer';
 import { GoldButton } from '../components/GoldButton';
 import { OutlineButton } from '../components/OutlineButton';
 import { SectionLabel } from '../components/SectionLabel';
@@ -242,7 +242,7 @@ export function LocalGameSetupScreen({ navigation }: Props) {
   );
 
   /**
-   * A tapped category, and the three things it can mean.
+   * Starting, and the three things it can mean.
    *
    * The setup in the form is the one already paused on this phone: that session
    * is picked up rather than replaced. Same guard as the demo, and the reason it
@@ -250,14 +250,14 @@ export function LocalGameSetupScreen({ navigation }: Props) {
    * couple had played but not yet reported.
    *
    * A DIFFERENT setup, with a paused game on disk: ask first. There is one slot,
-   * so this deal ends that game — and nothing on a category tile says so. The
-   * only alternative to warning is a second slot, which is a feature rather than
-   * a fix.
+   * so this deal ends that game — and nothing on the button says so. The only
+   * alternative to warning is a second slot, which is a feature rather than a
+   * fix.
    *
    * Nothing paused: deal.
    */
   const start = useCallback(
-    async (categorySlug: string | null, categoryName: string | null) => {
+    async () => {
       const name = player2.trim();
       const invalid =
         name.length === 0
@@ -273,7 +273,18 @@ export function LocalGameSetupScreen({ navigation }: Props) {
 
       if (
         stored &&
-        matchesSetup(stored, { player1, player2: name, categorySlug })
+        matchesSetup(stored, {
+          player1,
+          player2: name,
+          // The stored session's own slug, deliberately. With the picker hidden
+          // this screen no longer says anything about the category, so it cannot
+          // disagree with one — and passing the null it now deals with would make
+          // every game paused BEFORE this change fail the guard, warn the couple
+          // that resuming will end their game, and then end it. matchesSetup
+          // itself is right and stays untouched; what changed is that the
+          // category left the setup.
+          categorySlug: stored.categorySlug,
+        })
       ) {
         setDeckError(null);
         navigation.navigate('LocalGame');
@@ -291,14 +302,16 @@ export function LocalGameSetupScreen({ navigation }: Props) {
             // Not awaited, and it cannot reject: dealFresh answers every
             // failure with a message on the screen.
             onPress: () => {
-              dealFresh(name, categorySlug, categoryName);
+              dealFresh(name, null, null);
             },
           },
         ]);
         return;
       }
 
-      await dealFresh(name, categorySlug, categoryName);
+      // Null on both: the whole deck. The mix was always what "no category"
+      // meant here, and it is now the only thing dealt.
+      await dealFresh(name, null, null);
     },
     [dealFresh, navigation, player1, player2, stored],
   );
@@ -371,14 +384,9 @@ export function LocalGameSetupScreen({ navigation }: Props) {
         }[exhaustion.reason];
 
   return (
-    <CategoryList
-      testID="local-game-setup-screen"
-      title={pl.localGame.setupTitle}
-      onSelect={start}
-      disabled={busy}
-      error={deckError}
-      header={
-        <View>
+    <ScreenContainer testID="local-game-setup-screen">
+      <Text style={styles.title}>{pl.localGame.setupTitle}</Text>
+      <View>
           {/* Above the resume card and the form, because it answers the tap the
               couple just made — and it sits in the same column as the tiles they
               will tap next. */}
@@ -457,10 +465,26 @@ export function LocalGameSetupScreen({ navigation }: Props) {
             testID="local-game-player2"
           />
 
-          <Text style={styles.prompt}>{pl.localGame.categoryPrompt}</Text>
-        </View>
-      }
-    />
+      </View>
+
+      {/* One button where the category tiles used to be. The deck is the whole
+          deck now; picking a slice of it is hidden, not removed — the model,
+          the API and the funnel's "try another category" branch are all
+          untouched, so the tiles come back by being rendered again. */}
+      <GoldButton
+        testID="local-game-start"
+        title={pl.localGame.startButton}
+        onPress={start}
+        loading={busy}
+        style={styles.start}
+      />
+
+      {deckError && (
+        <Text testID="local-game-setup-error" style={styles.error}>
+          {deckError}
+        </Text>
+      )}
+    </ScreenContainer>
   );
 }
 
@@ -504,11 +528,20 @@ const createStyles = (theme: Theme) => {
     resumeButton: {
       marginBottom: spacing.md,
     },
-    prompt: {
+    title: {
+      fontFamily: typography.family.heading,
+      fontSize: typography.size.h1,
+      color: colors.text.primary,
+      marginBottom: spacing.xl,
+    },
+    start: {
+      marginTop: spacing.xl,
+    },
+    error: {
       fontFamily: typography.family.body,
       fontSize: typography.size.bodySm,
-      color: colors.text.muted,
-      marginBottom: spacing.md,
+      color: colors.burgundy.accent,
+      marginTop: spacing.md,
     },
   });
 };

@@ -126,7 +126,7 @@ describe('LocalGameSetupScreen', () => {
       await screen.findByTestId('local-game-player2'),
       'Ala',
     );
-    fireEvent.press(screen.getByTestId('category-randka'));
+    fireEvent.press(screen.getByTestId('local-game-start'));
 
     await waitFor(async () => expect(await loadPartnerName()).toBe('Ala'));
   });
@@ -141,9 +141,9 @@ describe('LocalGameSetupScreen', () => {
       await screen.findByTestId('local-game-player2'),
       'Ala',
     );
-    fireEvent.press(screen.getByTestId('category-randka'));
+    fireEvent.press(screen.getByTestId('local-game-start'));
 
-    await screen.findByTestId('category-list-error');
+    await screen.findByTestId('local-game-setup-error');
     expect(await loadPartnerName()).toBeNull();
   });
 
@@ -153,7 +153,7 @@ describe('LocalGameSetupScreen', () => {
     >);
     renderScreen();
 
-    fireEvent.press(await screen.findByTestId('category-randka'));
+    fireEvent.press(await screen.findByTestId('local-game-start'));
 
     expect(
       await screen.findByTestId('local-game-player2-error'),
@@ -167,7 +167,7 @@ describe('LocalGameSetupScreen', () => {
       await screen.findByTestId('local-game-player2'),
       'x'.repeat(61),
     );
-    fireEvent.press(screen.getByTestId('category-randka'));
+    fireEvent.press(screen.getByTestId('local-game-start'));
 
     expect(
       await screen.findByTestId('local-game-player2-error'),
@@ -175,49 +175,32 @@ describe('LocalGameSetupScreen', () => {
     expect(fetchGameDeck).not.toHaveBeenCalled();
   });
 
-  test('a category fetches that deck and opens the game', async () => {
+  // One button, one deck. Before 3D this was two tests — a category and the mix —
+  // and with the picker hidden they became the same assertion twice.
+  test('starting fetches the whole deck and opens the game', async () => {
     renderScreen();
 
-    fireEvent.press(await screen.findByTestId('category-randka'));
-
-    await waitFor(() => expect(fetchGameDeck).toHaveBeenCalledWith('randka'));
-    expect(navigate).toHaveBeenCalledWith('LocalGame');
-  });
-
-  test('mix fetches the deck with no category', async () => {
-    renderScreen();
-
-    fireEvent.press(await screen.findByTestId('category-mix'));
+    fireEvent.press(await screen.findByTestId('local-game-start'));
 
     await waitFor(() => expect(fetchGameDeck).toHaveBeenCalledWith(null));
+    expect(navigate).toHaveBeenCalledWith('LocalGame');
   });
 
   test('starting writes a playable session to disk', async () => {
     renderScreen();
-    fireEvent.press(await screen.findByTestId('category-randka'));
+    fireEvent.press(await screen.findByTestId('local-game-start'));
 
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('LocalGame'));
 
     const stored = await loadLocalGameState();
     expect(stored?.player1).toBe('piotr_s');
     expect(stored?.player2).toBe('Wiktoria');
-    expect(stored?.categorySlug).toBe('randka');
-    // Snapshotted at the deal, so the resume card can name what is waiting
-    // without going back to the categories list for it.
-    expect(stored?.categoryName).toBe('Randka');
-    expect(stored?.queue).toHaveLength(2);
-    expect(stored?.cursor).toBe(0);
-  });
-
-  test('the mix deck is stored as no category at all', async () => {
-    renderScreen();
-    fireEvent.press(await screen.findByTestId('category-mix'));
-
-    await waitFor(() => expect(navigate).toHaveBeenCalledWith('LocalGame'));
-
-    const stored = await loadLocalGameState();
+    // The whole deck: with the picker hidden there is no slice to choose, and
+    // "no category" was always what the mix meant here.
     expect(stored?.categorySlug).toBeNull();
     expect(stored?.categoryName).toBeNull();
+    expect(stored?.queue).toHaveLength(2);
+    expect(stored?.cursor).toBe(0);
   });
 
   // An exhausted category is a success, not a failure — and it must not open a
@@ -227,9 +210,9 @@ describe('LocalGameSetupScreen', () => {
     jest.mocked(fetchGameDeck).mockResolvedValue(deck([]));
     renderScreen();
 
-    fireEvent.press(await screen.findByTestId('category-randka'));
+    fireEvent.press(await screen.findByTestId('local-game-start'));
 
-    expect(await screen.findByTestId('category-list-error')).toHaveTextContent(
+    expect(await screen.findByTestId('local-game-setup-error')).toHaveTextContent(
       pl.localGame.deckEmpty,
     );
     expect(screen.queryByTestId('local-game-exhaustion')).toBeNull();
@@ -241,9 +224,9 @@ describe('LocalGameSetupScreen', () => {
     jest.mocked(fetchGameDeck).mockRejectedValue(new Error('network'));
     renderScreen();
 
-    fireEvent.press(await screen.findByTestId('category-randka'));
+    fireEvent.press(await screen.findByTestId('local-game-start'));
 
-    expect(await screen.findByTestId('category-list-error')).toBeOnTheScreen();
+    expect(await screen.findByTestId('local-game-setup-error')).toBeOnTheScreen();
     expect(navigate).not.toHaveBeenCalled();
   });
 });
@@ -278,14 +261,17 @@ describe('LocalGameSetupScreen — an exhausted deck', () => {
     exhausted('other_categories');
     renderScreen();
 
-    fireEvent.press(await screen.findByTestId('category-randka'));
+    fireEvent.press(await screen.findByTestId('local-game-start'));
 
     expect(
       await screen.findByTestId('local-game-exhaustion-body'),
     ).toHaveTextContent(pl.localGame.exhaustion.otherCategoriesBody);
     expect(screen.queryByTestId('local-game-exhaustion-cta')).toBeNull();
-    // The tiles are still right there, and nothing was started.
-    expect(screen.getByTestId('category-randka')).toBeOnTheScreen();
+    // The button is still right there, and nothing was started. This branch is
+    // unreachable while the picker is hidden — the whole deck cannot be "empty
+    // in this category" — but it is kept because the panel is driven by the
+    // server's reason, so it returns by itself the day the picker does.
+    expect(screen.getByTestId('local-game-start')).toBeOnTheScreen();
     expect(navigate).not.toHaveBeenCalled();
   });
 
@@ -293,7 +279,7 @@ describe('LocalGameSetupScreen — an exhausted deck', () => {
     exhausted('locked_available', 12);
     renderScreen();
 
-    fireEvent.press(await screen.findByTestId('category-randka'));
+    fireEvent.press(await screen.findByTestId('local-game-start'));
 
     expect(
       await screen.findByTestId('local-game-exhaustion-body'),
@@ -310,7 +296,7 @@ describe('LocalGameSetupScreen — an exhausted deck', () => {
     exhausted('locked_available', 3);
     renderScreen();
 
-    fireEvent.press(await screen.findByTestId('category-randka'));
+    fireEvent.press(await screen.findByTestId('local-game-start'));
     fireEvent.press(await screen.findByTestId('local-game-exhaustion-cta'));
 
     expect(navigate).toHaveBeenCalledWith('Deck');
@@ -322,7 +308,7 @@ describe('LocalGameSetupScreen — an exhausted deck', () => {
     exhausted('locked_available', 0);
     renderScreen();
 
-    fireEvent.press(await screen.findByTestId('category-randka'));
+    fireEvent.press(await screen.findByTestId('local-game-start'));
 
     await screen.findByTestId('local-game-exhaustion');
     expect(screen.queryByTestId('local-game-exhaustion-remaining')).toBeNull();
@@ -336,7 +322,7 @@ describe('LocalGameSetupScreen — an exhausted deck', () => {
     exhausted('complete');
     renderScreen();
 
-    fireEvent.press(await screen.findByTestId('category-randka'));
+    fireEvent.press(await screen.findByTestId('local-game-start'));
 
     expect(
       await screen.findByTestId('local-game-exhaustion-body'),
@@ -351,10 +337,10 @@ describe('LocalGameSetupScreen — an exhausted deck', () => {
     exhausted('complete');
     renderScreen();
 
-    fireEvent.press(await screen.findByTestId('category-randka'));
+    fireEvent.press(await screen.findByTestId('local-game-start'));
 
     await screen.findByTestId('local-game-exhaustion');
-    expect(screen.queryByTestId('category-list-error')).toBeNull();
+    expect(screen.queryByTestId('local-game-setup-error')).toBeNull();
   });
 
   // Otherwise the answer to the previous tap would stand over the next one.
@@ -362,11 +348,11 @@ describe('LocalGameSetupScreen — an exhausted deck', () => {
     exhausted('complete');
     renderScreen();
 
-    fireEvent.press(await screen.findByTestId('category-randka'));
+    fireEvent.press(await screen.findByTestId('local-game-start'));
     await screen.findByTestId('local-game-exhaustion');
 
     jest.mocked(fetchGameDeck).mockResolvedValue(deck([question(1)]));
-    fireEvent.press(screen.getByTestId('category-mix'));
+    fireEvent.press(screen.getByTestId('local-game-start'));
 
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('LocalGame'));
     expect(screen.queryByTestId('local-game-exhaustion')).toBeNull();
@@ -378,7 +364,7 @@ describe('LocalGameSetupScreen — an exhausted deck', () => {
     jest.mocked(fetchGameDeck).mockResolvedValue(deck([question(1)]));
     renderScreen();
 
-    fireEvent.press(await screen.findByTestId('category-randka'));
+    fireEvent.press(await screen.findByTestId('local-game-start'));
 
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('LocalGame'));
     expect(screen.queryByTestId('local-game-exhaustion')).toBeNull();
@@ -422,6 +408,11 @@ describe('LocalGameSetupScreen — a paused game', () => {
   beforeEach(async () => {
     jest.clearAllMocks();
     await clearLocalGameState();
+    // The remembered partner name outlives the test (the mock store lives for
+    // the module registry), and it decides what the form starts with — so a
+    // name left by an earlier suite would silently change which setup this one
+    // is comparing against.
+    await savePartnerName('');
     alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     jest.mocked(listCategories).mockResolvedValue(categories);
     jest.mocked(fetchGameDeck).mockResolvedValue(deck([question(1)]));
@@ -496,7 +487,7 @@ describe('LocalGameSetupScreen — a paused game', () => {
     await saveLocalGameState(paused());
     renderScreen();
 
-    fireEvent.press(await screen.findByTestId('category-randka'));
+    fireEvent.press(await screen.findByTestId('local-game-start'));
 
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('LocalGame'));
     expect(fetchGameDeck).not.toHaveBeenCalled();
@@ -506,7 +497,7 @@ describe('LocalGameSetupScreen — a paused game', () => {
     await saveLocalGameState(paused());
     renderScreen();
 
-    fireEvent.press(await screen.findByTestId('category-randka'));
+    fireEvent.press(await screen.findByTestId('local-game-start'));
 
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('LocalGame'));
     expect(alert).not.toHaveBeenCalled();
@@ -514,11 +505,18 @@ describe('LocalGameSetupScreen — a paused game', () => {
 
   // One slot: this deal ends the paused game, and nothing on a category tile
   // says so. Asking is the only alternative to a second slot.
+  // Since 3D the category is no longer part of the setup, so a different setup
+  // means one thing: a different partner. The decision this guards — resume the
+  // paused game, or deal over it — did not change, only the axis it turns on.
   test('a different setup warns before it overwrites the paused game', async () => {
     await saveLocalGameState(paused());
     renderScreen();
 
-    fireEvent.press(await screen.findByTestId('category-mix'));
+    fireEvent.changeText(
+      await screen.findByTestId('local-game-player2'),
+      'Ala',
+    );
+    fireEvent.press(screen.getByTestId('local-game-start'));
 
     await waitFor(() =>
       expect(alert).toHaveBeenCalledWith(
@@ -537,7 +535,11 @@ describe('LocalGameSetupScreen — a paused game', () => {
     await saveLocalGameState(paused());
     renderScreen();
 
-    fireEvent.press(await screen.findByTestId('category-mix'));
+    fireEvent.changeText(
+      await screen.findByTestId('local-game-player2'),
+      'Ala',
+    );
+    fireEvent.press(screen.getByTestId('local-game-start'));
     await waitFor(() => expect(alert).toHaveBeenCalled());
 
     // The cancel button carries no action at all: dismissing IS doing nothing.
@@ -557,7 +559,11 @@ describe('LocalGameSetupScreen — a paused game', () => {
     await saveLocalGameState(paused());
     renderScreen();
 
-    fireEvent.press(await screen.findByTestId('category-mix'));
+    fireEvent.changeText(
+      await screen.findByTestId('local-game-player2'),
+      'Ala',
+    );
+    fireEvent.press(screen.getByTestId('local-game-start'));
     await waitFor(() => expect(alert).toHaveBeenCalled());
     await confirmOverwrite();
 
@@ -574,11 +580,11 @@ describe('LocalGameSetupScreen — a paused game', () => {
       await screen.findByTestId('local-game-player2'),
       'Ala',
     );
-    fireEvent.press(screen.getByTestId('category-randka'));
+    fireEvent.press(screen.getByTestId('local-game-start'));
     await waitFor(() => expect(alert).toHaveBeenCalled());
     await confirmOverwrite();
 
-    await waitFor(() => expect(fetchGameDeck).toHaveBeenCalledWith('randka'));
+    await waitFor(() => expect(fetchGameDeck).toHaveBeenCalledWith(null));
     expect((await loadLocalGameState())?.player2).toBe('Ala');
   });
 
@@ -662,16 +668,24 @@ describe('LocalGameSetupScreen — a paused game', () => {
     expect((await loadLocalGameState())?.pendingReport).toEqual(['Q1']);
   });
 
-  test('a different category deals a fresh deck', async () => {
-    await saveLocalGameState(paused());
+  // The upgrade case, and the reason the setup passes the STORED slug to
+  // matchesSetup rather than the null it now deals with.
+  //
+  // A couple paused a game before the picker was hidden, so their session
+  // carries a category. Comparing it against null would fail the guard, warn
+  // them that starting will end the game they were trying to resume, and then
+  // end it. Nothing on screen would say what had happened.
+  test('a game paused with a category still resumes, without a warning', async () => {
+    await saveLocalGameState(paused('randka', 'Randka'));
     renderScreen();
 
-    fireEvent.press(await screen.findByTestId('category-mix'));
-    await waitFor(() => expect(alert).toHaveBeenCalled());
-    await confirmOverwrite();
+    fireEvent.press(await screen.findByTestId('local-game-start'));
 
-    await waitFor(() => expect(fetchGameDeck).toHaveBeenCalledWith(null));
-    expect((await loadLocalGameState())?.categorySlug).toBeNull();
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('LocalGame'));
+    expect(alert).not.toHaveBeenCalled();
+    expect(fetchGameDeck).not.toHaveBeenCalled();
+    // Still on disk, still carrying its category.
+    expect((await loadLocalGameState())?.categorySlug).toBe('randka');
   });
 
   // A finished session is not a paused one: the mount effect clears it, so
@@ -685,7 +699,7 @@ describe('LocalGameSetupScreen — a paused game', () => {
     });
     renderScreen();
 
-    const mix = await screen.findByTestId('category-mix');
+    const mix = await screen.findByTestId('local-game-start');
     await waitFor(() => expect(screen.queryByTestId('local-game-resume')).toBeNull());
 
     fireEvent.press(mix);
