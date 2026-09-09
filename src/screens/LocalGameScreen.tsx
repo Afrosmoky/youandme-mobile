@@ -46,6 +46,7 @@ import { ScreenContainer } from '../components/ScreenContainer';
 import { Badge } from '../components/Badge';
 import { Celebration } from '../components/Celebration';
 import { GameCard } from '../components/GameCard';
+import { ShareQuestionModal } from '../components/ShareQuestionModal';
 import { SectionLabel } from '../components/SectionLabel';
 import { GoldButton } from '../components/GoldButton';
 import { OutlineButton } from '../components/OutlineButton';
@@ -78,6 +79,7 @@ export function LocalGameScreen({ navigation }: Props) {
   const [writing, setWriting] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [likePending, setLikePending] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const likeFeedback = useQuestionLikeFeedback();
   const saveMemory = useSaveLocalMemory();
   const report = useReportPlayedCards();
@@ -533,22 +535,32 @@ export function LocalGameScreen({ navigation }: Props) {
         </Text>
       )}
 
-      {/* The two secondary actions share a row under the card, and the one
-          primary action spans the width below them.
+      {/* The arrangement from Wiktoria's walkthrough: two outlined actions
+          sharing a row, one gold action spanning the width below them.
 
-          The save is live only once BOTH have written: a memory from the local
+          Share takes the left slot, as it does on the web. The right slot is the
+          save, which is live only once BOTH have written: a memory from the local
           game is the pair of answers. Writing stays optional, which is exactly
           why progress counts cards played rather than cards saved. Once saved,
           the badge takes the button's place IN THE ROW rather than above it, so
           the footer does not jump the moment a card is kept.
 
-          Skipping is the same transition as moving on — the couple left the card
-          behind either way, which is what the report counts. It sits next to the
-          save rather than under the primary button, where it read as an
-          afterthought. */}
+          Skip left this row and became a line under the primary button. It is a
+          release valve, not a peer of these two: it has to be reachable without
+          inviting anybody. Same handler, same transition — the couple left the
+          card behind either way, which is what the report counts. */}
       <View style={styles.footerRow}>
+        <OutlineButton
+          testID="local-game-share"
+          title={pl.localGame.shareButton}
+          onPress={() => setSharing(true)}
+          style={styles.footerSlot}
+        />
+
         {alreadySaved ? (
-          <Badge testID="local-game-saved" style={styles.footerSlot}>
+          <Badge
+            testID="local-game-saved"
+            style={[styles.footerSlot, styles.footerSlotRight]}>
             {pl.localGame.savedBadge}
           </Badge>
         ) : (
@@ -558,16 +570,9 @@ export function LocalGameScreen({ navigation }: Props) {
             onPress={onSave}
             loading={saveMemory.isPending}
             disabled={!canSaveMemory(state) || saveMemory.isPending}
-            style={styles.footerSlot}
+            style={[styles.footerSlot, styles.footerSlotRight]}
           />
         )}
-
-        <OutlineButton
-          testID="local-game-skip"
-          title={pl.localGame.skipButton}
-          onPress={() => transition(advance(state))}
-          style={[styles.footerSlot, styles.footerSlotRight]}
-        />
       </View>
 
       {/* Hand the phone over while player one holds it, move on once player two
@@ -582,6 +587,23 @@ export function LocalGameScreen({ navigation }: Props) {
         }
       />
 
+      {/* Reachable, not inviting. A card nobody wants to answer has to have a
+          way past it, but an outlined button next to the save read as an equal
+          choice — which skipping is not. */}
+      <TouchableOpacity
+        testID="local-game-skip"
+        onPress={() => transition(advance(state))}
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        style={styles.skip}>
+        <Text style={styles.skipText}>{pl.localGame.skipButton}</Text>
+      </TouchableOpacity>
+
+      <ShareQuestionModal
+        visible={sharing}
+        question={item.question.body}
+        onClose={() => setSharing(false)}
+      />
+
       {celebration}
     </ScreenContainer>
   );
@@ -594,6 +616,15 @@ const createStyles = (theme: Theme) => {
     // belongs over the heading, which is where the web puts it.
     glow: {
       top: -120,
+    },
+    skip: {
+      alignSelf: 'center',
+      paddingVertical: spacing.md,
+    },
+    skipText: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.bodySm,
+      color: colors.text.muted,
     },
     centered: {
       flex: 1,

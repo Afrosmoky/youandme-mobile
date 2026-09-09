@@ -369,6 +369,7 @@ export const pl = {
     skipButton: 'Pomiń',
     pauseButton: 'Wróć do menu',
     saveButton: 'Zapisz wspomnienie',
+    shareButton: 'Udostępnij',
     savedBadge: 'Wspomnienie zapisane',
     saveError: 'Nie udało się zapisać wspomnienia.',
 
@@ -448,6 +449,20 @@ export const pl = {
     // Błąd INNY niż 404. Czterysta cztery to przekroczenie granicy tygodnia
     // przy otwartej apce — wtedy cicho przeładowujemy rytuał i nic nie mówimy.
     completeError: 'Nie udało się zapisać. Spróbujcie jeszcze raz.',
+  },
+
+  // 3D: udostępnienie POJEDYNCZEJ karty, wzorowane na modalu z weba. Osobne od
+  // `share` niżej, które dotyczy polecania całej aplikacji.
+  shareQuestion: {
+    title: 'Udostępnij pytanie',
+    subtitle: 'Podzielcie się tą kartą ze znajomymi lub w sieci.',
+    close: 'Zamknij',
+    shareAction: 'Udostępnij',
+    copyAction: 'Skopiuj tekst',
+    copied: 'Skopiowano do schowka',
+    // Stopka podglądu karty — to samo, co niesie web.
+    previewInvite: 'Odpowiedzcie na to pytanie razem w aplikacji',
+    previewFooter: 'jaity.app',
   },
 
   // P5 share. Copy is a neutral placeholder pending Wiktoria's sign-off (#36) —

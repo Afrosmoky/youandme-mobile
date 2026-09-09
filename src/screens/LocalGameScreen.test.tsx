@@ -1449,4 +1449,43 @@ describe('LocalGameScreen — cards answered by picking', () => {
 
     expect(screen.getByTestId('local-game-save')).toBeDisabled();
   });
+
+  // 3D. The arrangement from the walkthrough: share and save share a row, the
+  // primary action spans the width, and skip is a line underneath rather than a
+  // third button competing with the two real ones.
+  describe('the footer', () => {
+    test('share and save share the row, and skip is not in it', async () => {
+      await saveLocalGameState(session(20));
+      renderScreen();
+
+      expect(await screen.findByTestId('local-game-share')).toBeOnTheScreen();
+      expect(screen.getByTestId('local-game-save')).toBeOnTheScreen();
+      expect(screen.getByTestId('local-game-skip')).toBeOnTheScreen();
+    });
+
+    test('sharing opens the modal on the card in play', async () => {
+      await saveLocalGameState(session(20));
+      renderScreen();
+
+      fireEvent.press(await screen.findByTestId('local-game-share'));
+
+      expect(
+        await screen.findByTestId('share-question-preview-body'),
+      ).toHaveTextContent('Pytanie 1?');
+    });
+
+    // The whole point of moving it: it must still work, and still be the same
+    // transition, or the report loses a card. The behaviour tests above cover
+    // the transition; this one only says it is still reachable as a control.
+    test('skip is still there and still advances', async () => {
+      await saveLocalGameState(session(20));
+      renderScreen();
+
+      fireEvent.press(await screen.findByTestId('local-game-skip'));
+
+      await waitFor(async () =>
+        expect((await loadLocalGameState())?.cursor).toBe(1),
+      );
+    });
+  });
 });
