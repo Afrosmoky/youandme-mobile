@@ -247,11 +247,6 @@ export const pl = {
     streak: (days: number) => `${days} dni serii`,
     streakNone: 'Zacznijcie serię dziś',
     ritualLabel: 'Rytuał tygodnia',
-    // Kafel sesji serwerowej — od S3c niepodpięty pod Home (sesją pary jest gra
-    // na jednym telefonie). Copy zostaje razem z uśpionymi ekranami, pod tryb
-    // solo z etapu II.
-    sessionTitle: 'Sesja pytań',
-    sessionHint: 'Wybierzcie kategorię i grajcie',
     memoriesTitle: 'Historia',
     memoriesHint: 'Ulubione pytania i zapisane wspomnienia',
     deckTitle: 'Talia i nagrody',

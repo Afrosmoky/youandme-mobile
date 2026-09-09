@@ -109,14 +109,15 @@ describe('HomeScreen', () => {
   });
 
   // S3c: the couple's session is the local game, and it is the only way in. The
-  // server-side session screens stay in the codebase for the solo mode of etap
-  // II, but nothing on the hub points at them.
+  // server-side session SCREENS stay in the codebase (Bootstrap still resumes an
+  // active session through QuestionScreen), but nothing on the hub points at
+  // them — and as of 3D the hub does not even carry the copy for a tile that
+  // would.
   test('there is no second session tile pointing at the server session', async () => {
     renderWithQueryClient(<HomeScreen {...makeProps()} />);
 
     await screen.findByText(dailyCard.question.body);
     expect(screen.queryByTestId('home-session')).toBeNull();
-    expect(screen.queryByText(pl.home.sessionTitle)).toBeNull();
   });
 
   // P11: the daily card is the only tile here with something to fetch, and the
