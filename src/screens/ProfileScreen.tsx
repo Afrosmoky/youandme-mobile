@@ -2,14 +2,12 @@ import React, { useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import * as StoreReview from 'react-native-store-review';
 import { RootStackParamList } from '../navigation/types';
 import { UpdateMeInput } from '../api/profile';
 import { useAuth } from '../auth/AuthContext';
@@ -26,9 +24,8 @@ import { ErrorState } from '../components/ErrorState';
 import { SectionLabel } from '../components/SectionLabel';
 import { GoldButton } from '../components/GoldButton';
 import { OutlineButton } from '../components/OutlineButton';
+import { useShareApp, useRateApp } from '../queries/useShareApp';
 import { savePartnerName } from '../storage/partnerName';
-import { claimShareReward } from '../api/share';
-import { claimRatingReward } from '../api/rating';
 import { parseApiError, FieldErrors } from '../api/errors';
 import { validateNickname } from '../domain/validation';
 import { Theme, useTheme } from '../theme';
@@ -40,13 +37,6 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 // list lands in stage IV.
 const TIMEZONES = ['Europe/Warsaw', 'UTC'];
 const DEFAULT_TIMEZONE = 'Europe/Warsaw';
-
-// P5 share target. Landing page placeholder until store links exist (P12). The
-// URL is embedded in the message rather than passed as Share's separate `url`:
-// some iOS targets (e.g. Reminders) take only the message and drop `url`, and
-// the app link is the whole point of the share. We accept losing the iOS
-// rich-preview (irrelevant in MVP) to guarantee the link always travels.
-const SHARE_URL = 'https://jaity.app';
 
 export function ProfileScreen({ navigation }: Props) {
   const theme = useTheme();
@@ -76,6 +66,10 @@ export function ProfileScreen({ navigation }: Props) {
   } = useVerificationStatus();
   const { mutate: save, isPending: saving } = useUpdateMe();
   const { mutate: resend, isPending: resending } = useResendVerification();
+  // Same two rewards the exhaustion funnel now offers (3D), so they live in one
+  // place rather than as this screen's private functions.
+  const onShare = useShareApp();
+  const onRate = useRateApp();
   const { mutate: changePasswordMutate, isPending: changingPassword } =
     useChangePassword();
 
@@ -184,49 +178,6 @@ export function ProfileScreen({ navigation }: Props) {
         }
       },
     });
-  };
-
-  // Opens the native share sheet. Claims the reward only when the user actually
-  // picks a target (sharedAction) — dismissing withdraws the gesture. The claim
-  // is best-effort and idempotent server-side, so any failure stays silent (the
-  // bonus is granted server-side; there is nothing local to correct).
-  const onShare = async () => {
-    try {
-      const result = await Share.share({
-        message: `${pl.share.message} ${SHARE_URL}`,
-      });
-      if (result.action === Share.sharedAction) {
-        await claimShareReward();
-        Alert.alert(pl.appTitle, pl.share.thanksToast);
-      }
-    } catch {
-      // Share sheet failed to open, or the claim call failed — nothing to
-      // recover here; the reward is idempotent and server-owned.
-    }
-  };
-
-  // Asks for a store review, then claims the one-time bonus. Unlike onShare
-  // above, the claim is unconditional: In-App Review has no callback, so there
-  // is no signal saying whether the prompt appeared or whether the user rated.
-  // We reward the gesture of asking, which is why the two steps sit in separate
-  // try blocks — a throwing requestReview() must not skip the claim.
-  //
-  // Note: Apple and Google both discourage triggering the review flow from a
-  // button (it is meant to fire at a natural moment in the journey), so the
-  // prompt will often silently not show. The button is a P6 placeholder pending
-  // the style guide (#36); the grant works either way.
-  const onRate = async () => {
-    try {
-      StoreReview.requestReview();
-    } catch {
-      // Native module missing, or no foreground scene to present in.
-    }
-    try {
-      await claimRatingReward();
-      Alert.alert(pl.appTitle, pl.rating.thanksToast);
-    } catch {
-      // Best-effort and idempotent server-side; nothing local to correct.
-    }
   };
 
   const onResend = () => {
