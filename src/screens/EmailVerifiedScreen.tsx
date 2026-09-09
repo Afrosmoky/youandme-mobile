@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useQueryClient } from '@tanstack/react-query';
 import { RootStackParamList } from '../navigation/types';
+import { ScreenTitle } from '../components/ScreenTitle';
 import { Badge } from '../components/Badge';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { queryKeys } from '../queries/queryKeys';
@@ -43,7 +44,7 @@ export function EmailVerifiedScreen({ navigation }: Props) {
       headerTitleAlign: 'center',
       // eslint-disable-next-line react/no-unstable-nested-components
       headerTitle: () => (
-        <Text style={styles.headerTitle}>{pl.emailVerified.headerTitle}</Text>
+        <ScreenTitle>{pl.emailVerified.headerTitle}</ScreenTitle>
       ),
     });
   }, [navigation, styles, theme]);
@@ -105,12 +106,6 @@ const createStyles = (theme: Theme) => {
       color: colors.text.secondary,
       textAlign: 'center',
       lineHeight: 24,
-    },
-    headerTitle: {
-      ...glow.heading,
-      fontFamily: typography.family.heading,
-      fontSize: typography.size.h2,
-      color: colors.text.primary,
     },
   });
 };

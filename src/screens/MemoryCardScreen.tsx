@@ -14,6 +14,7 @@ import { useSetMemoryFavorite } from '../queries/useSetMemoryFavorite';
 import { useUpdateMemory } from '../queries/useUpdateMemory';
 import { useDeleteMemory } from '../queries/useDeleteMemory';
 import { isNotFound, parseApiError } from '../api/errors';
+import { ScreenTitle } from '../components/ScreenTitle';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
@@ -85,7 +86,7 @@ export function MemoryCardScreen({ navigation, route }: Props) {
       headerTitleAlign: 'center',
       // eslint-disable-next-line react/no-unstable-nested-components
       headerTitle: () => (
-        <Text style={styles.headerTitle}>{pl.memoryCard.headerTitle}</Text>
+        <ScreenTitle>{pl.memoryCard.headerTitle}</ScreenTitle>
       ),
     });
   }, [navigation, styles, theme]);
@@ -327,7 +328,7 @@ export function MemoryCardScreen({ navigation, route }: Props) {
 }
 
 const createStyles = (theme: Theme) => {
-  const { colors, typography, spacing, glow } = theme;
+  const { colors, typography, spacing } = theme;
   return StyleSheet.create({
     centered: {
       flex: 1,
@@ -340,12 +341,6 @@ const createStyles = (theme: Theme) => {
     stateContent: {
       flexGrow: 1,
       justifyContent: 'center',
-    },
-    headerTitle: {
-      ...glow.heading,
-      fontFamily: typography.family.heading,
-      fontSize: typography.size.h2,
-      color: colors.text.primary,
     },
     card: {
       marginBottom: spacing.xl,

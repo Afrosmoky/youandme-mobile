@@ -5,6 +5,7 @@ import { RootStackParamList } from '../navigation/types';
 import { useWeeklyRitual } from '../queries/useWeeklyRitual';
 import { useSetRitualCompleted } from '../queries/useSetRitualCompleted';
 import { isRitualWeekRolledOver } from '../api/rituals';
+import { ScreenTitle } from '../components/ScreenTitle';
 import { GoldButton } from '../components/GoldButton';
 import { OutlineButton } from '../components/OutlineButton';
 import { ScreenContainer } from '../components/ScreenContainer';
@@ -49,7 +50,7 @@ export function RitualScreen({ navigation }: Props) {
       headerTitleAlign: 'center',
       // eslint-disable-next-line react/no-unstable-nested-components
       headerTitle: () => (
-        <Text style={styles.headerTitle}>{pl.ritual.headerTitle}</Text>
+        <ScreenTitle>{pl.ritual.headerTitle}</ScreenTitle>
       ),
     });
   }, [navigation, styles, theme]);
@@ -118,12 +119,6 @@ const createStyles = (theme: Theme) => {
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: colors.bg.base,
-    },
-    headerTitle: {
-      ...glow.heading,
-      fontFamily: typography.family.heading,
-      fontSize: typography.size.h2,
-      color: colors.text.primary,
     },
     title: {
       ...glow.heading,

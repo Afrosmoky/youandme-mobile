@@ -11,6 +11,7 @@ import { RootStackParamList } from '../navigation/types';
 import { useDailyCard } from '../queries/useDailyCard';
 import { useWeeklyRitual } from '../queries/useWeeklyRitual';
 import { useLocalPushSchedule } from '../notifications/useLocalPushSchedule';
+import { ScreenTitle } from '../components/ScreenTitle';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { GlowBackground } from '../components/GlowBackground';
 import { Card } from '../components/Card';
@@ -69,7 +70,7 @@ export function HomeScreen({ navigation }: Props) {
       headerTitleAlign: 'center',
       // eslint-disable-next-line react/no-unstable-nested-components
       headerTitle: () => (
-        <Text style={styles.headerTitle}>{pl.home.headerTitle}</Text>
+        <ScreenTitle>{pl.home.headerTitle}</ScreenTitle>
       ),
       // eslint-disable-next-line react/no-unstable-nested-components
       headerRight: () => (
@@ -221,16 +222,10 @@ export function HomeScreen({ navigation }: Props) {
 }
 
 const createStyles = (theme: Theme) => {
-  const { colors, typography, spacing, glow } = theme;
+  const { colors, typography, spacing } = theme;
   return StyleSheet.create({
     glow: {
       justifyContent: 'flex-start',
-    },
-    headerTitle: {
-      ...glow.heading,
-      fontFamily: typography.family.heading,
-      fontSize: typography.size.h2,
-      color: colors.text.primary,
     },
     headerButton: {
       fontFamily: typography.family.body,

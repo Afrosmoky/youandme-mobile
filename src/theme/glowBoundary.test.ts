@@ -17,8 +17,11 @@ import {join} from 'path';
  * content — only intent can, and intent is exactly what a test can pin down.
  */
 const ALLOWED = new Set([
-  // Screen titles, in the native header and in the body.
-  'headerTitle',
+  // The one style behind every navigation-header title (ScreenTitle).
+  'screenTitle',
+  // Titles that live in a screen's body. Unlike the header ones these genuinely
+  // differ — h1 or h2, gold or off-white, centred or not — so they were left as
+  // their own styles rather than forced through one component.
   'title',
   // The wordmark's two spans (Logo). A shadow on a parent Text is not inherited
   // by nested ones, so it has to sit on each.
@@ -112,15 +115,20 @@ describe('the glow boundary', () => {
     expect(offenders).toEqual([]);
   });
 
-  // The list above is only meaningful while it is actually reached, so this
-  // fails if the scan stops finding anything — a refactor that renames the token
-  // would otherwise turn the guard green by making it blind.
+  // The canary. The allow-list above is only meaningful while the scan actually
+  // reaches something, so a refactor that renamed the token — or broke the
+  // matcher — would otherwise turn every test here green by making it blind.
+  //
+  // Asserted by FILE rather than by style key: keys get renamed for good reasons
+  // (3D collapsed fourteen `headerTitle` styles into ScreenTitle's own), and a
+  // canary that has to be edited every time something is renamed teaches people
+  // to edit canaries.
   test('the scan actually finds the glows that exist', () => {
-    const keys = new Set(glowUses().map(use => use.key));
+    const files = new Set(glowUses().map(use => use.file));
 
-    expect(keys.has('headerTitle')).toBe(true);
-    expect(keys.has('word')).toBe(true);
-    expect(keys.size).toBeGreaterThan(2);
+    expect(files).toContain('src/components/ScreenTitle.tsx');
+    expect(files).toContain('src/components/Logo.tsx');
+    expect(files).toContain('src/components/SectionLabel.tsx');
   });
 
   // The specific styles this slice must not touch, checked by name rather than

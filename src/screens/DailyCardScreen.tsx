@@ -19,6 +19,7 @@ import { queryKeys } from '../queries/queryKeys';
 import { parseApiError } from '../api/errors';
 import { isStreakMilestone } from '../domain/streak';
 import { notifyStreakMilestone } from '../notifications/notifee';
+import { ScreenTitle } from '../components/ScreenTitle';
 import { GlowBackground } from '../components/GlowBackground';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { GameCard } from '../components/GameCard';
@@ -61,7 +62,7 @@ export function DailyCardScreen({ navigation }: Props) {
       headerTitleAlign: 'center',
       // eslint-disable-next-line react/no-unstable-nested-components
       headerTitle: () => (
-        <Text style={styles.headerTitle}>{pl.dailyCard.headerTitle}</Text>
+        <ScreenTitle>{pl.dailyCard.headerTitle}</ScreenTitle>
       ),
     });
   }, [navigation, styles, theme]);
@@ -235,7 +236,7 @@ export function DailyCardScreen({ navigation }: Props) {
 }
 
 const createStyles = (theme: Theme) => {
-  const { colors, typography, spacing, radius, glow } = theme;
+  const { colors, typography, spacing, radius } = theme;
   return StyleSheet.create({
     // Pulled up behind the card rather than centred on the screen: the wash
     // belongs over the heading, which is where the web puts it.
@@ -247,12 +248,6 @@ const createStyles = (theme: Theme) => {
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: colors.bg.base,
-    },
-    headerTitle: {
-      ...glow.heading,
-      fontFamily: typography.family.heading,
-      fontSize: typography.size.h2,
-      color: colors.text.primary,
     },
     cardLabel: {
       marginBottom: spacing.md,

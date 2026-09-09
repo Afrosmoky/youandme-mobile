@@ -17,6 +17,7 @@ import { useVerificationStatus } from '../queries/useVerificationStatus';
 import { useUpdateMe } from '../queries/useUpdateMe';
 import { useChangePassword } from '../queries/useChangePassword';
 import { useResendVerification } from '../queries/useResendVerification';
+import { ScreenTitle } from '../components/ScreenTitle';
 import { PasswordInput } from '../components/PasswordInput';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { TextField } from '../components/TextField';
@@ -95,7 +96,7 @@ export function ProfileScreen({ navigation }: Props) {
       headerTitleAlign: 'center',
       // eslint-disable-next-line react/no-unstable-nested-components
       headerTitle: () => (
-        <Text style={styles.headerTitle}>{pl.profile.title}</Text>
+        <ScreenTitle>{pl.profile.title}</ScreenTitle>
       ),
     });
   }, [navigation, styles, theme]);
@@ -443,19 +444,13 @@ export function ProfileScreen({ navigation }: Props) {
 }
 
 const createStyles = (theme: Theme) => {
-  const { colors, typography, spacing, radius, glow } = theme;
+  const { colors, typography, spacing, radius } = theme;
   return StyleSheet.create({
     centered: {
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: colors.bg.base,
-    },
-    headerTitle: {
-      ...glow.heading,
-      fontFamily: typography.family.heading,
-      fontSize: typography.size.h2,
-      color: colors.text.primary,
     },
     banner: {
       marginBottom: spacing.xl,

@@ -7,6 +7,7 @@ import { useRedeemCode } from '../queries/useRedeemCode';
 import { useWatchAdForCredit } from '../queries/useWatchAdForCredit';
 import { parseApiError } from '../api/errors';
 import { AD_REWARD_ENABLED } from '../config/features';
+import { ScreenTitle } from '../components/ScreenTitle';
 import { Card } from '../components/Card';
 import { ErrorState } from '../components/ErrorState';
 import { GoldButton } from '../components/GoldButton';
@@ -55,7 +56,7 @@ export function RewardsScreen({ navigation }: Props) {
       headerTitleAlign: 'center',
       // eslint-disable-next-line react/no-unstable-nested-components
       headerTitle: () => (
-        <Text style={styles.headerTitle}>{pl.rewards.headerTitle}</Text>
+        <ScreenTitle>{pl.rewards.headerTitle}</ScreenTitle>
       ),
     });
   }, [navigation, styles, theme]);
@@ -227,7 +228,7 @@ export function RewardsScreen({ navigation }: Props) {
 }
 
 const createStyles = (theme: Theme) => {
-  const { colors, typography, spacing, glow } = theme;
+  const { colors, typography, spacing } = theme;
   return StyleSheet.create({
     centered: {
       flex: 1,
@@ -241,12 +242,6 @@ const createStyles = (theme: Theme) => {
     stateContent: {
       flexGrow: 1,
       justifyContent: 'center',
-    },
-    headerTitle: {
-      ...glow.heading,
-      fontFamily: typography.family.heading,
-      fontSize: typography.size.h2,
-      color: colors.text.primary,
     },
     balanceCard: {
       marginBottom: spacing.xl,

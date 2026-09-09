@@ -13,6 +13,7 @@ import { RootStackParamList } from '../navigation/types';
 import { useMemories } from '../queries/useMemories';
 import { useSetMemoryFavorite } from '../queries/useSetMemoryFavorite';
 import { parseApiError } from '../api/errors';
+import { ScreenTitle } from '../components/ScreenTitle';
 import { Card } from '../components/Card';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
@@ -118,7 +119,7 @@ export function MemoriesScreen({ navigation }: Props) {
       headerTitleAlign: 'left',
       // eslint-disable-next-line react/no-unstable-nested-components
       headerTitle: () => (
-        <Text style={styles.headerTitle}>{pl.memories.headerTitle}</Text>
+        <ScreenTitle>{pl.memories.headerTitle}</ScreenTitle>
       ),
       // headerRight is a navigation render prop, not a remounted subtree.
       // eslint-disable-next-line react/no-unstable-nested-components
@@ -273,7 +274,7 @@ export function MemoriesScreen({ navigation }: Props) {
 }
 
 const createStyles = (theme: Theme) => {
-  const { colors, typography, spacing, glow } = theme;
+  const { colors, typography, spacing } = theme;
   return StyleSheet.create({
     screen: {
       flex: 1,
@@ -344,12 +345,6 @@ const createStyles = (theme: Theme) => {
       fontFamily: typography.family.body,
       fontSize: typography.size.micro,
       color: colors.text.muted,
-    },
-    headerTitle: {
-      ...glow.heading,
-      fontFamily: typography.family.heading,
-      fontSize: typography.size.h2,
-      color: colors.text.primary,
     },
     headerButton: {
       fontFamily: typography.family.body,

@@ -2,7 +2,6 @@ import React, { useLayoutEffect, useMemo } from 'react';
 import {
   ActivityIndicator,
   StyleSheet,
-  Text,
   View,
   useWindowDimensions,
 } from 'react-native';
@@ -10,6 +9,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useProgress } from '../queries/useProgress';
 import { parseApiError } from '../api/errors';
+import { ScreenTitle } from '../components/ScreenTitle';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
 import { ProgressMap } from '../components/ProgressMap';
@@ -47,7 +47,7 @@ export function ProgressMapScreen({ navigation }: Props) {
       headerTitleAlign: 'center',
       // eslint-disable-next-line react/no-unstable-nested-components
       headerTitle: () => (
-        <Text style={styles.headerTitle}>{pl.progress.headerTitle}</Text>
+        <ScreenTitle>{pl.progress.headerTitle}</ScreenTitle>
       ),
     });
   }, [navigation, styles, theme]);
@@ -98,19 +98,13 @@ export function ProgressMapScreen({ navigation }: Props) {
 }
 
 const createStyles = (theme: Theme) => {
-  const { colors, typography, glow } = theme;
+  const { colors } = theme;
   return StyleSheet.create({
     centered: {
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: colors.bg.base,
-    },
-    headerTitle: {
-      ...glow.heading,
-      fontFamily: typography.family.heading,
-      fontSize: typography.size.h2,
-      color: colors.text.primary,
     },
     // The room EmptyState/ErrorState need to sit centred; they bring their own
     // alignment but never claim the screen.

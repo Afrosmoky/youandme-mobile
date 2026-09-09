@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
+import { ScreenTitle } from '../components/ScreenTitle';
 import { Banner } from '../components/Banner';
 import { GlowBackground } from '../components/GlowBackground';
 import { GoldButton } from '../components/GoldButton';
@@ -46,7 +47,7 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
       headerTitleAlign: 'center',
       // eslint-disable-next-line react/no-unstable-nested-components
       headerTitle: () => (
-        <Text style={styles.headerTitle}>{pl.resetPassword.title}</Text>
+        <ScreenTitle>{pl.resetPassword.title}</ScreenTitle>
       ),
     });
   }, [navigation, styles, theme]);
@@ -151,7 +152,7 @@ export function ResetPasswordScreen({ navigation, route }: Props) {
 }
 
 const createStyles = (theme: Theme) => {
-  const { colors, typography, spacing, glow } = theme;
+  const { colors, typography, spacing } = theme;
   return StyleSheet.create({
     // Same recipe as AuthScreen and ForgotPassword: a short form centred on the
     // dark background, so KeyboardAvoidingView rather than ScreenContainer.
@@ -176,12 +177,6 @@ const createStyles = (theme: Theme) => {
     },
     submit: {
       marginTop: spacing.xs,
-    },
-    headerTitle: {
-      ...glow.heading,
-      fontFamily: typography.family.heading,
-      fontSize: typography.size.h2,
-      color: colors.text.primary,
     },
   });
 };

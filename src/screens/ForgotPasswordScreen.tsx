@@ -4,12 +4,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
-  Text,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { parseApiError, FieldErrors } from '../api/errors';
 import { useRequestPasswordReset } from '../queries/useRequestPasswordReset';
+import { ScreenTitle } from '../components/ScreenTitle';
 import { GlowBackground } from '../components/GlowBackground';
 import { GoldButton } from '../components/GoldButton';
 import { TextField } from '../components/TextField';
@@ -38,7 +38,7 @@ export function ForgotPasswordScreen({ navigation }: Props) {
       headerTitleAlign: 'center',
       // eslint-disable-next-line react/no-unstable-nested-components
       headerTitle: () => (
-        <Text style={styles.headerTitle}>{pl.forgotPassword.title}</Text>
+        <ScreenTitle>{pl.forgotPassword.title}</ScreenTitle>
       ),
     });
   }, [navigation, styles, theme]);
@@ -109,7 +109,7 @@ export function ForgotPasswordScreen({ navigation }: Props) {
 }
 
 const createStyles = (theme: Theme) => {
-  const { colors, typography, spacing, glow } = theme;
+  const { colors, spacing } = theme;
   return StyleSheet.create({
     // Same recipe as AuthScreen: this stack centres a short form on the dark
     // background rather than scrolling a padded page, so it keeps the
@@ -126,12 +126,6 @@ const createStyles = (theme: Theme) => {
     },
     submit: {
       marginTop: spacing.xs,
-    },
-    headerTitle: {
-      ...glow.heading,
-      fontFamily: typography.family.heading,
-      fontSize: typography.size.h2,
-      color: colors.text.primary,
     },
   });
 };

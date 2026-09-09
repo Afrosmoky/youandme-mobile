@@ -18,6 +18,7 @@ import appleAuth, {
 import { useAuth, SocialSignInOutcome } from '../auth/AuthContext';
 import { useLogin } from '../queries/useLogin';
 import { useRegister } from '../queries/useRegister';
+import { ScreenTitle } from '../components/ScreenTitle';
 import { PasswordInput } from '../components/PasswordInput';
 import { TextField } from '../components/TextField';
 import { GoldButton } from '../components/GoldButton';
@@ -63,7 +64,7 @@ export function AuthScreen() {
       headerShadowVisible: false,
       headerTitleAlign: 'center',
       // eslint-disable-next-line react/no-unstable-nested-components
-      headerTitle: () => <Text style={styles.headerTitle}>{pl.appTitle}</Text>,
+      headerTitle: () => <ScreenTitle>{pl.appTitle}</ScreenTitle>,
     });
   }, [navigation, styles, theme]);
   const [mode, setMode] = useState<Mode>('login');
@@ -452,12 +453,6 @@ const createStyles = (theme: Theme) => {
     },
     submit: {
       marginTop: spacing.xs,
-    },
-    headerTitle: {
-      ...glow.heading,
-      fontFamily: typography.family.heading,
-      fontSize: typography.size.h2,
-      color: colors.text.primary,
     },
     google: {
       marginTop: spacing.md,

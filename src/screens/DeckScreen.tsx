@@ -14,6 +14,7 @@ import { useDeck } from '../queries/useDeck';
 import { useRewards } from '../queries/useRewards';
 import { useUnlockQuestion } from '../queries/useUnlockQuestion';
 import { parseApiError } from '../api/errors';
+import { ScreenTitle } from '../components/ScreenTitle';
 import { Badge } from '../components/Badge';
 import { Card } from '../components/Card';
 import { EmptyState } from '../components/EmptyState';
@@ -61,7 +62,7 @@ export function DeckScreen({ navigation }: Props) {
       headerTitleAlign: 'center',
       // eslint-disable-next-line react/no-unstable-nested-components
       headerTitle: () => (
-        <Text style={styles.headerTitle}>{pl.deck.headerTitle}</Text>
+        <ScreenTitle>{pl.deck.headerTitle}</ScreenTitle>
       ),
       // headerRight is a navigation render prop, not a remounted subtree.
       // eslint-disable-next-line react/no-unstable-nested-components
@@ -176,7 +177,7 @@ export function DeckScreen({ navigation }: Props) {
 }
 
 const createStyles = (theme: Theme) => {
-  const { colors, typography, spacing, glow } = theme;
+  const { colors, typography, spacing } = theme;
   return StyleSheet.create({
     list: {
       flex: 1,
@@ -196,12 +197,6 @@ const createStyles = (theme: Theme) => {
       justifyContent: 'center',
       alignItems: 'center',
       backgroundColor: colors.bg.base,
-    },
-    headerTitle: {
-      ...glow.heading,
-      fontFamily: typography.family.heading,
-      fontSize: typography.size.h2,
-      color: colors.text.primary,
     },
     headerButton: {
       fontFamily: typography.family.body,
