@@ -28,7 +28,30 @@ const ALLOWED = new Set([
   // escape hatch that switches it off.
   'glow',
   'flat',
+  // The like heart, glowing only while filled (LikeHeart).
+  'heartGlow',
+  'heartFlat',
 ]);
+
+/**
+ * Styles named outright, because a name-based rule is a heuristic and these are
+ * the cases that actually matter.
+ *
+ * All five carry text a couple READS rather than navigates by. Three of them are
+ * the trap that made this test necessary — the question body is set in the
+ * heading typeface at the h2 size, so it looks like a heading to any rule based
+ * on font or scale. The ritual body is the same shape of risk arriving from the
+ * other side: its screen title DOES glow (it is a short label acting as the
+ * screen's heading), and the body right underneath it must not, even though both
+ * come from the same server payload.
+ */
+const PROTECTED: {file: string; key: string}[] = [
+  {file: 'src/screens/DailyCardScreen.tsx', key: 'question'},
+  {file: 'src/screens/QuestionScreen.tsx', key: 'questionBody'},
+  {file: 'src/screens/LocalGameScreen.tsx', key: 'question'},
+  {file: 'src/screens/RitualScreen.tsx', key: 'body'},
+  {file: 'src/screens/MemoriesScreen.tsx', key: 'answer'},
+];
 
 // Where a glow must never appear, spelled out so the failure message can say
 // what rule was broken rather than just which key was unexpected.
@@ -107,6 +130,25 @@ describe('the glow boundary', () => {
 
     for (const forbidden of FORBIDDEN_EXAMPLES) {
       expect(glowing.has(forbidden)).toBe(false);
+    }
+  });
+
+  // Named file and key, so this keeps holding even if somebody renames the
+  // style to something the heuristic above would wave through.
+  test('the five styles that carry read text never glow', () => {
+    const uses = glowUses();
+
+    for (const protectedStyle of PROTECTED) {
+      expect(uses).not.toContainEqual(protectedStyle);
+    }
+  });
+
+  // ...and the pairs above have to actually exist, or the test guards nothing.
+  test('every protected style is really there to be protected', () => {
+    for (const {file, key} of PROTECTED) {
+      const source = readFileSync(join(__dirname, '..', '..', file), 'utf8');
+
+      expect(source).toContain(`    ${key}: {`);
     }
   });
 });
