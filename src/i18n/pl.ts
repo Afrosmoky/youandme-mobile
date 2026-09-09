@@ -177,8 +177,15 @@ export const pl = {
     // w nawigatorze zostaje — deep linki i pushRouter z P9 są tego niewarte.
     headerTitle: 'Historia',
     // Podział Wiktorii, ten sam co w jej wersji webowej. Dwa różne byty pod
-    // jednym sercem: polubione PYTANIE (P5) i ulubione WSPOMNIENIE (P9).
-    tabQuestions: 'Ulubione pytania',
+    // jednym sercem: polubione PYTANIE (P5, couple_question_likes) i ulubione
+    // WSPOMNIENIE (P9, memories.is_favorite).
+    //
+    // Stąd „polubione" tu, a „ulubione" w filtrze wspomnień niżej. Do 3D
+    // zakładka nazywała się „Ulubione pytania" i to słowo znaczyło na jednym
+    // ekranie dwie różne rzeczy — raz zakładkę, raz filtr wewnątrz sąsiedniej
+    // zakładki. Dwa rzeczowniki zamiast jednego, zgodnie z tym, jak te byty
+    // nazywają się po stronie danych.
+    tabQuestions: 'Polubione pytania',
     tabMemories: 'Zapisane wspomnienia',
     logout: 'Wyloguj',
     empty: 'Nie masz jeszcze żadnych wspomnień.',
