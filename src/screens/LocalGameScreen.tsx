@@ -8,6 +8,7 @@ import React, {
 } from 'react';
 import {
   ActivityIndicator,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -420,7 +421,7 @@ export function LocalGameScreen({ navigation }: Props) {
   const alreadySaved = state.savedMemoryUlids.includes(item.question.ulid);
 
   return (
-    <ScreenContainer testID="local-game-screen">
+    <ScreenContainer testID="local-game-screen" scrollable={false}>
       {/* The same soft gold wash Home and the auth screens already carry, on the
           three screens where a couple actually plays. It is a background layer
           behind the card, not a glow on the text — the question itself stays
@@ -434,15 +435,23 @@ export function LocalGameScreen({ navigation }: Props) {
 
       {/* The heart belongs to the question and only to it, which is why it is
           the CARD that carries it — in both corners, one like. */}
+      {/* Takes whatever height is left over, so the actions below it sit at the
+          bottom of the screen instead of wherever the question happens to end.
+          A long question scrolls INSIDE the card (see the body below); the card
+          itself does not move, and neither do the buttons. */}
       <GameCard
         testID="local-game-card"
-        style={styles.card}
+        style={[styles.card, styles.cardFills]}
         like={{
           liked: item.question.liked,
           onToggle: onToggleLike,
           disabled: likePending,
           testID: 'local-game-like',
         }}>
+        <ScrollView
+          style={styles.cardBody}
+          contentContainerStyle={styles.cardBodyContent}
+          keyboardShouldPersistTaps="handled">
         {/* Only cards bought with a credit are marked; a badge on every card
             would say nothing at all. */}
         {item.question.isLocked && (
@@ -515,6 +524,7 @@ export function LocalGameScreen({ navigation }: Props) {
             </Text>
           </>
         )}
+        </ScrollView>
       </GameCard>
 
       {saveError && (
@@ -598,6 +608,20 @@ const createStyles = (theme: Theme) => {
     },
     cardLabel: {
       marginBottom: spacing.md,
+    },
+    // Fills the space between the session label and the actions.
+    cardFills: {
+      flex: 1,
+    },
+    // The scrolling half of the card. flexGrow keeps a short question centred
+    // in the space rather than pinned to the top of it, which is how the card
+    // reads when there is one line on it.
+    cardBody: {
+      flex: 1,
+    },
+    cardBodyContent: {
+      flexGrow: 1,
+      justifyContent: 'center',
     },
     card: {
       marginBottom: spacing.xl,
