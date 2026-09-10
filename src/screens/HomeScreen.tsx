@@ -15,6 +15,7 @@ import { ScreenTitle } from '../components/ScreenTitle';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { GlowBackground } from '../components/GlowBackground';
 import { Card } from '../components/Card';
+import { GoldButton } from '../components/GoldButton';
 import { SectionLabel } from '../components/SectionLabel';
 import { Badge } from '../components/Badge';
 import { ErrorState } from '../components/ErrorState';
@@ -91,6 +92,24 @@ export function HomeScreen({ navigation }: Props) {
     <ScreenContainer testID="home-screen">
       <GlowBackground size={320} intensity={0.3} style={styles.glow} />
 
+      {/* Playing is what this screen is for, so it is the one thing on it that
+          looks like an action rather than a surface. A solid button next to the
+          daily card's gold TINT reads as two different kinds of object, which is
+          the point — one is a door, the other is a thing to look at.
+
+          S3c: the couple's session IS the local game. The server-side session
+          (CategoryPicker -> QuestionScreen) is no longer reachable from here —
+          one game, one way in, so a couple is never asked which of two things
+          called "sesja pytań" they meant. Those screens stay in the codebase,
+          dormant, for the solo mode of etap II; BootstrapScreen still resumes a
+          server session that is already open. */}
+      <GoldButton
+        testID="home-local-game"
+        title={pl.home.localGameTitle}
+        onPress={() => navigation.navigate('LocalGameSetup')}
+      />
+      <Text style={styles.playHint}>{pl.home.localGameHint}</Text>
+
       {/*
         The daily card is the one tile on this hub with something to fetch, and
         it is the first thing anyone sees after signing in - so it says which of
@@ -159,64 +178,63 @@ export function HomeScreen({ navigation }: Props) {
         </Card>
       )}
 
-      {/* S3c: the couple's session IS the local game. The server-side session
-          (CategoryPicker -> QuestionScreen) is no longer reachable from here —
-          one game, one way in, so a couple is never asked which of two things
-          called "sesja pytań" they meant. Those screens stay in the codebase,
-          dormant, for the solo mode of etap II; BootstrapScreen still resumes a
-          server session that is already open. */}
-      <Card
-        testID="home-local-game"
-        onPress={() => navigation.navigate('LocalGameSetup')}
-        style={styles.tile}>
-        <Text style={styles.tileTitle}>{pl.home.localGameTitle}</Text>
-        <Text style={styles.tileHint}>{pl.home.localGameHint}</Text>
-      </Card>
+      {/* Everything a couple can look at, as small tiles in two columns.
 
-      {/* Directly under the local game on purpose: the two modes are the same
-          idea seen twice, one playable today and one announced. Keeping it on
-          Home (rather than waiting for etap II) is the whole point — testers
-          should see the path exists and is coming, not wonder whether playing
-          apart was ever planned. */}
-      <Card
-        testID="home-remote-game"
-        onPress={() =>
-          navigation.navigate('ComingSoon', {
-            title: pl.comingSoon.remoteGameTitle,
-            body: pl.comingSoon.remoteGameBody,
-          })
-        }
-        style={styles.tile}>
-        <View style={styles.tileHeader}>
-          <Text style={styles.tileTitle}>{pl.home.remoteGameTitle}</Text>
-          <Badge testID="home-remote-game-badge">{pl.comingSoon.badge}</Badge>
-        </View>
-        <Text style={styles.tileHint}>{pl.home.remoteGameHint}</Text>
-      </Card>
+          The order is the web's reading order — the one big action first, the
+          rest smaller underneath — but the FORM is ours and this is the part
+          worth being honest about: the web hub has no such grid. It is a landing
+          page for people who are not signed in, and the two-column grid of large
+          buttons lives on its deck-selection screen. So this is an
+          interpretation of the hierarchy, not a port of a layout.
 
-      <Card
-        testID="home-deck"
-        onPress={() => navigation.navigate('Deck')}
-        style={styles.tile}>
-        <Text style={styles.tileTitle}>{pl.home.deckTitle}</Text>
-        <Text style={styles.tileHint}>{pl.home.deckHint}</Text>
-      </Card>
+          They stay tiles rather than becoming buttons because ours carry state
+          that buttons cannot: the remote game shows whether it is announced or
+          available, and every one of them has a hint that says what it is for. */}
+      <View style={styles.grid}>
+        <Card
+          testID="home-memories"
+          onPress={() => navigation.navigate('Memories')}
+          style={styles.gridTile}>
+          <Text style={styles.tileTitle}>{pl.home.memoriesTitle}</Text>
+          <Text style={styles.tileHint}>{pl.home.memoriesHint}</Text>
+        </Card>
 
-      <Card
-        testID="home-progress"
-        onPress={() => navigation.navigate('ProgressMap')}
-        style={styles.tile}>
-        <Text style={styles.tileTitle}>{pl.home.progressTitle}</Text>
-        <Text style={styles.tileHint}>{pl.home.progressHint}</Text>
-      </Card>
+        <Card
+          testID="home-deck"
+          onPress={() => navigation.navigate('Deck')}
+          style={styles.gridTile}>
+          <Text style={styles.tileTitle}>{pl.home.deckTitle}</Text>
+          <Text style={styles.tileHint}>{pl.home.deckHint}</Text>
+        </Card>
 
-      <Card
-        testID="home-memories"
-        onPress={() => navigation.navigate('Memories')}
-        style={styles.tile}>
-        <Text style={styles.tileTitle}>{pl.home.memoriesTitle}</Text>
-        <Text style={styles.tileHint}>{pl.home.memoriesHint}</Text>
-      </Card>
+        <Card
+          testID="home-progress"
+          onPress={() => navigation.navigate('ProgressMap')}
+          style={styles.gridTile}>
+          <Text style={styles.tileTitle}>{pl.home.progressTitle}</Text>
+          <Text style={styles.tileHint}>{pl.home.progressHint}</Text>
+        </Card>
+
+        {/* Last, because it is the one thing here that cannot be opened yet.
+            Keeping it on Home at all is the point — testers should see the path
+            exists and is coming, not wonder whether playing apart was planned. */}
+        <Card
+          testID="home-remote-game"
+          onPress={() =>
+            navigation.navigate('ComingSoon', {
+              title: pl.comingSoon.remoteGameTitle,
+              body: pl.comingSoon.remoteGameBody,
+            })
+          }
+          style={styles.gridTile}>
+          <View style={styles.tileHeader}>
+            <Text style={styles.tileTitle}>{pl.home.remoteGameTitle}</Text>
+            <Badge testID="home-remote-game-badge">{pl.comingSoon.badge}</Badge>
+          </View>
+          <Text style={styles.tileHint}>{pl.home.remoteGameHint}</Text>
+        </Card>
+      </View>
+
     </ScreenContainer>
   );
 }
@@ -233,6 +251,27 @@ const createStyles = (theme: Theme) => {
       color: colors.gold.primary,
     },
     tile: {
+      marginBottom: spacing.lg,
+    },
+    // The line under the primary action, explaining what it opens. Small and
+    // dim: the button already said the important half.
+    playHint: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.bodySm,
+      color: colors.text.secondary,
+      textAlign: 'center',
+      marginTop: spacing.sm,
+      marginBottom: spacing.xl,
+    },
+    grid: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'space-between',
+    },
+    // Just under half, so two sit side by side with a gap between them without
+    // depending on a `gap` value RN has only supported recently.
+    gridTile: {
+      width: '48%',
       marginBottom: spacing.lg,
     },
     // Keeps the tile roughly the height it will be once the card lands, so the

@@ -248,4 +248,44 @@ describe('HomeScreen', () => {
     expect(screen.getByTestId('home-local-game')).toBeOnTheScreen();
     expect(screen.queryByTestId('home-ritual')).toBeNull();
   });
+
+  // 3D. The hierarchy is the whole change, so it is the thing to pin: one
+  // action first, everything else smaller underneath.
+  //
+  // Worth recording that this ORDER is the web's and the FORM is ours — the web
+  // hub has no such grid, it is a landing page for signed-out visitors, and its
+  // two-column grid lives on the deck-selection screen instead.
+  describe('the hierarchy', () => {
+    const order = (a: string, b: string) => {
+      const tree = JSON.stringify(screen.toJSON());
+      return tree.indexOf(a) < tree.indexOf(b);
+    };
+
+    test('playing comes before anything there is to look at', async () => {
+      renderWithQueryClient(<HomeScreen {...makeProps()} />);
+      await screen.findByTestId('home-local-game');
+
+      expect(order('home-local-game', 'home-daily-card')).toBe(true);
+      expect(order('home-local-game', 'home-memories')).toBe(true);
+    });
+
+    test('the four secondary tiles are all still reachable', async () => {
+      renderWithQueryClient(<HomeScreen {...makeProps()} />);
+
+      await screen.findByTestId('home-memories');
+      expect(screen.getByTestId('home-deck')).toBeOnTheScreen();
+      expect(screen.getByTestId('home-progress')).toBeOnTheScreen();
+      expect(screen.getByTestId('home-remote-game')).toBeOnTheScreen();
+    });
+
+    // They stay tiles rather than becoming buttons because they carry state a
+    // button cannot: the announced mode says so on itself.
+    test('the announced mode keeps its badge in the grid', async () => {
+      renderWithQueryClient(<HomeScreen {...makeProps()} />);
+
+      expect(
+        await screen.findByTestId('home-remote-game-badge'),
+      ).toHaveTextContent(pl.comingSoon.badge);
+    });
+  });
 });
