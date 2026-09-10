@@ -34,8 +34,8 @@ import {
   saveLocalGameState,
 } from '../storage/localGameState';
 import { loadPartnerName, savePartnerName } from '../storage/partnerName';
-import { useShareApp, useRateApp } from '../queries/useShareApp';
 import { Card } from '../components/Card';
+import { EarnCreditsActions } from '../components/EarnCreditsActions';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { GoldButton } from '../components/GoldButton';
 import { OutlineButton } from '../components/OutlineButton';
@@ -90,10 +90,6 @@ export function LocalGameSetupScreen({ navigation }: Props) {
   const [loadingStored, setLoadingStored] = useState(true);
   // Sends whatever a previous session left owing — see the mount effect.
   const flush = useReportPlayedCards();
-  // The two ways to earn a credit, lifted out of ProfileScreen in phase I so the
-  // funnel below can offer them without a second copy of either.
-  const shareApp = useShareApp();
-  const rateApp = useRateApp();
 
   useEffect(() => {
     let active = true;
@@ -445,16 +441,8 @@ export function LocalGameSetupScreen({ navigation }: Props) {
                   <Text style={styles.exhaustionText}>
                     {pl.localGame.exhaustion.earnBody}
                   </Text>
-                  <OutlineButton
-                    testID="local-game-exhaustion-share"
-                    title={pl.profile.shareApp}
-                    onPress={shareApp}
-                    style={styles.earnAction}
-                  />
-                  <OutlineButton
-                    testID="local-game-exhaustion-rate"
-                    title={pl.profile.rateApp}
-                    onPress={rateApp}
+                  <EarnCreditsActions
+                    testID="local-game-exhaustion"
                     style={styles.earnAction}
                   />
                 </View>

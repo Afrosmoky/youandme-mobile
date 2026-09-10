@@ -91,8 +91,6 @@ export const pl = {
     locale: 'Język',
     save: 'Zapisz zmiany',
     logout: 'Wyloguj',
-    shareApp: 'Udostępnij aplikację',
-    rateApp: 'Oceń aplikację',
     watchAd: 'Obejrzyj reklamę po bonus',
     partnerName: 'Imię partnera',
     partnerNameHint: 'Imię osoby z którą grasz (opcjonalne)',
@@ -468,6 +466,15 @@ export const pl = {
     // Stopka podglądu karty — to samo, co niesie web.
     previewInvite: 'Odpowiedzcie na to pytanie razem w aplikacji',
     previewFooter: 'jaity.app',
+  },
+
+  // Dwie drogi do kredytu, w jednym miejscu — bo od 3E są jednym komponentem
+  // używanym w profilu, w lejku wyczerpania talii i w nagrodach. Etykiety
+  // mieszkały wcześniej w `profile`, co przestało być prawdą, gdy przestały być
+  // wyłącznie profilowe.
+  earn: {
+    shareApp: 'Udostępnij aplikację',
+    rateApp: 'Oceń aplikację',
   },
 
   // P5 share. Copy is a neutral placeholder pending Wiktoria's sign-off (#36) —

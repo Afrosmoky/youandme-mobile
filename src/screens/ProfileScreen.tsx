@@ -23,8 +23,7 @@ import { Banner } from '../components/Banner';
 import { ErrorState } from '../components/ErrorState';
 import { SectionLabel } from '../components/SectionLabel';
 import { GoldButton } from '../components/GoldButton';
-import { OutlineButton } from '../components/OutlineButton';
-import { useShareApp, useRateApp } from '../queries/useShareApp';
+import { EarnCreditsActions } from '../components/EarnCreditsActions';
 import { savePartnerName } from '../storage/partnerName';
 import { parseApiError, FieldErrors } from '../api/errors';
 import { validateNickname } from '../domain/validation';
@@ -66,10 +65,6 @@ export function ProfileScreen({ navigation }: Props) {
   } = useVerificationStatus();
   const { mutate: save, isPending: saving } = useUpdateMe();
   const { mutate: resend, isPending: resending } = useResendVerification();
-  // Same two rewards the exhaustion funnel now offers (3D), so they live in one
-  // place rather than as this screen's private functions.
-  const onShare = useShareApp();
-  const onRate = useRateApp();
   const { mutate: changePasswordMutate, isPending: changingPassword } =
     useChangePassword();
 
@@ -370,19 +365,7 @@ export function ProfileScreen({ navigation }: Props) {
         />
       </View>
 
-      <OutlineButton
-        testID="profile-share"
-        title={pl.profile.shareApp}
-        onPress={onShare}
-        style={styles.shareButton}
-      />
-
-      <OutlineButton
-        testID="profile-rate"
-        title={pl.profile.rateApp}
-        onPress={onRate}
-        style={styles.rateButton}
-      />
+      <EarnCreditsActions testID="profile" style={styles.shareButton} />
 
       <TouchableOpacity
         testID="profile-logout"
@@ -461,9 +444,6 @@ const createStyles = (theme: Theme) => {
     },
     shareButton: {
       marginTop: spacing.xl,
-    },
-    rateButton: {
-      marginTop: spacing.md,
     },
     logout: {
       marginTop: spacing.lg,
