@@ -337,4 +337,45 @@ describe('RewardsScreen', () => {
       );
     });
   });
+
+  // 3E. D5 and D3 from the beta list: a permanent place for the two ways to earn
+  // a credit, rather than only meeting them at the moment the deck runs dry.
+  describe('earning more cards', () => {
+    test('offers both ways, always', async () => {
+      renderWithQueryClient(<RewardsScreen {...makeProps()} />);
+
+      expect(await screen.findByTestId('rewards-earn-share')).toBeOnTheScreen();
+      expect(screen.getByTestId('rewards-earn-rate')).toBeOnTheScreen();
+    });
+
+    // The point of "permanent": the funnel shows the same two only once a couple
+    // has run out, and nobody should have to run out to learn they exist.
+    test('is there with credits in the bank and nothing exhausted', async () => {
+      jest.mocked(getRewards).mockResolvedValue({
+        credits: 12,
+        shareRewardClaimed: false,
+        ratingRewardClaimed: false,
+        ads: {remainingToday: 5, dailyCap: 5},
+      });
+      renderWithQueryClient(<RewardsScreen {...makeProps()} />);
+
+      expect(await screen.findByTestId('rewards-credits')).toHaveTextContent(
+        '12',
+      );
+      expect(screen.getByTestId('rewards-earn')).toBeOnTheScreen();
+    });
+
+    // Named without a number on purpose: how much a referral or a review is
+    // worth is a server-side rule the API does not expose, so a figure here
+    // would start lying the day the rule changes. The registration screen is the
+    // one exception, where "+5" is pinned to REFERRAL_BONUS in both repos.
+    test('promises no particular number of cards', async () => {
+      renderWithQueryClient(<RewardsScreen {...makeProps()} />);
+
+      await screen.findByTestId('rewards-earn');
+      expect(screen.getByText(pl.earn.sectionBody)).toBeOnTheScreen();
+      expect(pl.earn.sectionBody).not.toMatch(/\d/);
+      expect(pl.earn.sectionTitle).not.toMatch(/\d/);
+    });
+  });
 });

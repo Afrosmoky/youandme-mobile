@@ -475,6 +475,14 @@ export const pl = {
   earn: {
     shareApp: 'Udostępnij aplikację',
     rateApp: 'Oceń aplikację',
+    // Nagłówek stałej sekcji w nagrodach (3E). Bez liczby — ile daje polecenie
+    // i ocena, rozstrzyga serwer i nie wystawia tego w odpowiedzi, więc ekran
+    // nazywający cyfrę zacząłby kłamać w dniu zmiany reguły. Wyjątkiem jest
+    // zachęta przy rejestracji, gdzie „+5" jest przypięte do REFERRAL_BONUS
+    // komentarzem w obu repozytoriach.
+    sectionTitle: 'Zdobądźcie więcej kart',
+    sectionBody:
+      'Polecenie aplikacji i ocena dokładają kredyty na odblokowanie pytań.',
   },
 
   // P5 share. Copy is a neutral placeholder pending Wiktoria's sign-off (#36) —

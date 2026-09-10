@@ -13,6 +13,7 @@ import { ErrorState } from '../components/ErrorState';
 import { GoldButton } from '../components/GoldButton';
 import { OutlineButton } from '../components/OutlineButton';
 import { ScreenContainer } from '../components/ScreenContainer';
+import { EarnCreditsActions } from '../components/EarnCreditsActions';
 import { SectionLabel } from '../components/SectionLabel';
 import { TextField } from '../components/TextField';
 import { Theme, useTheme } from '../theme';
@@ -151,6 +152,19 @@ export function RewardsScreen({ navigation }: Props) {
         <Text style={styles.hint}>{pl.rewards.creditsHint}</Text>
       </Card>
 
+      {/* Between the balance and everything else, because the balance says how
+          many you have and this says how to have more — the same thought, twice.
+          Permanently visible, unlike the funnel's copy of it: a couple should not
+          have to run out of cards before being told there is a way to earn one.
+
+          The same component the funnel and the profile use, so the three cannot
+          drift into three different answers to one question. */}
+      <View testID="rewards-earn" style={styles.section}>
+        <Text style={styles.sectionTitle}>{pl.earn.sectionTitle}</Text>
+        <Text style={styles.hint}>{pl.earn.sectionBody}</Text>
+        <EarnCreditsActions testID="rewards-earn" style={styles.earnActions} />
+      </View>
+
       {rewards && (
         <Text testID="rewards-ads-today" style={styles.adsToday}>
           {pl.rewards.adsToday(rewards.ads.remainingToday, rewards.ads.dailyCap)}
@@ -262,6 +276,9 @@ const createStyles = (theme: Theme) => {
       fontFamily: typography.family.body,
       fontSize: typography.size.bodySm,
       color: colors.text.muted,
+    },
+    earnActions: {
+      marginTop: spacing.lg,
     },
     section: {
       marginTop: spacing.xxl,
