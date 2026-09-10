@@ -337,6 +337,11 @@ export const pl = {
       // „Zostało 12 zamkniętych kart" — pomijane, gdy backend nie podał liczby.
       lockedRemaining: (count: number) => `Zostało ${count} zamkniętych kart`,
       lockedCta: 'Odblokujcie więcej →',
+      // 3D: dwie drogi, które realnie dają kredyty, pokazane w chwili, w której
+      // para ich potrzebuje. Neutralnie, bez obietnicy liczby kart — ile daje
+      // polecenie i ocena, rozstrzyga serwer, nie ten ekran.
+      earnTitle: 'Albo zdobądźcie kredyty',
+      earnBody: 'Polecenie aplikacji i ocena dokładają kredyty na odblokowanie kart.',
       completeTitle: 'Ukończyliście całą talię!',
       completeBody: 'Zagraliście każdą kartę, jaką mamy. Gratulacje.',
     },

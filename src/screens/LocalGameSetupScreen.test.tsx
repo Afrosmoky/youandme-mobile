@@ -1,6 +1,7 @@
 import React from 'react';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Alert, type AlertButton } from 'react-native';
+import { Alert, Share, type AlertButton } from 'react-native';
+import * as StoreReview from 'react-native-store-review';
 import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { renderWithQueryClient } from '../test/renderWithQueryClient';
 import { LocalGameSetupScreen } from './LocalGameSetupScreen';
@@ -292,6 +293,56 @@ describe('LocalGameSetupScreen — an exhausted deck', () => {
   // The one CTA of the three, and it points at the screen that already owns
   // unlocking — cards with "unlock (1 credit)", credits, and the rewards link
   // in its header. Nothing about ads or premium is restated on this panel.
+  // 3D. The funnel used to end at the deck, which answers what can be unlocked
+  // but not how to afford it. These two have existed since P5 and P6 and had no
+  // way in from the moment a couple actually wants them.
+  test('the paywall offers the two ways to earn a credit', async () => {
+    exhausted('locked_available', 12);
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('local-game-start'));
+
+    expect(
+      await screen.findByTestId('local-game-exhaustion-share'),
+    ).toBeOnTheScreen();
+    expect(screen.getByTestId('local-game-exhaustion-rate')).toBeOnTheScreen();
+  });
+
+  // Nothing left to unlock means nothing to earn credits FOR — the same reason
+  // this branch has no unlock CTA either. Offering them here would be selling a
+  // couple something that does not exist.
+  test('a finished deck offers no way to earn, because there is nothing to buy', async () => {
+    exhausted('complete');
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('local-game-start'));
+
+    await screen.findByTestId('local-game-exhaustion-body');
+    expect(screen.queryByTestId('local-game-exhaustion-earn')).toBeNull();
+    expect(screen.queryByTestId('local-game-exhaustion-share')).toBeNull();
+  });
+
+  // Existing paths, reached from a new place — so what these prove is the
+  // wiring, not the behaviour. Both handlers were lifted out of ProfileScreen
+  // unchanged in phase I precisely so this commit could be only a wiring.
+  test('the earn buttons reach the real share sheet and review prompt', async () => {
+    const share = jest
+      .spyOn(Share, 'share')
+      .mockResolvedValue({ action: Share.dismissedAction } as never);
+    exhausted('locked_available', 12);
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('local-game-start'));
+    fireEvent.press(await screen.findByTestId('local-game-exhaustion-share'));
+    await waitFor(() => expect(share).toHaveBeenCalled());
+
+    fireEvent.press(screen.getByTestId('local-game-exhaustion-rate'));
+    await waitFor(() =>
+      expect(jest.mocked(StoreReview.requestReview)).toHaveBeenCalled(),
+    );
+    share.mockRestore();
+  });
+
   test('the paywall CTA hands over to the deck screen', async () => {
     exhausted('locked_available', 3);
     renderScreen();

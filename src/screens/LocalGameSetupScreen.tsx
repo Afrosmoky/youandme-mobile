@@ -34,6 +34,7 @@ import {
   saveLocalGameState,
 } from '../storage/localGameState';
 import { loadPartnerName, savePartnerName } from '../storage/partnerName';
+import { useShareApp, useRateApp } from '../queries/useShareApp';
 import { Card } from '../components/Card';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { GoldButton } from '../components/GoldButton';
@@ -89,6 +90,10 @@ export function LocalGameSetupScreen({ navigation }: Props) {
   const [loadingStored, setLoadingStored] = useState(true);
   // Sends whatever a previous session left owing — see the mount effect.
   const flush = useReportPlayedCards();
+  // The two ways to earn a credit, lifted out of ProfileScreen in phase I so the
+  // funnel below can offer them without a second copy of either.
+  const shareApp = useShareApp();
+  const rateApp = useRateApp();
 
   useEffect(() => {
     let active = true;
@@ -355,6 +360,7 @@ export function LocalGameSetupScreen({ navigation }: Props) {
       : {
           other_categories: {
             gold: false,
+            earn: false,
             title: pl.localGame.exhaustion.otherCategoriesTitle,
             body: pl.localGame.exhaustion.otherCategoriesBody,
             remaining: null,
@@ -362,6 +368,9 @@ export function LocalGameSetupScreen({ navigation }: Props) {
           },
           locked_available: {
             gold: false,
+            // The one reason with something to earn: they have run out of FREE
+            // cards while closed ones remain, so a credit is worth something.
+            earn: true,
             title: pl.localGame.exhaustion.lockedTitle,
             body: pl.localGame.exhaustion.lockedBody,
             // Zero locked cards left with this reason would contradict itself,
@@ -376,6 +385,10 @@ export function LocalGameSetupScreen({ navigation }: Props) {
           },
           complete: {
             gold: true,
+            // Nothing left to unlock, so nothing to earn credits FOR. Offering
+            // the two ways here would be selling a couple something that does
+            // not exist — the same reason this branch has no CTA either.
+            earn: false,
             title: pl.localGame.exhaustion.completeTitle,
             body: pl.localGame.exhaustion.completeBody,
             remaining: null,
@@ -415,6 +428,36 @@ export function LocalGameSetupScreen({ navigation }: Props) {
                   onPress={() => navigation.navigate('Deck')}
                   style={styles.exhaustionCta}
                 />
+              )}
+
+              {/* The funnel used to end at the deck screen, which answers "what
+                  can I unlock" but not "how do I afford it". These two do, they
+                  have existed since P5 and P6, and until now there was no way to
+                  reach them from the moment a couple actually wants them.
+
+                  Secondary to the unlock on purpose: the deck is the direct
+                  answer, these are the ways to pay for it. */}
+              {exhaustionPanel.earn && (
+                <View testID="local-game-exhaustion-earn" style={styles.earn}>
+                  <SectionLabel>
+                    {pl.localGame.exhaustion.earnTitle}
+                  </SectionLabel>
+                  <Text style={styles.exhaustionText}>
+                    {pl.localGame.exhaustion.earnBody}
+                  </Text>
+                  <OutlineButton
+                    testID="local-game-exhaustion-share"
+                    title={pl.profile.shareApp}
+                    onPress={shareApp}
+                    style={styles.earnAction}
+                  />
+                  <OutlineButton
+                    testID="local-game-exhaustion-rate"
+                    title={pl.profile.rateApp}
+                    onPress={rateApp}
+                    style={styles.earnAction}
+                  />
+                </View>
               )}
             </Card>
           )}
@@ -517,6 +560,12 @@ const createStyles = (theme: Theme) => {
     },
     exhaustionCta: {
       marginTop: spacing.lg,
+    },
+    earn: {
+      marginTop: spacing.xxl,
+    },
+    earnAction: {
+      marginTop: spacing.md,
     },
     resumeText: {
       fontFamily: typography.family.body,
