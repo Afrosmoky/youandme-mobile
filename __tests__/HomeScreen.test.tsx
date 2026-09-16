@@ -1,7 +1,8 @@
 import React from 'react';
 import axios from 'axios';
+import {StyleSheet} from 'react-native';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
-import {fireEvent, screen, waitFor} from '@testing-library/react-native';
+import {fireEvent, screen, waitFor, within} from '@testing-library/react-native';
 import {renderWithQueryClient} from '../src/test/renderWithQueryClient';
 import {HomeScreen} from '../src/screens/HomeScreen';
 import {getDailyCard} from '../src/api/dailyCard';
@@ -196,6 +197,54 @@ describe('HomeScreen', () => {
     expect(screen.getByText(pl.home.remoteGameTitle)).toBeOnTheScreen();
     expect(screen.getByTestId('home-remote-game-badge')).toHaveTextContent(
       pl.comingSoon.badge,
+    );
+  });
+
+  // The regression guard for the pill that rendered as "WKRÓT".
+  //
+  // It was a row: title and badge side by side in a tile about 136dp wide, of
+  // which "WKRÓTCE" plus its padding wants 77dp and "Gra na odległość" 125dp.
+  // Nothing in that row shrank, so the pill was pushed out of the tile and the
+  // scroll view clipped it at the window edge.
+  //
+  // What is asserted is the shape of the fix, not the fix: whether the word
+  // renders whole is a question for a device, checked by hand. What this does
+  // catch is the pill being put back on a line with something else, which is
+  // the only way the bug returns — and it cannot be fixed by making the row
+  // cleverer, because the pill (77dp) and the title's longest word (70dp) need
+  // 156dp and the widest phone tile is 154dp.
+  test('the coming-soon pill does not share a line with anything', async () => {
+    renderWithQueryClient(<HomeScreen {...makeProps()} />);
+
+    const badge = await screen.findByTestId('home-remote-game-badge');
+    const tile = screen.getByTestId('home-remote-game');
+
+    const rows = [];
+    for (let node = badge.parent; node && node !== tile; node = node.parent) {
+      const {flexDirection} = StyleSheet.flatten(node.props.style) ?? {};
+      if (flexDirection === 'row' || flexDirection === 'row-reverse') {
+        rows.push(node.type);
+      }
+    }
+
+    expect(rows).toEqual([]);
+  });
+
+  // The other half of the same question: a longer title must not end up beside
+  // the pill either. Stacked, it cannot — it wraps under it, with nothing to
+  // collide with.
+  test('the pill stays above the title, whatever the title says', async () => {
+    renderWithQueryClient(<HomeScreen {...makeProps()} />);
+
+    const tile = await screen.findByTestId('home-remote-game');
+    // Queries come back in tree order, which on a column is reading order.
+    const lines = within(tile)
+      .getAllByText(/\S/)
+      .map(node => node.props.children);
+
+    expect(lines).toContain(pl.comingSoon.badge);
+    expect(lines.indexOf(pl.comingSoon.badge)).toBeLessThan(
+      lines.indexOf(pl.home.remoteGameTitle),
     );
   });
 

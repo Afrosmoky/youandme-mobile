@@ -227,10 +227,14 @@ export function HomeScreen({ navigation }: Props) {
             })
           }
           style={styles.gridTile}>
-          <View style={styles.tileHeader}>
-            <Text style={styles.tileTitle}>{pl.home.remoteGameTitle}</Text>
-            <Badge testID="home-remote-game-badge">{pl.comingSoon.badge}</Badge>
-          </View>
+          {/* Above the title, not beside it. A half-width tile has ~136dp of
+              room inside it; the pill alone wants 77dp and the title's longest
+              word ("odległość") another 70dp, so the two have never fitted on
+              one line on any phone — see the badge test in HomeScreen.test. */}
+          <Badge testID="home-remote-game-badge" style={styles.tileBadge}>
+            {pl.comingSoon.badge}
+          </Badge>
+          <Text style={styles.tileTitle}>{pl.home.remoteGameTitle}</Text>
           <Text style={styles.tileHint}>{pl.home.remoteGameHint}</Text>
         </Card>
       </View>
@@ -305,11 +309,26 @@ const createStyles = (theme: Theme) => {
       fontSize: typography.size.h3,
       color: colors.text.primary,
     },
-    // Title on the left, "Wkrótce" pill on the right, baselines aligned.
-    tileHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
+    // The "Wkrótce" pill, sitting on its own line above the tile's title.
+    //
+    // It used to share a row with the title, and that row was the bug: the pill
+    // was cut down to "WKRÓT". Nothing in that row shrank, so the pill was
+    // simply pushed past the tile and clipped by the scroll view at the window
+    // edge — which is why the cut landed to the RIGHT of the card's border and
+    // why no ellipsis ever appeared.
+    //
+    // Measured rather than guessed, from the fonts' own advance widths:
+    // "WKRÓTCE" is 61.4dp (Alegreya 11 + 1.5 letter spacing) plus the pill's
+    // 16dp of padding = 77.4dp, and "Gra na odległość" is 125.2dp (Belleza 19)
+    // inside a 135.9dp tile on a 402dp screen. The overflow is 66.7dp, and the
+    // clip falls 43.7dp into the pill's text — right after the T.
+    //
+    // Stacking is not a workaround for one long title, it is the only thing
+    // that fits: the pill's 77.4dp plus the longest single word of the title,
+    // 70.4dp, need 155.8dp on one line and the widest phone tile is 154.2dp.
+    // Shrinking the title would only move the clipping onto the title.
+    tileBadge: {
+      marginBottom: spacing.xs,
     },
     tileHint: {
       fontFamily: typography.family.body,
