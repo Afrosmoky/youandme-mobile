@@ -10,8 +10,9 @@ export type Theme = {
   typography: typeof typography;
   spacing: typeof spacing;
   radius: typeof radius;
-  // Named text-shadow sets (3C). Screens spread these; they never hold the
-  // numbers themselves, so the whole glow layer moves from one place.
+  // Named glow sets (3C): text shadows, plus the one view shadow under the
+  // primary CTA. Screens spread these; they never hold the numbers themselves,
+  // so the whole glow layer moves from one place.
   glow: typeof glow;
 };
 

@@ -1,5 +1,6 @@
 import {readdirSync, readFileSync, statSync} from 'fs';
 import {join} from 'path';
+import {glow} from './tokens';
 
 /**
  * The hard boundary of 3C: glow goes on headings, the wordmark and the heart —
@@ -79,7 +80,23 @@ function sourceFiles(dir: string): string[] {
   });
 }
 
-/** Every style key that spreads or assigns a glow token, with its file. */
+/**
+ * The names in `glow` that are TEXT shadows, taken from the tokens rather than
+ * hand-listed. The group also holds one view shadow (`glow.button`, the halo
+ * under the primary CTA), and a halo around a box is not the thing this file
+ * guards: the boundary is about glow landing on words a couple reads. A scan
+ * for `glow.` alone cannot tell the two apart, so it would have failed on the
+ * button and the only way out would have been to put `button` on the allow-list
+ * below — which would be a lie twice over, since a button is not a heading and
+ * it would then wave through a real text glow on any style called `button`.
+ */
+const TEXT_GLOWS = Object.keys(glow).filter(
+  name => 'textShadowColor' in glow[name as keyof typeof glow],
+);
+
+const GLOW_USE = new RegExp(`(\\.\\.\\.|: )(theme\\.)?glow\\.(${TEXT_GLOWS.join('|')})\\b`);
+
+/** Every style key that spreads or assigns a text-glow token, with its file. */
 function glowUses(): {file: string; key: string}[] {
   const uses: {file: string; key: string}[] = [];
   for (const file of sourceFiles(join(__dirname, '..'))) {
@@ -97,7 +114,7 @@ function glowUses(): {file: string; key: string}[] {
       if (opening) {
         key = opening[1];
       }
-      if (/(\.\.\.|: )(theme\.)?glow\./.test(line)) {
+      if (GLOW_USE.test(line)) {
         uses.push({file: file.replace(/.*\/src\//, 'src/'), key});
       }
     }
@@ -129,6 +146,16 @@ describe('the glow boundary', () => {
     expect(files).toContain('src/components/ScreenTitle.tsx');
     expect(files).toContain('src/components/Logo.tsx');
     expect(files).toContain('src/components/SectionLabel.tsx');
+  });
+
+  // The second half of the canary: the scan is only as wide as the list of text
+  // glows it was built from, so a new text token that somehow arrived without a
+  // `textShadowColor` would be invisible to every test above. Named the other
+  // way round too, because the view shadow must stay out of that list — the day
+  // it ends up in it, the button starts failing the boundary for no reason.
+  test('the boundary covers every text glow and only those', () => {
+    expect(TEXT_GLOWS).toEqual(['label', 'heading', 'logo', 'none']);
+    expect('boxShadow' in glow.button).toBe(true);
   });
 
   // The specific styles this slice must not touch, checked by name rather than

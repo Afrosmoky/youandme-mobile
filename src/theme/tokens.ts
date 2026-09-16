@@ -108,6 +108,39 @@ export const glow = {
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 28,
   },
+  // The one entry here that is NOT a text shadow: the halo under the primary
+  // CTA (GoldButton). It lives in this group because it is the same effect from
+  // the same source — gold light bleeding off a gold shape — and the app should
+  // have one place where the glow layer is turned up or down, not two.
+  //
+  // WHAT IT IS MADE OF. The geometry is the shimmer above, unchanged: two
+  // layers, no offset, the mean of the animation's two keyframes (14 and 35).
+  // The difference is that a view CAN have both layers — `boxShadow` takes an
+  // array, so nothing has to be collapsed into one radius the way readings
+  // A/B/C had to be for text. And these radii need no reinterpretation either:
+  // `blurRadius` is the CSS number (iOS halves it into `shadowRadius`, Android
+  // into a blur sigma), unlike `textShadowRadius`, which is not the CSS blur.
+  //
+  // The alphas are NOT the shimmer's. 0.9 around a glyph is a lit stroke; the
+  // same 0.9 around a 170x52 filled rectangle is a second button. So the whole
+  // pair is scaled by 0.4, which lands the outer layer on 0.2 — the alpha the
+  // web itself uses the one time it puts gold around a box rather than around
+  // letters (`shadow-lg shadow-primary/20` on the premium card, page.tsx:409).
+  // If this reads too faint or too loud on a device, these two alphas are the
+  // number to move, and this is the only place they exist.
+  //
+  // ANDROID, deliberately: `boxShadow` and not `elevation`. Elevation draws
+  // Android's own shadow, which was grey regardless of `shadowColor` until
+  // API 28 and is a grey plate under a gold button — worse than no glow.
+  // `boxShadow` under Fabric paints a real blurred gold shadow of its own
+  // (OutsetBoxShadowDrawable) from API 28, and simply draws nothing below it.
+  // Nothing is the right fallback here; grey is not.
+  button: {
+    boxShadow: [
+      { offsetX: 0, offsetY: 0, blurRadius: 14, color: `rgba(${GOLD_RGB}, 0.36)` },
+      { offsetX: 0, offsetY: 0, blurRadius: 35, color: `rgba(${GOLD_RGB}, 0.2)` },
+    ],
+  },
   // The prepared escape hatch. Spread this instead of `label` at the three
   // SectionLabel call sites inside FlatList rows (MemoriesScreen, DeckScreen,
   // LikedQuestionList) if text shadows turn out to cost too much while scrolling

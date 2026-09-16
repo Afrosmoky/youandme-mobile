@@ -47,13 +47,18 @@ export function GoldButton({
 }
 
 const createStyles = (theme: Theme) => {
-  const { colors, typography, radius, spacing } = theme;
+  const { colors, typography, radius, spacing, glow } = theme;
   return StyleSheet.create({
     button: {
       backgroundColor: colors.gold.primary,
       borderRadius: radius.md,
       paddingVertical: spacing.lg,
       alignItems: 'center',
+      // The named halo, not numbers: see `glow.button` in tokens for what it is
+      // made of and why it is a box shadow rather than an elevation. Only the
+      // filled button gets it — OutlineButton is a line, and a glow around a
+      // line is the line again, blurred.
+      ...glow.button,
     },
     blocked: {
       opacity: 0.6,
