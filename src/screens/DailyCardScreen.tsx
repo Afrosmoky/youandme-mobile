@@ -163,8 +163,14 @@ export function DailyCardScreen({ navigation }: Props) {
       {/* The same frame, label and corner hearts as a card of the local game
           (S_polish): the daily question IS a card, and the two screens were
           drawing it two different ways. */}
-      <SectionLabel style={styles.cardLabel}>
-        {pl.dailyCard.cardLabel}
+      {/* The label is also where the streak lives, for the same reason the
+          game's label carries the card counter and whose turn it is: it is the
+          line that talks about the session rather than about this one question.
+          Now that the card fills the screen there is no spare room under it for
+          a block of its own, and the backend has been sending streakCurrent
+          since P4 with nobody showing it. */}
+      <SectionLabel testID="daily-card-label" style={styles.cardLabel}>
+        {pl.dailyCard.cardLabel(daily?.streakCurrent ?? 0)}
       </SectionLabel>
 
       {/* Takes whatever height is left over, so the action below it sits at the

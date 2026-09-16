@@ -1,5 +1,17 @@
 // User-facing strings (Polish). Code stays English; only what the user sees
 // lives here. Flat keys are enough for P1.
+
+// "1 dzień" / "2 dni" / "365 dni". The one piece of Polish grammar the copy in
+// this file cannot dodge, kept in a helper because two screens now say it: the
+// hub tile and the daily card's label.
+//
+// Two forms, not the three Polish usually needs for counting. The noun here is
+// only ever the subject of a count phrase, and for "dzień" the nominative
+// plural and the genitive plural are the same word — so "1 dzień" against
+// "dni" for everything else covers it, including 22, 105 and 0.
+const streakDays = (days: number): string =>
+  `${days} ${days === 1 ? 'dzień' : 'dni'}`;
+
 export const pl = {
   appTitle: 'Ja i Ty',
 
@@ -241,8 +253,12 @@ export const pl = {
     dailyCardTitle: 'Karta dnia',
     dailyCardTodo: 'Odpowiedzcie dziś',
     dailyCardDone: 'Odpowiedziane',
-    // "3 dni serii"
-    streak: (days: number) => `${days} dni serii`,
+    // "3 dni serii", "1 dzień serii". Polski ma tu dwie formy, nie trzy:
+    // mianownik liczby pojedynczej ("dzień") i to samo słowo dla reszty
+    // ("dni"), bo mianownik mnogi i dopełniacz mnogi są identyczne. Więc jeden
+    // warunek wystarcza — helper obsługuje oba miejsca, gdzie seria ma swoją
+    // liczbę dni (hub i etykieta karty dnia).
+    streak: (days: number) => `${streakDays(days)} serii`,
     streakNone: 'Zacznijcie serię dziś',
     ritualLabel: 'Rytuał tygodnia',
     memoriesTitle: 'Historia',
@@ -518,8 +534,20 @@ export const pl = {
 
   dailyCard: {
     headerTitle: 'Karta dnia',
-    // Etykieta nad ramką karty (S_polish), złote wersaliki jak licznik w grze.
-    cardLabel: 'Pytanie dnia',
+    // Etykieta nad ramką karty (S_polish), złote wersaliki jak licznik w grze —
+    // i, od kiedy karta zajmuje cały ekran, jedyne miejsce, gdzie seria ma się
+    // zmieścić. Ta sama konstrukcja co localGame.cardHeader: jeden string z
+    // kropką rozdzielającą, żeby nie dokładać ekranowi trzeciego elementu.
+    //
+    // Przy zerowej serii zostaje sama etykieta. Hub już zaprasza do zaczęcia
+    // (home.streakNone), a powtarzanie tego nad kartą, którą para właśnie
+    // otworzyła, brzmiałoby jak marudzenie.
+    //
+    // Robocze, do potwierdzenia przez Wiktorię.
+    cardLabel: (streakCurrent: number) =>
+      streakCurrent > 0
+        ? `Pytanie dnia · ${streakDays(streakCurrent)} serii`
+        : 'Pytanie dnia',
     placeholder: 'Wpisz odpowiedź...',
     submitButton: 'Zapisz odpowiedź',
     answeredTitle: 'Odpowiedziane dziś',
