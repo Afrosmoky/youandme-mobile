@@ -23,6 +23,35 @@ type Props = {
   // natural height, so `flex: 1` inside one measures against nothing and the
   // card collapses to its content.
   scrollable?: boolean;
+  // Set for a scrolling screen whose main business is typing, and whose actions
+  // sit at the bottom where the keyboard would cover them.
+  //
+  // It maps to the ScrollView's `automaticallyAdjustKeyboardInsets`, which is
+  // iOS-only and off by default in RN. iOS does not resize the window for the
+  // keyboard the way Android's `adjustResize` does (see AndroidManifest), so
+  // without something the bottom of a full-height screen is simply behind the
+  // keyboard, unreachable, because a screen whose content exactly fills the
+  // viewport has no scroll range to drag.
+  //
+  // Deliberately this and NOT a KeyboardAvoidingView. KAV measures its own box
+  // with `onLayout`, which reports coordinates relative to the PARENT, and
+  // compares them against the keyboard's absolute frame; under a navigation
+  // header the two disagree by exactly the header's height, so a nested KAV
+  // lifts too little unless it is handed a `keyboardVerticalOffset` nobody can
+  // state without `useHeaderHeight` (a package this project does not depend on)
+  // or a hard-coded constant that is wrong on the next device. The three auth
+  // screens live with that error today; it is invisible there only because a
+  // short centred form does not need the missing part.
+  //
+  // This prop has none of that arithmetic: RN computes the inset natively from
+  // absolute coordinates (`convertPoint:toView:nil`), insets the content by the
+  // real overlap — which is what gives the screen something to scroll — and
+  // brings the focused field into view. On Android it is ignored, which is
+  // correct, because `adjustResize` has already done the job.
+  //
+  // Only the scrolling branch can honour it; a non-scrolling screen has no
+  // content inset to give.
+  avoidsKeyboard?: boolean;
   testID?: string;
 };
 
@@ -33,6 +62,7 @@ export function ScreenContainer({
   style,
   contentContainerStyle,
   scrollable = true,
+  avoidsKeyboard = false,
   testID,
 }: Props) {
   const theme = useTheme();
@@ -44,6 +74,7 @@ export function ScreenContainer({
           testID={testID}
           style={styles.scroll}
           contentContainerStyle={[styles.content, contentContainerStyle]}
+          automaticallyAdjustKeyboardInsets={avoidsKeyboard}
           keyboardShouldPersistTaps="handled">
           {children}
         </ScrollView>
