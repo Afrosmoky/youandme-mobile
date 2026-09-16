@@ -1,6 +1,7 @@
 import React, { useLayoutEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -150,7 +151,10 @@ export function DailyCardScreen({ navigation }: Props) {
   }
 
   return (
-    <ScreenContainer testID="daily-card-screen">
+    <ScreenContainer
+      testID="daily-card-screen"
+      contentContainerStyle={styles.fills}
+      avoidsKeyboard>
       {/* The same soft gold wash Home and the auth screens already carry, on the
           three screens where a couple actually plays. It is a background layer
           behind the card, not a glow on the text — the question itself stays
@@ -163,49 +167,63 @@ export function DailyCardScreen({ navigation }: Props) {
         {pl.dailyCard.cardLabel}
       </SectionLabel>
 
+      {/* Takes whatever height is left over, so the action below it sits at the
+          bottom of the screen instead of wherever the question happens to end,
+          and the screen stops being half card and half nothing. The same three
+          styles as the game's card (LocalGameScreen, 3D): the card fills, its
+          body scrolls inside it, and a short question stays centred in that
+          space rather than pinned to the top of it. */}
       <GameCard
         testID="daily-card-card"
-        style={styles.card}
+        style={[styles.card, styles.cardFills]}
         like={{
           liked: daily?.question.liked ?? false,
           onToggle: onToggleLike,
           disabled: !daily || like.isPending,
           testID: 'daily-card-like',
         }}>
-        <Text testID="daily-card-question" style={styles.question}>
-          {daily?.question.body}
-        </Text>
+        <ScrollView
+          style={styles.cardBody}
+          contentContainerStyle={styles.cardBodyContent}
+          keyboardShouldPersistTaps="handled">
+          <Text testID="daily-card-question" style={styles.question}>
+            {daily?.question.body}
+          </Text>
 
-        {/* Answered is a state OF the card, so it stays inside it rather than
-            replacing it — the couple can still read what they answered, and
-            still like it. */}
-        {answered ? (
-          <View>
-            <Text style={styles.answeredTitle}>
-              {pl.dailyCard.answeredTitle}
-            </Text>
-            <TouchableOpacity
-              testID="daily-card-answered-link"
-              onPress={() => navigation.navigate('Memories')}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <Text style={styles.answeredLink}>
-                {pl.dailyCard.answeredLink}
+          {/* Answered is a state OF the card, so it stays inside it rather
+              than replacing it — the couple can still read what they answered,
+              and still like it. With no field and no button, the centred body
+              is what keeps the full-height frame reading as a card at rest
+              rather than as an empty box: the two lines sit in the middle, the
+              way the game's challenge card does. */}
+          {answered ? (
+            <View>
+              <Text style={styles.answeredTitle}>
+                {pl.dailyCard.answeredTitle}
               </Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <TextInput
-            testID="daily-card-input"
-            style={styles.input}
-            placeholder={pl.dailyCard.placeholder}
-            placeholderTextColor={theme.colors.text.muted}
-            multiline
-            textAlignVertical="top"
-            editable={!answer.isPending}
-            value={text}
-            onChangeText={setText}
-          />
-        )}
+              <TouchableOpacity
+                testID="daily-card-answered-link"
+                onPress={() => navigation.navigate('Memories')}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Text style={styles.answeredLink}>
+                  {pl.dailyCard.answeredLink}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TextInput
+              testID="daily-card-input"
+              style={styles.input}
+              placeholder={pl.dailyCard.placeholder}
+              placeholderTextColor={theme.colors.text.muted}
+              multiline
+              textAlignVertical="top"
+              editable={!answer.isPending}
+              value={text}
+              onChangeText={setText}
+            />
+          )}
+        </ScrollView>
       </GameCard>
 
       {error && (
@@ -249,11 +267,42 @@ const createStyles = (theme: Theme) => {
       alignItems: 'center',
       backgroundColor: colors.bg.base,
     },
+    // At least the height of the viewport, so `flex: 1` below it has something
+    // definite to divide. Inside a ScrollView children otherwise get their
+    // natural height and a filling card collapses onto its own text — the same
+    // trap 3D hit from the other side, where the game screen had to stop
+    // scrolling altogether. Here the screen stays a ScrollView on purpose: that
+    // is what `avoidsKeyboard` needs something to scroll for.
+    //
+    // It also moves the gold wash. GlowBackground is absolute, so it never
+    // competed with the card for space, but its box is its parent's — and the
+    // parent just grew from the height of the content to the height of the
+    // screen, which carries the wash's centre about 100dp down. That is where
+    // the game already puts it (same `top: -120` over a full-height container),
+    // so the two screens converge rather than drift. It stays put as the
+    // question gets longer, because a long question scrolls INSIDE the card and
+    // leaves this container exactly one viewport tall.
+    fills: {
+      flexGrow: 1,
+    },
     cardLabel: {
       marginBottom: spacing.md,
     },
     card: {
       marginBottom: spacing.xl,
+    },
+    cardFills: {
+      flex: 1,
+    },
+    // The scrolling half of the card. flexGrow keeps a short question centred
+    // in the space rather than pinned to the top of it, which is how the card
+    // reads when there is one line on it.
+    cardBody: {
+      flex: 1,
+    },
+    cardBodyContent: {
+      flexGrow: 1,
+      justifyContent: 'center',
     },
     question: {
       fontFamily: typography.family.heading,
