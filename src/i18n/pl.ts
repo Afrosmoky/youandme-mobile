@@ -358,7 +358,7 @@ export const pl = {
     // The written answer is optional — the field stays hidden behind this. Od
     // S_polish to subtelny inline w karcie, nie przycisk: pisanie jest dodatkiem,
     // a obrysowany przycisk konkurował z dwoma realnymi akcjami pod kartą.
-    writeToggleShow: '+ dopisz odpowiedź',
+    writeToggleShow: '+ Napisz list',
     writeToggleHide: 'Ukryj pole',
     // Powód, dla którego ktoś miałby chcieć pisać: zapis wspomnienia jest żywy
     // dopiero, gdy OBOJE mają wpisaną odpowiedź (canSaveMemory), a bez tej
