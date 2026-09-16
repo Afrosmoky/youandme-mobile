@@ -89,6 +89,14 @@ export const typography = {
 // text in one, halo in the other.
 const GOLD_RGB = '224, 178, 78';
 
+// How much of the shimmer's alpha the view halo keeps (see `glow.button`). One
+// number for both of its layers, so turning the halo up or down cannot quietly
+// change the relationship between the lit edge and the bloom. Rounded to three
+// places so the value reads as a number rather than as float noise.
+const HALO_SCALE = 0.75;
+const halo = (shimmerAlpha: number): string =>
+  `rgba(${GOLD_RGB}, ${Math.round(shimmerAlpha * HALO_SCALE * 1000) / 1000})`;
+
 export const glow = {
   // Small gold caps (SectionLabel, 11-13px). Reading A.
   label: {
@@ -122,12 +130,23 @@ export const glow = {
   // into a blur sigma), unlike `textShadowRadius`, which is not the CSS blur.
   //
   // The alphas are NOT the shimmer's. 0.9 around a glyph is a lit stroke; the
-  // same 0.9 around a 170x52 filled rectangle is a second button. So the whole
-  // pair is scaled by 0.4, which lands the outer layer on 0.2 — the alpha the
-  // web itself uses the one time it puts gold around a box rather than around
-  // letters (`shadow-lg shadow-primary/20` on the premium card, page.tsx:409).
-  // If this reads too faint or too loud on a device, these two alphas are the
-  // number to move, and this is the only place they exist.
+  // same 0.9 around a 170x52 filled rectangle is a second button. So the pair
+  // is scaled down as a pair, keeping the shimmer's ratio between the two.
+  //
+  // The scale started at 0.4, which landed the outer layer on 0.2 — the alpha
+  // the web itself uses the one time it puts gold around a box rather than
+  // around letters (`shadow-lg shadow-primary/20` on the premium card,
+  // page.tsx:409). On a device that came out invisible, because the borrowed
+  // number arrived without the geometry it belongs to: Tailwind's shadow-lg is
+  // a 15px blur pushed 10px downwards, so its 0.2 piles up in a band under one
+  // edge. Ours is 35px and centred, spreading the same alpha around all four
+  // sides of a much smaller shape, over more than twice the distance. Alpha
+  // does not travel between two shadows of different size, and being faithful
+  // to the number stopped being the same as being faithful to the effect.
+  //
+  // So HALO_SCALE above is set by looking at it on a device instead, at 0.75.
+  // Geometry is untouched — same halo, same ratio between its two layers, just
+  // legible on #16161a.
   //
   // ANDROID, deliberately: `boxShadow` and not `elevation`. Elevation draws
   // Android's own shadow, which was grey regardless of `shadowColor` until
@@ -137,8 +156,8 @@ export const glow = {
   // Nothing is the right fallback here; grey is not.
   button: {
     boxShadow: [
-      { offsetX: 0, offsetY: 0, blurRadius: 14, color: `rgba(${GOLD_RGB}, 0.36)` },
-      { offsetX: 0, offsetY: 0, blurRadius: 35, color: `rgba(${GOLD_RGB}, 0.2)` },
+      { offsetX: 0, offsetY: 0, blurRadius: 14, color: halo(0.9) },
+      { offsetX: 0, offsetY: 0, blurRadius: 35, color: halo(0.5) },
     ],
   },
   // The prepared escape hatch. Spread this instead of `label` at the three
