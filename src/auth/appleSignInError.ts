@@ -1,9 +1,12 @@
-import { AppleError } from '@invertase/react-native-apple-authentication';
+import appleAuth from '@invertase/react-native-apple-authentication';
 import { pl } from '../i18n/pl';
 
-// The library rejects with an object carrying `code`, one of AppleError. Narrow
-// to that shape rather than casting: the token exchange with our own backend
-// throws through the same catch, and it has no code at all.
+// The library rejects with an object carrying `code`, one of appleAuth.Error.
+// The codes are read off the instance on purpose: the AppleError enum in the
+// typings is a `declare enum` with nothing behind it at runtime, so importing it
+// type-checks and is undefined on the device. Narrow to that shape rather than
+// casting: the token exchange with our own backend throws through the same
+// catch, and it has no code at all.
 function codeOf(err: unknown): string | null {
   if (typeof err === 'object' && err !== null && 'code' in err) {
     const { code } = err as { code: unknown };
@@ -24,16 +27,16 @@ function codeOf(err: unknown): string | null {
  */
 export function describeAppleSignInError(err: unknown): string {
   switch (codeOf(err)) {
-    case AppleError.CANCELED:
+    case appleAuth.Error.CANCELED:
       return pl.auth.appleCancelled;
     // The request never reached Apple's sheet, or came back unusable. Both mean
     // the attempt did not happen rather than that it was refused, so the couple
     // is invited to try again rather than told something about their account.
-    case AppleError.NOT_HANDLED:
-    case AppleError.INVALID_RESPONSE:
+    case appleAuth.Error.NOT_HANDLED:
+    case appleAuth.Error.INVALID_RESPONSE:
       return pl.auth.appleSignInRetry;
-    case AppleError.FAILED:
-    case AppleError.UNKNOWN:
+    case appleAuth.Error.FAILED:
+    case appleAuth.Error.UNKNOWN:
       return pl.auth.appleSignInError;
     default:
       // No Apple code: our own token exchange or the network failed.

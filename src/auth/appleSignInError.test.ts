@@ -1,4 +1,4 @@
-import {AppleError} from '@invertase/react-native-apple-authentication';
+import appleAuth from '@invertase/react-native-apple-authentication';
 import {describeAppleSignInError} from './appleSignInError';
 import {pl} from '../i18n/pl';
 
@@ -6,14 +6,14 @@ const withCode = (code: string) => ({code, message: 'whatever'});
 
 describe('describeAppleSignInError', () => {
   test('a cancelled sign-in says it was cancelled', () => {
-    expect(describeAppleSignInError(withCode(AppleError.CANCELED))).toBe(
+    expect(describeAppleSignInError(withCode(appleAuth.Error.CANCELED))).toBe(
       pl.auth.appleCancelled,
     );
   });
 
   // The attempt never happened, as opposed to being refused — so the couple is
   // invited to try again rather than told anything about their account.
-  test.each([AppleError.NOT_HANDLED, AppleError.INVALID_RESPONSE])(
+  test.each([appleAuth.Error.NOT_HANDLED, appleAuth.Error.INVALID_RESPONSE])(
     'code %s reads as an attempt that did not happen',
     code => {
       expect(describeAppleSignInError(withCode(code))).toBe(
@@ -22,7 +22,7 @@ describe('describeAppleSignInError', () => {
     },
   );
 
-  test.each([AppleError.FAILED, AppleError.UNKNOWN])(
+  test.each([appleAuth.Error.FAILED, appleAuth.Error.UNKNOWN])(
     'code %s reads as a failure',
     code => {
       expect(describeAppleSignInError(withCode(code))).toBe(
@@ -42,7 +42,7 @@ describe('describeAppleSignInError', () => {
   // actually split says nothing.
   test('cancelling does not read like anything else', () => {
     const cancelled = describeAppleSignInError(
-      withCode(AppleError.CANCELED),
+      withCode(appleAuth.Error.CANCELED),
     );
 
     expect(cancelled).not.toBe(describeAppleSignInError(withCode('1004')));

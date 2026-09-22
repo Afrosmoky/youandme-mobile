@@ -69,29 +69,36 @@ jest.mock('@react-native-google-signin/google-signin', () => ({
 // @invertase/react-native-apple-authentication: native module, and ESM-only on
 // top of it — the RN preset's transformIgnorePatterns covers `react-native` and
 // `@react-native*`, not `@invertase`, so an unmocked import fails to parse
-// before it ever fails to link. Mocked here for the same reason google-signin
-// is, with the enums the code actually reads: AppleError drives the message
-// mapper, the other two are the request options.
+// before it ever fails to link.
+//
+// The mock has the shape of lib/index.js and nothing more. The enums in
+// lib/index.d.ts (AppleError, AppleRequestOperation, AppleRequestScope, ...) are
+// `declare enum`: they type-check on import and do not exist at runtime. The
+// values live on the instance, as appleAuth.Error / .Operation / .Scope, copied
+// here from lib/AppleAuthModule.js. A named enum export in this mock once let
+// every test pass while the device threw on the first tap; without it, such an
+// import is undefined here too and the test fails the way the app would.
+// src/auth/appleAuthMock.guard.test.ts holds this mock to the real module.
 jest.mock('@invertase/react-native-apple-authentication', () => {
   const appleAuth = {
     isSupported: true,
     performRequest: jest.fn(() =>
       Promise.resolve({ identityToken: 'mock-apple-token' }),
     ),
-  };
-  return {
-    __esModule: true,
-    default: appleAuth,
-    appleAuth,
-    AppleError: {
+    Error: {
       UNKNOWN: '1000',
       CANCELED: '1001',
       INVALID_RESPONSE: '1002',
       NOT_HANDLED: '1003',
       FAILED: '1004',
     },
-    AppleRequestOperation: { IMPLICIT: 0, LOGIN: 1, REFRESH: 2, LOGOUT: 3 },
-    AppleRequestScope: { EMAIL: 0, FULL_NAME: 1 },
+    Operation: { IMPLICIT: 0, LOGIN: 1, REFRESH: 2, LOGOUT: 3 },
+    Scope: { EMAIL: 0, FULL_NAME: 1 },
+  };
+  return {
+    __esModule: true,
+    default: appleAuth,
+    appleAuth,
   };
 });
 

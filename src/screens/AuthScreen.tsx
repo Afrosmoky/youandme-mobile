@@ -11,10 +11,7 @@ import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
-import appleAuth, {
-  AppleRequestOperation,
-  AppleRequestScope,
-} from '@invertase/react-native-apple-authentication';
+import appleAuth from '@invertase/react-native-apple-authentication';
 import { useAuth, SocialSignInOutcome } from '../auth/AuthContext';
 import { useLogin } from '../queries/useLogin';
 import { useRegister } from '../queries/useRegister';
@@ -270,8 +267,8 @@ export function AuthScreen() {
     setAppleSubmitting(true);
     try {
       const response = await appleAuth.performRequest({
-        requestedOperation: AppleRequestOperation.LOGIN,
-        requestedScopes: [AppleRequestScope.EMAIL, AppleRequestScope.FULL_NAME],
+        requestedOperation: appleAuth.Operation.LOGIN,
+        requestedScopes: [appleAuth.Scope.EMAIL, appleAuth.Scope.FULL_NAME],
       });
       if (!response.identityToken) {
         // Apple returned without a token. Nothing was refused and nothing
