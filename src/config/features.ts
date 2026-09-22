@@ -35,4 +35,4 @@ export const AD_REWARD_ENABLED = false;
  * back exactly as it was. Until then AuthScreen shows a "coming soon" line in
  * its place, so the empty spot reads as pending rather than missing.
  */
-export const SOCIAL_LOGIN_ENABLED = false;
+export const SOCIAL_LOGIN_ENABLED = true;
