@@ -28,6 +28,7 @@ import { validateNickname } from '../domain/validation';
 import { RootStackParamList } from '../navigation/types';
 import { Theme, useTheme, withGlowRoom } from '../theme';
 import { describeGoogleSignInError } from '../auth/googleSignInError';
+import { ensureGoogleConfigured } from '../auth/googleSignIn';
 import { describeAppleSignInError } from '../auth/appleSignInError';
 import { newAccountNotice } from '../auth/socialAccountNotice';
 import { pl } from '../i18n/pl';
@@ -35,13 +36,6 @@ import { pl } from '../i18n/pl';
 type Mode = 'login' | 'register';
 
 type AuthNav = NativeStackNavigationProp<RootStackParamList, 'Auth'>;
-
-// OAuth client IDs. webClientId is the backend's audience; iosClientId comes
-// from GoogleService-Info.plist. Android is wired in a later round.
-const GOOGLE_WEB_CLIENT_ID =
-  '1050573934208-6s4a631jirskdjgpmlt5pbmu4sa9fnn5.apps.googleusercontent.com';
-const GOOGLE_IOS_CLIENT_ID =
-  '1050573934208-9bkc5dv1jedoin87p8l5k281e343i2o1.apps.googleusercontent.com';
 
 export function AuthScreen() {
   const theme = useTheme();
@@ -81,11 +75,7 @@ export function AuthScreen() {
   const submitting = loginMutation.isPending || registerMutation.isPending;
 
   useEffect(() => {
-    GoogleSignin.configure({
-      webClientId: GOOGLE_WEB_CLIENT_ID,
-      iosClientId: GOOGLE_IOS_CLIENT_ID,
-      offlineAccess: false,
-    });
+    ensureGoogleConfigured();
   }, []);
 
   const isRegister = mode === 'register';
