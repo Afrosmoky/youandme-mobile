@@ -26,18 +26,19 @@
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = YouandmeMobile/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = YouandmeMobile/Info.plist; sourceTree = "<group>"; };
 		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = YouandmeMobile/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
-		1529E5E2B145400685B2805B /* BootSplash.storyboard */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = BootSplash.storyboard; path = YouandmeMobile/BootSplash.storyboard; sourceTree = "<group>"; };
-		2200A58A4FAE4917B039D8FE /* Belleza-Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Belleza-Regular.ttf"; path = "../assets/fonts/Belleza-Regular.ttf"; sourceTree = "<group>"; };
-		2545EE4F491A47199C3BD50D /* Colors.xcassets */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = folder.assetcatalog; name = Colors.xcassets; path = YouandmeMobile/Colors.xcassets; sourceTree = "<group>"; };
+		1529E5E2B145400685B2805B /* BootSplash.storyboard */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = BootSplash.storyboard; path = YouandmeMobile/BootSplash.storyboard; sourceTree = "<group>"; };
+		2200A58A4FAE4917B039D8FE /* Belleza-Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Belleza-Regular.ttf"; path = "../assets/fonts/Belleza-Regular.ttf"; sourceTree = "<group>"; };
+		2545EE4F491A47199C3BD50D /* Colors.xcassets */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = folder.assetcatalog; name = Colors.xcassets; path = YouandmeMobile/Colors.xcassets; sourceTree = "<group>"; };
+		277F126E302D1340005B16DD /* YouandmeMobile.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; name = YouandmeMobile.entitlements; path = YouandmeMobile/YouandmeMobile.entitlements; sourceTree = "<group>"; };
 		279A169F2FD2249B001B18D7 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
-		2FBF3A408B8741FA8AC4B0FA /* Alegreya-Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Alegreya-Regular.ttf"; path = "../assets/fonts/Alegreya-Regular.ttf"; sourceTree = "<group>"; };
+		2FBF3A408B8741FA8AC4B0FA /* Alegreya-Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Alegreya-Regular.ttf"; path = "../assets/fonts/Alegreya-Regular.ttf"; sourceTree = "<group>"; };
 		3B4392A12AC88292D35C810B /* Pods-YouandmeMobile.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-YouandmeMobile.debug.xcconfig"; path = "Target Support Files/Pods-YouandmeMobile/Pods-YouandmeMobile.debug.xcconfig"; sourceTree = "<group>"; };
-		3D111C9EEDD349EFA915B64C /* Alegreya-Italic.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Alegreya-Italic.ttf"; path = "../assets/fonts/Alegreya-Italic.ttf"; sourceTree = "<group>"; };
+		3D111C9EEDD349EFA915B64C /* Alegreya-Italic.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Alegreya-Italic.ttf"; path = "../assets/fonts/Alegreya-Italic.ttf"; sourceTree = "<group>"; };
 		5709B34CF0A7D63546082F79 /* Pods-YouandmeMobile.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-YouandmeMobile.release.xcconfig"; path = "Target Support Files/Pods-YouandmeMobile/Pods-YouandmeMobile.release.xcconfig"; sourceTree = "<group>"; };
 		5DCACB8F33CDC322A6C60F78 /* libPods-YouandmeMobile.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-YouandmeMobile.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = YouandmeMobile/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = YouandmeMobile/LaunchScreen.storyboard; sourceTree = "<group>"; };
-		8E07DE141A1C4D59B11992BC /* Alegreya-Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = "Alegreya-Bold.ttf"; path = "../assets/fonts/Alegreya-Bold.ttf"; sourceTree = "<group>"; };
+		8E07DE141A1C4D59B11992BC /* Alegreya-Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Alegreya-Bold.ttf"; path = "../assets/fonts/Alegreya-Bold.ttf"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
@@ -56,6 +57,7 @@
 		13B07FAE1A68108700A75B9A /* YouandmeMobile */ = {
 			isa = PBXGroup;
 			children = (
+				277F126E302D1340005B16DD /* YouandmeMobile.entitlements */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
 				761780EC2CA45674006654EE /* AppDelegate.swift */,
 				13B07FB61A68108700A75B9A /* Info.plist */,
@@ -125,7 +127,6 @@
 				2200A58A4FAE4917B039D8FE /* Belleza-Regular.ttf */,
 			);
 			name = Resources;
-			path = "";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -340,7 +341,12 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = YouandmeMobile/YouandmeMobile.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 7NMCQ399C8;
 				ENABLE_BITCODE = NO;
 				INFOPLIST_FILE = YouandmeMobile/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
@@ -357,6 +363,8 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = app.jaity.mobile;
 				PRODUCT_NAME = YouandmeMobile;
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "jaity AppStore";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -371,7 +379,12 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = YouandmeMobile/YouandmeMobile.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 7NMCQ399C8;
 				INFOPLIST_FILE = YouandmeMobile/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
@@ -387,6 +400,8 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = app.jaity.mobile;
 				PRODUCT_NAME = YouandmeMobile;
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "jaity AppStore";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
