@@ -54,6 +54,19 @@ export async function updateMe(input: UpdateMeInput): Promise<MeResult> {
   return mapMeResponse(res.data);
 }
 
+// Deletes the account. 204 on success, and the token stops working. The Apple
+// authorization code is sent only for an Apple-linked account signed in on
+// iOS: the backend exchanges it to revoke Apple's tokens, best-effort, and
+// never refuses the deletion over it.
+export async function deleteAccount(appleAuthorizationCode?: string): Promise<void> {
+  await apiClient.delete(
+    '/me',
+    appleAuthorizationCode
+      ? { data: { apple_authorization_code: appleAuthorizationCode } }
+      : undefined,
+  );
+}
+
 // Triggers a fresh verification email. Backend answers 202 with no body.
 export async function resendVerificationEmail(): Promise<void> {
   await apiClient.post('/auth/email/verify-notification');

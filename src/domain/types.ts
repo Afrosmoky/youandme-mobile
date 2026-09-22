@@ -21,6 +21,12 @@ export const userSchema = z.object({
   // null while the user has not confirmed their email (P2 backend).
   emailVerifiedAt: z.string().nullable(),
   createdAt: z.string(),
+  // Whether the account is linked to Sign in with Apple / Google. Deleting the
+  // account reads these: an Apple-linked one needs a fresh authorization code
+  // for the backend to revoke Apple's tokens, a Google-linked one gets its
+  // Google access revoked on the device.
+  appleLinked: z.boolean(),
+  googleLinked: z.boolean(),
 });
 export type User = z.infer<typeof userSchema>;
 
@@ -34,11 +40,27 @@ export const rawUserSchema = z.object({
   locale: z.string().nullable(),
   email_verified_at: z.string().nullable(),
   created_at: z.string(),
+  // Optional with a false default: older backends do not send them, and an
+  // account nobody can prove is linked is treated as not linked.
+  is_apple_linked: z.boolean().optional().default(false),
+  is_google_linked: z.boolean().optional().default(false),
 });
 
 export function mapRawUser(raw: z.infer<typeof rawUserSchema>): User {
-  const { email_verified_at, created_at, ...rest } = raw;
-  return { ...rest, emailVerifiedAt: email_verified_at, createdAt: created_at };
+  const {
+    email_verified_at,
+    created_at,
+    is_apple_linked,
+    is_google_linked,
+    ...rest
+  } = raw;
+  return {
+    ...rest,
+    emailVerifiedAt: email_verified_at,
+    createdAt: created_at,
+    appleLinked: is_apple_linked,
+    googleLinked: is_google_linked,
+  };
 }
 
 // ---------------------------------------------------------------------------

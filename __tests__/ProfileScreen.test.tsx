@@ -39,6 +39,8 @@ const user: User = {
   locale: 'pl',
   emailVerifiedAt: null,
   createdAt: '2026-06-04T05:00:00.000Z',
+  appleLinked: false,
+  googleLinked: false,
 };
 
 const couple: Couple = {

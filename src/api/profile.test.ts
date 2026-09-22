@@ -1,9 +1,14 @@
 import type { AxiosResponse } from 'axios';
-import { changePassword, fetchMe, updateMe } from './profile';
+import { changePassword, deleteAccount, fetchMe, updateMe } from './profile';
 import { apiClient } from './client';
 
 jest.mock('./client', () => ({
-  apiClient: { get: jest.fn(), post: jest.fn(), patch: jest.fn() },
+  apiClient: {
+    get: jest.fn(),
+    post: jest.fn(),
+    patch: jest.fn(),
+    delete: jest.fn(),
+  },
 }));
 
 const res = (data: unknown): AxiosResponse =>
@@ -43,6 +48,52 @@ describe('profile API', () => {
     expect(result.user.nickname).toBe('ola_test');
     expect(result.couple.streakLongest).toBe(5);
     expect(result.couple.relationshipStartedOn).toBe('2026-01-01');
+  });
+
+  // Older backends do not send the linked flags; the parser must not reject
+  // them, and an account nobody can prove is linked counts as not linked.
+  test('fetchMe defaults both linked flags to false when absent', async () => {
+    jest
+      .mocked(apiClient.get)
+      .mockResolvedValue(res({ user: rawUser, couple: rawCouple }));
+
+    const { user } = await fetchMe();
+
+    expect(user.appleLinked).toBe(false);
+    expect(user.googleLinked).toBe(false);
+  });
+
+  test('fetchMe maps is_apple_linked / is_google_linked', async () => {
+    jest.mocked(apiClient.get).mockResolvedValue(
+      res({
+        user: { ...rawUser, is_apple_linked: true, is_google_linked: true },
+        couple: rawCouple,
+      }),
+    );
+
+    const { user } = await fetchMe();
+
+    expect(user.appleLinked).toBe(true);
+    expect(user.googleLinked).toBe(true);
+    expect(user).not.toHaveProperty('is_apple_linked');
+  });
+
+  test('deleteAccount without a code sends DELETE /me with no body', async () => {
+    jest.mocked(apiClient.delete).mockResolvedValue(res(undefined));
+
+    await deleteAccount();
+
+    expect(apiClient.delete).toHaveBeenCalledWith('/me', undefined);
+  });
+
+  test('deleteAccount sends the Apple code as apple_authorization_code', async () => {
+    jest.mocked(apiClient.delete).mockResolvedValue(res(undefined));
+
+    await deleteAccount('apple-code');
+
+    expect(apiClient.delete).toHaveBeenCalledWith('/me', {
+      data: { apple_authorization_code: 'apple-code' },
+    });
   });
 
   test('updateMe sends partner_name_local and maps the response', async () => {
