@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Modal, StyleSheet, Text, View } from 'react-native';
-import { Theme, useTheme } from '../theme';
+import { Theme, useTheme, withGlowRoom } from '../theme';
 import { GlowBackground } from './GlowBackground';
 import { GoldButton } from './GoldButton';
 import { pl } from '../i18n/pl';
@@ -64,14 +64,14 @@ const createStyles = (theme: Theme) => {
       alignItems: 'center',
       overflow: 'hidden',
     },
-    title: {
+    title: withGlowRoom({
       ...glow.heading,
       fontFamily: typography.family.heading,
       fontSize: typography.size.h1,
       color: colors.gold.primary,
       textAlign: 'center',
       marginBottom: spacing.md,
-    },
+    }),
     body: {
       fontFamily: typography.family.body,
       fontSize: typography.size.body,

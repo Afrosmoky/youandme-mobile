@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { StyleProp, StyleSheet, Text, TextStyle } from 'react-native';
-import { Theme, useTheme } from '../theme';
+import { Theme, useTheme, withGlowRoom } from '../theme';
 
 type Props = {
   // Font size of the wordmark; defaults to the display scale.
@@ -15,7 +15,14 @@ export function Logo({ size, style, testID }: Props) {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   return (
-    <Text testID={testID} style={[styles.base, size ? { fontSize: size } : null, style]}>
+    // The glow sits on the spans, but the frame that clips it belongs to this
+    // outer Text, so the room goes here, sized by the spans' radius (glowRoom).
+    <Text
+      testID={testID}
+      style={withGlowRoom(
+        StyleSheet.flatten([styles.base, size ? { fontSize: size } : null, style]),
+        styles.word.textShadowRadius,
+      )}>
       <Text style={styles.word}>ja </Text>
       <Text style={styles.amp}>&</Text>
       <Text style={styles.word}> ty</Text>

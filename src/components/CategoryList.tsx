@@ -3,7 +3,7 @@ import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-nativ
 import { parseApiError } from '../api/errors';
 import { useCategories } from '../queries/useCategories';
 import { Card } from './Card';
-import { Theme, useTheme } from '../theme';
+import { Theme, useTheme, withGlowRoom } from '../theme';
 import { pl } from '../i18n/pl';
 
 type Props = {
@@ -148,13 +148,13 @@ const createStyles = (theme: Theme) => {
     listContent: {
       padding: spacing.lg,
     },
-    title: {
+    title: withGlowRoom({
       ...glow.heading,
       fontFamily: typography.family.heading,
       fontSize: typography.size.h1,
       color: colors.text.primary,
       marginBottom: spacing.xl,
-    },
+    }),
     error: {
       fontFamily: typography.family.body,
       fontSize: typography.size.bodySm,

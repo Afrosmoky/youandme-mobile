@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { StyleProp, StyleSheet, Text, TextStyle } from 'react-native';
-import { Theme, useTheme } from '../theme';
+import { Theme, useTheme, withGlowRoom } from '../theme';
 
 type Props = {
   children: React.ReactNode;
@@ -30,7 +30,9 @@ export function ScreenTitle({ children, style, testID }: Props) {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   return (
-    <Text testID={testID} style={[styles.screenTitle, style]}>
+    <Text
+      testID={testID}
+      style={withGlowRoom(StyleSheet.flatten([styles.screenTitle, style]))}>
       {children}
     </Text>
   );

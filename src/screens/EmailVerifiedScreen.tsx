@@ -7,7 +7,7 @@ import { ScreenTitle } from '../components/ScreenTitle';
 import { Badge } from '../components/Badge';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { queryKeys } from '../queries/queryKeys';
-import { Theme, useTheme } from '../theme';
+import { Theme, useTheme, withGlowRoom } from '../theme';
 import { pl } from '../i18n/pl';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EmailVerified'>;
@@ -92,14 +92,14 @@ const createStyles = (theme: Theme) => {
       alignSelf: 'center',
       marginBottom: spacing.lg,
     },
-    title: {
+    title: withGlowRoom({
       ...glow.heading,
       fontFamily: typography.family.heading,
       fontSize: typography.size.h2,
       color: colors.text.primary,
       textAlign: 'center',
       marginBottom: spacing.md,
-    },
+    }),
     body: {
       fontFamily: typography.family.body,
       fontSize: typography.size.body,

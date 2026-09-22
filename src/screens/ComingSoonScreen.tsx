@@ -5,7 +5,7 @@ import { RootStackParamList } from '../navigation/types';
 import { ScreenTitle } from '../components/ScreenTitle';
 import { Badge } from '../components/Badge';
 import { ScreenContainer } from '../components/ScreenContainer';
-import { Theme, useTheme } from '../theme';
+import { Theme, useTheme, withGlowRoom } from '../theme';
 import { pl } from '../i18n/pl';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ComingSoon'>;
@@ -85,14 +85,14 @@ const createStyles = (theme: Theme) => {
       alignSelf: 'center',
       marginBottom: spacing.lg,
     },
-    title: {
+    title: withGlowRoom({
       ...glow.heading,
       fontFamily: typography.family.heading,
       fontSize: typography.size.h2,
       color: colors.text.primary,
       textAlign: 'center',
       marginBottom: spacing.md,
-    },
+    }),
     body: {
       fontFamily: typography.family.body,
       fontSize: typography.size.body,

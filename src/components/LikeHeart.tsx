@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Animated, StyleSheet, TouchableOpacity } from 'react-native';
-import { Theme, useTheme } from '../theme';
+import { Theme, useTheme, withGlowRoom } from '../theme';
 
 type Props = {
   liked: boolean;
@@ -105,7 +105,9 @@ const createStyles = (theme: Theme) => {
       fontSize: typography.size.h2,
       lineHeight: typography.size.h2 * 1.2,
     },
-    heartGlow: glow.label,
+    heartGlow: withGlowRoom({
+      ...glow.label,
+    }),
     heartFlat: glow.none,
   });
 };

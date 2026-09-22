@@ -12,7 +12,7 @@ import { Celebration } from '../components/Celebration';
 import { GoldButton } from '../components/GoldButton';
 import { OutlineButton } from '../components/OutlineButton';
 import { SectionLabel } from '../components/SectionLabel';
-import { Theme, useTheme } from '../theme';
+import { Theme, useTheme, withGlowRoom } from '../theme';
 import { pl } from '../i18n/pl';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'LocalGameSummary'>;
@@ -133,13 +133,13 @@ const createStyles = (theme: Theme) => {
       alignItems: 'center',
       backgroundColor: colors.bg.base,
     },
-    title: {
+    title: withGlowRoom({
       ...glow.heading,
       fontFamily: typography.family.heading,
       fontSize: typography.size.h1,
       color: colors.text.primary,
       marginBottom: spacing.xl,
-    },
+    }),
     counts: {
       marginBottom: spacing.xl,
     },

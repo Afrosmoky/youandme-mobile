@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { StyleProp, StyleSheet, Text, TextStyle } from 'react-native';
-import { Theme, useTheme } from '../theme';
+import { Theme, useTheme, withGlowRoom } from '../theme';
 
 // Which gold-caps label this is. `gold` is the default and the one nearly every
 // screen wants; `bright` exists because the ritual tile on Home is deliberately
@@ -37,15 +37,16 @@ export function SectionLabel({
 }: Props) {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  // Flattened with the caller's style first, so the glow's room is merged into
+  // whatever margins the caller set rather than overridden by them (glowRoom).
+  const flat = StyleSheet.flatten([
+    styles.label,
+    tone === 'bright' && styles.bright,
+    glow ? styles.glow : styles.flat,
+    style,
+  ]);
   return (
-    <Text
-      testID={testID}
-      style={[
-        styles.label,
-        tone === 'bright' && styles.bright,
-        glow ? styles.glow : styles.flat,
-        style,
-      ]}>
+    <Text testID={testID} style={glow ? withGlowRoom(flat) : flat}>
       {children}
     </Text>
   );

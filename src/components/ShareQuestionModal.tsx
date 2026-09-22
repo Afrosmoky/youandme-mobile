@@ -12,7 +12,7 @@ import { GoldButton } from './GoldButton';
 import { OutlineButton } from './OutlineButton';
 import { Logo } from './Logo';
 import { useToast } from './Toast';
-import { Theme, useTheme } from '../theme';
+import { Theme, useTheme, withGlowRoom } from '../theme';
 import { pl } from '../i18n/pl';
 
 // Where the shared card points. Same landing page the referral share uses; the
@@ -151,13 +151,13 @@ const createStyles = (theme: Theme) => {
       fontSize: typography.size.h3,
       color: colors.text.muted,
     },
-    title: {
+    title: withGlowRoom({
       ...glow.heading,
       fontFamily: typography.family.heading,
       fontSize: typography.size.h2,
       color: colors.text.primary,
       textAlign: 'center',
-    },
+    }),
     subtitle: {
       fontFamily: typography.family.body,
       fontSize: typography.size.bodySm,

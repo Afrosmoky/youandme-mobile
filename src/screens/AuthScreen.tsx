@@ -26,7 +26,7 @@ import { parseApiError, FieldErrors } from '../api/errors';
 import { SOCIAL_LOGIN_ENABLED } from '../config/features';
 import { validateNickname } from '../domain/validation';
 import { RootStackParamList } from '../navigation/types';
-import { Theme, useTheme } from '../theme';
+import { Theme, useTheme, withGlowRoom } from '../theme';
 import { describeGoogleSignInError } from '../auth/googleSignInError';
 import { describeAppleSignInError } from '../auth/appleSignInError';
 import { newAccountNotice } from '../auth/socialAccountNotice';
@@ -425,14 +425,14 @@ const createStyles = (theme: Theme) => {
       alignSelf: 'center',
       marginBottom: spacing.sm,
     },
-    title: {
+    title: withGlowRoom({
       ...glow.heading,
       fontFamily: typography.family.heading,
       fontSize: typography.size.h2,
       color: colors.text.primary,
       marginBottom: spacing.xxl,
       textAlign: 'center',
-    },
+    }),
     error: {
       fontFamily: typography.family.body,
       fontSize: typography.size.bodySm,
