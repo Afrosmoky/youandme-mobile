@@ -56,6 +56,30 @@ describe('useLocalPushSchedule', () => {
     );
   });
 
+  // Sign-out cancels every notification (AuthContext). What brings them back
+  // is the next sign-in mounting HomeScreen again, i.e. a fresh hook.
+  test('a fresh mount after sign-out plans the reminders again', async () => {
+    const args = {dailyPushHour: 20, answeredToday: false, enabled: true};
+    const first = renderHook(() => useLocalPushSchedule(args));
+    await waitFor(() =>
+      expect(notifee.createTriggerNotification).toHaveBeenCalledWith(
+        expect.objectContaining({id: 'daily-card-reminder'}),
+        expect.anything(),
+      ),
+    );
+    first.unmount();
+    jest.clearAllMocks();
+
+    renderHook(() => useLocalPushSchedule(args));
+
+    await waitFor(() =>
+      expect(notifee.createTriggerNotification).toHaveBeenCalledWith(
+        expect.objectContaining({id: 'daily-card-reminder'}),
+        expect.anything(),
+      ),
+    );
+  });
+
   test('does nothing while disabled', async () => {
     renderHook(() =>
       useLocalPushSchedule({

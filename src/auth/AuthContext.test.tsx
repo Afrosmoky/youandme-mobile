@@ -1,6 +1,8 @@
 import React from 'react';
 import {Text, TouchableOpacity} from 'react-native';
-import {fireEvent, render, screen, waitFor} from '@testing-library/react-native';
+import {fireEvent, screen, waitFor} from '@testing-library/react-native';
+import notifee from '@notifee/react-native';
+import {renderWithQueryClient} from '../test/renderWithQueryClient';
 import {AuthProvider, useAuth} from './AuthContext';
 import * as authApi from '../api/auth';
 import {
@@ -106,7 +108,7 @@ describe('AuthContext couple state', () => {
   });
 
   test('login stores the couple in state', async () => {
-    render(
+    renderWithQueryClient(
       <AuthProvider>
         <Consumer />
       </AuthProvider>,
@@ -121,7 +123,7 @@ describe('AuthContext couple state', () => {
   });
 
   test('setCouple replaces the cached couple', async () => {
-    render(
+    renderWithQueryClient(
       <AuthProvider>
         <Consumer />
       </AuthProvider>,
@@ -134,8 +136,51 @@ describe('AuthContext couple state', () => {
     );
   });
 
+  // A signed-out phone must not keep reminding anyone about the daily card.
+  // The next sign-in re-plans them from HomeScreen (useLocalPushSchedule).
+  test('logout cancels every local notification', async () => {
+    renderWithQueryClient(
+      <AuthProvider>
+        <Consumer />
+      </AuthProvider>,
+    );
+    fireEvent.press(screen.getByTestId('do-login'));
+    await waitFor(() =>
+      expect(screen.getByTestId('couple-ulid')).toHaveTextContent('c_01'),
+    );
+
+    fireEvent.press(screen.getByTestId('do-logout'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('couple-ulid')).toHaveTextContent('none'),
+    );
+    expect(notifee.cancelAllNotifications).toHaveBeenCalled();
+  });
+
+  // Query keys carry no account, so a cache that survived sign-out would be
+  // served to the next account as its own.
+  test('logout empties the query cache', async () => {
+    const {queryClient} = renderWithQueryClient(
+      <AuthProvider>
+        <Consumer />
+      </AuthProvider>,
+    );
+    fireEvent.press(screen.getByTestId('do-login'));
+    await waitFor(() =>
+      expect(screen.getByTestId('couple-ulid')).toHaveTextContent('c_01'),
+    );
+    queryClient.setQueryData(['memories', 'list', false], ['previous account']);
+
+    fireEvent.press(screen.getByTestId('do-logout'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('couple-ulid')).toHaveTextContent('none'),
+    );
+    expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
+  });
+
   test('logout clears the couple', async () => {
-    render(
+    renderWithQueryClient(
       <AuthProvider>
         <Consumer />
       </AuthProvider>,
@@ -166,7 +211,7 @@ describe('device-local game data across accounts', () => {
   });
 
   const mount = () =>
-    render(
+    renderWithQueryClient(
       <AuthProvider>
         <Consumer />
       </AuthProvider>,

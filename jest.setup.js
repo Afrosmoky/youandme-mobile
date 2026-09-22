@@ -127,6 +127,7 @@ jest.mock('@notifee/react-native', () => ({
     createChannel: jest.fn(() => Promise.resolve('daily-card')),
     createTriggerNotification: jest.fn(() => Promise.resolve()),
     cancelNotification: jest.fn(() => Promise.resolve()),
+    cancelAllNotifications: jest.fn(() => Promise.resolve()),
     displayNotification: jest.fn(() => Promise.resolve()),
     // P9: push wiring registers these at startup and on a press.
     onForegroundEvent: jest.fn(() => jest.fn()),

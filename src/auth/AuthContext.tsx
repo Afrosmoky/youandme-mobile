@@ -5,6 +5,7 @@ import React, {
   useMemo,
   useState,
 } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { setAuthToken } from '../api/client';
 import * as authApi from '../api/auth';
 import { fetchMe } from '../api/profile';
@@ -13,6 +14,7 @@ import {
   clearDeviceLocalGameData,
 } from '../storage/deviceLocal';
 import { clearToken, loadToken, saveToken } from './storage';
+import { cancelAllLocalNotifications } from '../notifications/notifee';
 import { AuthResponse, Couple, User } from '../domain/types';
 
 // What a social sign-in tells the screen once the session is stored. The email
@@ -54,6 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [couple, setCouple] = useState<Couple | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
   // On cold start, restore the token from the keychain. P1 has no /me endpoint,
   // so `user` stays null until the next login/register; the navigator gates on
@@ -79,6 +82,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo<AuthContextValue>(() => {
+    // Everything this device holds for the session, dropped in one place so
+    // signing out and deleting the account cannot drift apart. No request: by
+    // the time this runs the server side is either done with or unreachable.
+    const clearLocalSession = async () => {
+      try {
+        // Reminders about a card the next person on this phone cannot open.
+        await cancelAllLocalNotifications();
+      } catch {
+        // Best-effort: a failing notifee must not keep the user signed in.
+      }
+      try {
+        // The local game lives on the device, not on the account: player
+        // two's name and both typed answers would otherwise be waiting for
+        // whoever signs in next. Cleared before the token, so an app killed
+        // mid-sign-out cannot leave the game behind with the session gone.
+        await clearDeviceLocalGameData();
+      } catch {
+        // Best-effort as well — a failing store must not keep the user signed
+        // in. bindDeviceToAccount catches this on the next sign-in.
+      }
+      await clearToken();
+      setAuthToken(null);
+      setUser(null);
+      setCouple(null);
+      setToken(null);
+      // Query keys are not scoped by account, so anything left here would be
+      // served to the next account as its own until it went stale. Last, after
+      // the state that unmounts the signed-in screens has been set.
+      queryClient.clear();
+    };
+
     const applyAuth = async (data: AuthResponse) => {
       // Before anything can render on the new session: the local game and the
       // remembered partner name are device-local and account-blind, so whatever
@@ -119,21 +153,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch {
           // Best-effort: clear local state even if the request fails.
         }
-        try {
-          // The local game lives on the device, not on the account: player
-          // two's name and both typed answers would otherwise be waiting for
-          // whoever signs in next. Cleared before the token, so an app killed
-          // mid-sign-out cannot leave the game behind with the session gone.
-          await clearDeviceLocalGameData();
-        } catch {
-          // Best-effort as well — a failing store must not keep the user signed
-          // in. bindDeviceToAccount catches this on the next sign-in.
-        }
-        await clearToken();
-        setAuthToken(null);
-        setUser(null);
-        setCouple(null);
-        setToken(null);
+        await clearLocalSession();
       },
       refreshUser: async () => {
         const { user: freshUser, couple: freshCouple } = await fetchMe();
@@ -147,7 +167,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setCouple(nextCouple);
       },
     };
-  }, [user, couple, token, loading]);
+  }, [user, couple, token, loading, queryClient]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

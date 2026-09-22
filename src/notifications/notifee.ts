@@ -144,6 +144,15 @@ export async function cancelStreakWarning(): Promise<void> {
   await notifee.cancelNotification(STREAK_WARNING_ID);
 }
 
+// Everything notifee holds for this app, scheduled and on screen: the daily
+// card reminder, the streak warning, the ritual reminder, and any push still in
+// the tray. Called when the session ends, so a signed-out (or deleted) account
+// is not reminded of a card it can no longer open. The next sign-in lands on
+// HomeScreen, whose useLocalPushSchedule plans the reminders again.
+export async function cancelAllLocalNotifications(): Promise<void> {
+  await notifee.cancelAllNotifications();
+}
+
 // Weekly "check your ritual" reminder, Sunday evening, repeating. Fixed text and
 // hour — the backend knows nothing about it; notifee schedules once and the OS
 // repeats it weekly.
