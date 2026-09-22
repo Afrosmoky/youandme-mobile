@@ -41,6 +41,9 @@ type AuthContextValue = {
   signInWithGoogle: (idToken: string) => Promise<SocialSignInOutcome>;
   signInWithApple: (idToken: string) => Promise<SocialSignInOutcome>;
   logout: () => Promise<void>;
+  // The same local cleanup as logout, without POST /auth/logout: for when the
+  // server-side session is already gone (account deleted, token rejected).
+  signOutLocally: () => Promise<void>;
   // Refetches the current user + couple from /me into the cache.
   refreshUser: () => Promise<void>;
   // Replaces the cached user directly (e.g. with the result of PATCH /me).
@@ -155,6 +158,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
         await clearLocalSession();
       },
+      signOutLocally: clearLocalSession,
       refreshUser: async () => {
         const { user: freshUser, couple: freshCouple } = await fetchMe();
         setUser(freshUser);

@@ -120,6 +120,20 @@ export const pl = {
     verificationSentToast: 'Wysłaliśmy nową wiadomość weryfikacyjną.',
     loadError: 'Nie udało się pobrać profilu.',
     saveError: 'Nie udało się zapisać zmian.',
+    // Account deletion. Working copy, pending Wiktoria's confirmation.
+    deleteAccount: 'Usuń konto',
+    deleteAccountTitle: 'Usunąć konto?',
+    deleteAccountMessage:
+      'Razem z kontem znikną Wasza para i imię partnera, wszystkie wspomnienia, postęp na mapie, polubione pytania i zebrane kredyty. Tego nie da się cofnąć.',
+    deleteAccountCancel: 'Anuluj',
+    deleteAccountConfirm: 'Usuń konto',
+    accountDeleted: 'Konto zostało usunięte. Dziękujemy, że byliście z nami.',
+    deleteAccountAppleCancelled:
+      'Usuwanie przerwane, nic się nie zmieniło. Możecie spróbować ponownie, kiedy zechcecie.',
+    deleteAccountError:
+      'Nie udało się usunąć konta. Nic się nie zmieniło. Sprawdźcie połączenie i spróbujcie ponownie.',
+    deleteAccountSessionExpired:
+      'Sesja wygasła. Zalogujcie się ponownie, żeby usunąć konto.',
   },
 
   forgotPassword: {

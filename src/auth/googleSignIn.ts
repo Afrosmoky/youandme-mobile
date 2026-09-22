@@ -30,3 +30,23 @@ export function ensureGoogleConfigured(): void {
   });
   configured = true;
 }
+
+/**
+ * Revokes the app's Google access and signs the SDK out, after the account
+ * has been deleted. Best-effort by contract: the account is already gone, and
+ * the SDK may not remember a signed-in user at all (e.g. after a reinstall),
+ * in which case there is nothing to revoke. Never throws.
+ */
+export async function revokeGoogleAccess(): Promise<void> {
+  try {
+    ensureGoogleConfigured();
+    await GoogleSignin.revokeAccess();
+  } catch {
+    // Nothing to revoke, or Google unreachable — the deletion stands.
+  }
+  try {
+    await GoogleSignin.signOut();
+  } catch {
+    // Same.
+  }
+}

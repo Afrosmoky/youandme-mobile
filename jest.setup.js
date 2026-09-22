@@ -57,6 +57,8 @@ jest.mock('@react-native-google-signin/google-signin', () => ({
     signIn: jest.fn(() =>
       Promise.resolve({ type: 'success', data: { idToken: 'mock-id-token' } }),
     ),
+    revokeAccess: jest.fn(() => Promise.resolve(null)),
+    signOut: jest.fn(() => Promise.resolve(null)),
   },
   statusCodes: {
     SIGN_IN_CANCELLED: 'SIGN_IN_CANCELLED',
@@ -83,7 +85,10 @@ jest.mock('@invertase/react-native-apple-authentication', () => {
   const appleAuth = {
     isSupported: true,
     performRequest: jest.fn(() =>
-      Promise.resolve({ identityToken: 'mock-apple-token' }),
+      Promise.resolve({
+        identityToken: 'mock-apple-token',
+        authorizationCode: 'mock-apple-code',
+      }),
     ),
     Error: {
       UNKNOWN: '1000',

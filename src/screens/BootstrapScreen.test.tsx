@@ -60,6 +60,7 @@ describe('BootstrapScreen', () => {
       signInWithGoogle: jest.fn(),
       signInWithApple: jest.fn(),
       logout: jest.fn(),
+      signOutLocally: jest.fn(),
       refreshUser,
       setUser: jest.fn(),
       setCouple: jest.fn(),

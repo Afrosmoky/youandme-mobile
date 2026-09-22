@@ -15,6 +15,8 @@ import { useVerificationStatus } from '../queries/useVerificationStatus';
 import { useUpdateMe } from '../queries/useUpdateMe';
 import { useChangePassword } from '../queries/useChangePassword';
 import { useResendVerification } from '../queries/useResendVerification';
+import { useDeleteAccount } from '../queries/useDeleteAccount';
+import { AppleSheetCancelledError } from '../auth/accountDeletion';
 import { ScreenTitle } from '../components/ScreenTitle';
 import { PasswordInput } from '../components/PasswordInput';
 import { ScreenContainer } from '../components/ScreenContainer';
@@ -25,6 +27,7 @@ import { SectionLabel } from '../components/SectionLabel';
 import { GoldButton } from '../components/GoldButton';
 import { EarnCreditsActions } from '../components/EarnCreditsActions';
 import { savePartnerName } from '../storage/partnerName';
+import axios from 'axios';
 import { parseApiError, FieldErrors } from '../api/errors';
 import { validateNickname } from '../domain/validation';
 import { Theme, useTheme } from '../theme';
@@ -220,6 +223,51 @@ export function ProfileScreen({ navigation }: Props) {
     );
   };
 
+  const deleteAccount = useDeleteAccount();
+
+  // What to say when the account is still there. 401 is not here: the hook
+  // ends the session for it. 409 carries the server's own reason and 429 the
+  // usual one; everything else (network, 5xx, an Apple failure) gets one
+  // sentence that says nothing changed.
+  const deleteAccountErrorMessage = (err: unknown): string | null => {
+    if (err instanceof AppleSheetCancelledError) {
+      return pl.profile.deleteAccountAppleCancelled;
+    }
+    if (axios.isAxiosError(err)) {
+      const status = err.response?.status;
+      if (status === 401) {
+        return null;
+      }
+      if (status === 409 || status === 429) {
+        return parseApiError(err, pl.profile.deleteAccountError).topLevel;
+      }
+    }
+    return pl.profile.deleteAccountError;
+  };
+
+  const onDeleteAccount = () => {
+    Alert.alert(
+      pl.profile.deleteAccountTitle,
+      pl.profile.deleteAccountMessage,
+      [
+        { text: pl.profile.deleteAccountCancel, style: 'cancel' },
+        {
+          text: pl.profile.deleteAccountConfirm,
+          style: 'destructive',
+          onPress: () =>
+            deleteAccount.mutate(undefined, {
+              onError: err => {
+                const message = deleteAccountErrorMessage(err);
+                if (message) {
+                  Alert.alert(pl.appTitle, message);
+                }
+              },
+            }),
+        },
+      ],
+    );
+  };
+
   if (isLoading) {
     return (
       <View style={styles.centered}>
@@ -373,6 +421,24 @@ export function ProfileScreen({ navigation }: Props) {
         onPress={logout}>
         <Text style={styles.logoutText}>{pl.profile.logout}</Text>
       </TouchableOpacity>
+
+      {/* Right under "Wyloguj", in plain sight: Apple wants deletion easy to
+          find. Burgundy like the other destructive link in the app (removing
+          a memory), and a text link rather than a button, so it never reads
+          as the screen's main action. */}
+      <TouchableOpacity
+        testID="profile-delete-account"
+        style={styles.deleteAccount}
+        onPress={onDeleteAccount}
+        disabled={deleteAccount.isPending}>
+        {deleteAccount.isPending ? (
+          <ActivityIndicator color={theme.colors.burgundy.accent} />
+        ) : (
+          <Text style={styles.deleteAccountText}>
+            {pl.profile.deleteAccount}
+          </Text>
+        )}
+      </TouchableOpacity>
     </ScreenContainer>
   );
 }
@@ -454,6 +520,15 @@ const createStyles = (theme: Theme) => {
       fontFamily: typography.family.body,
       fontSize: typography.size.body,
       color: colors.text.muted,
+    },
+    deleteAccount: {
+      alignItems: 'center',
+      paddingVertical: spacing.md,
+    },
+    deleteAccountText: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.bodySm,
+      color: colors.burgundy.accent,
     },
   });
 };

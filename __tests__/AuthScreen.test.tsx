@@ -44,6 +44,7 @@ describe('AuthScreen', () => {
       signInWithGoogle,
       signInWithApple,
       logout: jest.fn(),
+      signOutLocally: jest.fn(),
       refreshUser: jest.fn(),
       setUser: jest.fn(),
       setCouple: jest.fn(),

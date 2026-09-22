@@ -15,6 +15,11 @@ import * as StoreReview from 'react-native-store-review';
 import {claimShareReward} from '../src/api/share';
 import {claimRatingReward} from '../src/api/rating';
 import {useAuth} from '../src/auth/AuthContext';
+import {
+  AppleSheetCancelledError,
+  runAccountDeletion,
+} from '../src/auth/accountDeletion';
+import {revokeGoogleAccess} from '../src/auth/googleSignIn';
 import type {RootStackParamList} from '../src/navigation/types';
 import type {Couple, User} from '../src/domain/types';
 import {pl} from '../src/i18n/pl';
@@ -28,6 +33,16 @@ jest.mock('../src/api/profile', () => ({
 jest.mock('../src/api/share', () => ({claimShareReward: jest.fn()}));
 jest.mock('../src/api/rating', () => ({claimRatingReward: jest.fn()}));
 jest.mock('../src/auth/AuthContext', () => ({useAuth: jest.fn()}));
+// The Apple/email decision and the DELETE itself are covered in
+// accountDeletion.test.ts; here only what the screen and the hook do with the
+// outcome. The error class stays real, the screen tells a cancel by it.
+jest.mock('../src/auth/accountDeletion', () => ({
+  ...jest.requireActual('../src/auth/accountDeletion'),
+  runAccountDeletion: jest.fn(),
+}));
+jest.mock('../src/auth/googleSignIn', () => ({
+  revokeGoogleAccess: jest.fn(() => Promise.resolve()),
+}));
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Profile'>;
 
@@ -61,6 +76,7 @@ function makeProps(): Props {
 }
 
 const logout = jest.fn();
+const signOutLocally = jest.fn();
 const setUser = jest.fn();
 const setCouple = jest.fn();
 
@@ -83,6 +99,7 @@ describe('ProfileScreen', () => {
       signInWithGoogle: jest.fn(),
       signInWithApple: jest.fn(),
       logout,
+      signOutLocally,
       refreshUser: jest.fn(),
       setUser,
       setCouple,
@@ -512,6 +529,200 @@ describe('ProfileScreen', () => {
       );
       await waitFor(() =>
         expect(screen.queryByTestId('profile-verification-error')).toBeNull(),
+      );
+    });
+  });
+
+  describe('deleting the account', () => {
+    type AlertButton = {text?: string; style?: string; onPress?: () => void};
+
+    // Presses a button of the most recent Alert by its label.
+    const pressAlertButton = (label: string) => {
+      const calls = jest.mocked(Alert.alert).mock.calls;
+      const buttons = (calls[calls.length - 1][2] ?? []) as AlertButton[];
+      const button = buttons.find(b => b.text === label);
+      if (!button) {
+        throw new Error(`no "${label}" button on the last alert`);
+      }
+      button.onPress?.();
+    };
+
+    const openAndConfirm = async () => {
+      renderWithQueryClient(<ProfileScreen {...makeProps()} />);
+      fireEvent.press(await screen.findByTestId('profile-delete-account'));
+      pressAlertButton(pl.profile.deleteAccountConfirm);
+    };
+
+    // Apple requires deletion to be easy to find: on the profile, no digging.
+    test('the button is on the profile, under "Wyloguj"', async () => {
+      renderWithQueryClient(<ProfileScreen {...makeProps()} />);
+
+      expect(
+        await screen.findByTestId('profile-delete-account'),
+      ).toHaveTextContent(pl.profile.deleteAccount);
+      expect(screen.getByTestId('profile-logout')).toBeOnTheScreen();
+    });
+
+    test('asks first, naming what goes, with a destructive confirm', async () => {
+      renderWithQueryClient(<ProfileScreen {...makeProps()} />);
+
+      fireEvent.press(await screen.findByTestId('profile-delete-account'));
+
+      expect(Alert.alert).toHaveBeenCalledWith(
+        pl.profile.deleteAccountTitle,
+        pl.profile.deleteAccountMessage,
+        [
+          expect.objectContaining({
+            text: pl.profile.deleteAccountCancel,
+            style: 'cancel',
+          }),
+          expect.objectContaining({
+            text: pl.profile.deleteAccountConfirm,
+            style: 'destructive',
+          }),
+        ],
+      );
+      expect(runAccountDeletion).not.toHaveBeenCalled();
+    });
+
+    test('cancelling the confirmation deletes nothing', async () => {
+      renderWithQueryClient(<ProfileScreen {...makeProps()} />);
+      fireEvent.press(await screen.findByTestId('profile-delete-account'));
+
+      pressAlertButton(pl.profile.deleteAccountCancel);
+
+      expect(runAccountDeletion).not.toHaveBeenCalled();
+      expect(signOutLocally).not.toHaveBeenCalled();
+    });
+
+    test('on success: the local session ends and the couple is told', async () => {
+      jest.mocked(runAccountDeletion).mockResolvedValue({googleLinked: false});
+
+      await openAndConfirm();
+
+      await waitFor(() => expect(signOutLocally).toHaveBeenCalledTimes(1));
+      expect(logout).not.toHaveBeenCalled(); // no POST /auth/logout
+      expect(Alert.alert).toHaveBeenCalledWith(
+        pl.appTitle,
+        pl.profile.accountDeleted,
+      );
+      expect(revokeGoogleAccess).not.toHaveBeenCalled();
+    });
+
+    test('a Google-linked account has its Google access revoked first', async () => {
+      jest.mocked(runAccountDeletion).mockResolvedValue({googleLinked: true});
+
+      await openAndConfirm();
+
+      await waitFor(() => expect(signOutLocally).toHaveBeenCalled());
+      expect(revokeGoogleAccess).toHaveBeenCalledTimes(1);
+    });
+
+    test('closing the Apple sheet: nothing changes, and it says so', async () => {
+      jest
+        .mocked(runAccountDeletion)
+        .mockRejectedValue(new AppleSheetCancelledError());
+
+      await openAndConfirm();
+
+      await waitFor(() =>
+        expect(Alert.alert).toHaveBeenCalledWith(
+          pl.appTitle,
+          pl.profile.deleteAccountAppleCancelled,
+        ),
+      );
+      expect(signOutLocally).not.toHaveBeenCalled();
+    });
+
+    test('a network error keeps the couple signed in', async () => {
+      jest.mocked(runAccountDeletion).mockRejectedValue({message: 'Network'});
+      jest.mocked(axios.isAxiosError).mockReturnValue(true);
+
+      await openAndConfirm();
+
+      await waitFor(() =>
+        expect(Alert.alert).toHaveBeenCalledWith(
+          pl.appTitle,
+          pl.profile.deleteAccountError,
+        ),
+      );
+      expect(signOutLocally).not.toHaveBeenCalled();
+      expect(revokeGoogleAccess).not.toHaveBeenCalled();
+    });
+
+    test('a 5xx keeps the couple signed in', async () => {
+      jest
+        .mocked(runAccountDeletion)
+        .mockRejectedValue({response: {status: 503}});
+      jest.mocked(axios.isAxiosError).mockReturnValue(true);
+
+      await openAndConfirm();
+
+      await waitFor(() =>
+        expect(Alert.alert).toHaveBeenCalledWith(
+          pl.appTitle,
+          pl.profile.deleteAccountError,
+        ),
+      );
+      expect(signOutLocally).not.toHaveBeenCalled();
+    });
+
+    // Unreachable today, but the contract has it: the server's reason, and no
+    // sign-out.
+    test('a 409 shows the server message and keeps the couple signed in', async () => {
+      jest.mocked(runAccountDeletion).mockRejectedValue({
+        response: {
+          status: 409,
+          data: {message: 'Tego konta nie można usunąć samodzielnie.'},
+        },
+      });
+      jest.mocked(axios.isAxiosError).mockReturnValue(true);
+
+      await openAndConfirm();
+
+      await waitFor(() =>
+        expect(Alert.alert).toHaveBeenCalledWith(
+          pl.appTitle,
+          'Tego konta nie można usunąć samodzielnie.',
+        ),
+      );
+      expect(signOutLocally).not.toHaveBeenCalled();
+    });
+
+    test('a 429 says to wait', async () => {
+      jest
+        .mocked(runAccountDeletion)
+        .mockRejectedValue({response: {status: 429}});
+      jest.mocked(axios.isAxiosError).mockReturnValue(true);
+
+      await openAndConfirm();
+
+      await waitFor(() =>
+        expect(Alert.alert).toHaveBeenCalledWith(
+          pl.appTitle,
+          pl.auth.tooManyAttempts,
+        ),
+      );
+      expect(signOutLocally).not.toHaveBeenCalled();
+    });
+
+    // The token is dead, so "stay signed in" would only make every screen fail.
+    test('a 401 ends the session without claiming a deletion', async () => {
+      jest
+        .mocked(runAccountDeletion)
+        .mockRejectedValue({response: {status: 401}});
+      jest.mocked(axios.isAxiosError).mockReturnValue(true);
+
+      await openAndConfirm();
+
+      await waitFor(() => expect(signOutLocally).toHaveBeenCalledTimes(1));
+      expect(Alert.alert).toHaveBeenCalledWith(
+        pl.appTitle,
+        pl.profile.deleteAccountSessionExpired,
+      );
+      expect(Alert.alert).not.toHaveBeenCalledWith(
+        pl.appTitle,
+        pl.profile.accountDeleted,
       );
     });
   });

@@ -67,7 +67,8 @@ const pausedGame = () =>
   });
 
 function Consumer() {
-  const {couple: current, login, logout, setCouple} = useAuth();
+  const {couple: current, login, logout, signOutLocally, setCouple} =
+    useAuth();
   // Signing in twice as the same account leaves the rendered couple unchanged,
   // so the tests below need something that moves on every completed login to
   // wait on — otherwise waitFor returns before the second one has run.
@@ -95,6 +96,13 @@ function Consumer() {
           await logout();
         }}>
         <Text>logout</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        testID="do-signout-local"
+        onPress={async () => {
+          await signOutLocally();
+        }}>
+        <Text>signout-local</Text>
       </TouchableOpacity>
     </>
   );
@@ -176,6 +184,30 @@ describe('AuthContext couple state', () => {
     await waitFor(() =>
       expect(screen.getByTestId('couple-ulid')).toHaveTextContent('none'),
     );
+    expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
+  });
+
+  // After a deletion (or a rejected token) the server session is already
+  // gone: the same cleanup as logout, without asking the server to log out.
+  test('signOutLocally clears the session like logout, without the request', async () => {
+    const {queryClient} = renderWithQueryClient(
+      <AuthProvider>
+        <Consumer />
+      </AuthProvider>,
+    );
+    fireEvent.press(screen.getByTestId('do-login'));
+    await waitFor(() =>
+      expect(screen.getByTestId('couple-ulid')).toHaveTextContent('c_01'),
+    );
+    queryClient.setQueryData(['memories', 'list', false], ['deleted account']);
+
+    fireEvent.press(screen.getByTestId('do-signout-local'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('couple-ulid')).toHaveTextContent('none'),
+    );
+    expect(authApi.logout).not.toHaveBeenCalled();
+    expect(notifee.cancelAllNotifications).toHaveBeenCalled();
     expect(queryClient.getQueryCache().getAll()).toHaveLength(0);
   });
 
