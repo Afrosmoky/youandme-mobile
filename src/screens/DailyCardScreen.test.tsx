@@ -19,6 +19,14 @@ jest.mock('../api/likes', () => ({
   unlikeQuestion: jest.fn(),
 }));
 jest.mock('../api/progress', () => ({ getProgress: jest.fn() }));
+// A getter, so a test can take the names away and see the fallback labels.
+let mockAuth: {
+  user: { nickname: string } | null;
+  couple: { partnerNameLocal: string | null } | null;
+};
+jest.mock('../auth/AuthContext', () => ({
+  useAuth: () => mockAuth,
+}));
 jest.mock('../notifications/notifee', () => ({
   notifyStreakMilestone: jest.fn(),
 }));
@@ -67,6 +75,10 @@ const renderScreen = () =>
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockAuth = {
+    user: { nickname: 'ola' },
+    couple: { partnerNameLocal: 'Tomek' },
+  };
   jest.mocked(getDailyCard).mockResolvedValue(card());
   jest.mocked(getProgress).mockResolvedValue(progress);
   jest.mocked(likeQuestion).mockResolvedValue({ liked: true });
@@ -85,7 +97,7 @@ describe('DailyCardScreen', () => {
     expect(within(frame).getByTestId('daily-card-question')).toHaveTextContent(
       'Co dziś Cię ucieszyło?',
     );
-    expect(within(frame).getByTestId('daily-card-input')).toBeOnTheScreen();
+    expect(within(frame).getByTestId('daily-card-answer-a')).toBeOnTheScreen();
     // The one action spans the width UNDER the card, as in the game.
     expect(within(frame).queryByTestId('daily-card-submit')).toBeNull();
     expect(screen.getByTestId('daily-card-submit')).toBeOnTheScreen();
@@ -95,7 +107,7 @@ describe('DailyCardScreen', () => {
     renderScreen();
 
     fireEvent.changeText(
-      await screen.findByTestId('daily-card-input'),
+      await screen.findByTestId('daily-card-answer-a'),
       'Kawa o poranku',
     );
     fireEvent.press(screen.getByTestId('daily-card-submit'));
@@ -114,10 +126,88 @@ describe('DailyCardScreen', () => {
 
     fireEvent.press(await screen.findByTestId('daily-card-submit'));
 
-    expect(await screen.findByTestId('daily-card-error')).toHaveTextContent(
-      pl.dailyCard.emptyAnswer,
-    );
+    expect(
+      await screen.findByTestId('daily-card-answer-a-error'),
+    ).toHaveTextContent(pl.dailyCard.emptyAnswer);
     expect(answerDailyCard).not.toHaveBeenCalled();
+  });
+
+  // Two fields, labelled as the memory they become will be.
+  test('labels both answers with the couple\'s names', async () => {
+    renderScreen();
+
+    expect(
+      await screen.findByText(pl.memoryCard.answerLabel('ola')),
+    ).toBeOnTheScreen();
+    expect(
+      screen.getByText(pl.memoryCard.answerLabel('Tomek')),
+    ).toBeOnTheScreen();
+    expect(screen.getByText(pl.dailyCard.partnerHint)).toBeOnTheScreen();
+  });
+
+  test('falls back to generic labels when the names are unknown', async () => {
+    mockAuth = { user: null, couple: { partnerNameLocal: null } };
+    renderScreen();
+
+    expect(
+      await screen.findByText(pl.dailyCard.ownAnswerFallback),
+    ).toBeOnTheScreen();
+    expect(
+      screen.getByText(pl.memoryCard.partnerAnswerLabel),
+    ).toBeOnTheScreen();
+  });
+
+  test('sends the partner answer too, trimmed', async () => {
+    renderScreen();
+
+    fireEvent.changeText(
+      await screen.findByTestId('daily-card-answer-a'),
+      'Kawa o poranku',
+    );
+    fireEvent.changeText(
+      screen.getByTestId('daily-card-answer-b'),
+      '  Spacer  ',
+    );
+    fireEvent.press(screen.getByTestId('daily-card-submit'));
+
+    await waitFor(() =>
+      expect(answerDailyCard).toHaveBeenCalledWith({
+        questionUlid: 'Q1',
+        answerA: 'Kawa o poranku',
+        answerB: 'Spacer',
+      }),
+    );
+  });
+
+  // answer_a is what the backend requires. The partner's text is NOT moved up
+  // into it: it would be saved under the wrong name.
+  test('only the partner answer is refused, and stays where it was', async () => {
+    renderScreen();
+
+    fireEvent.changeText(
+      await screen.findByTestId('daily-card-answer-b'),
+      'Spacer',
+    );
+    fireEvent.press(screen.getByTestId('daily-card-submit'));
+
+    expect(
+      await screen.findByTestId('daily-card-answer-a-error'),
+    ).toHaveTextContent(pl.dailyCard.emptyAnswer);
+    expect(answerDailyCard).not.toHaveBeenCalled();
+    expect(screen.getByTestId('daily-card-answer-b')).toHaveProp(
+      'value',
+      'Spacer',
+    );
+  });
+
+  test('typing into the first answer clears its error', async () => {
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('daily-card-submit'));
+    await screen.findByTestId('daily-card-answer-a-error');
+    fireEvent.changeText(screen.getByTestId('daily-card-answer-a'), 'K');
+
+    expect(screen.queryByTestId('daily-card-answer-a-error')).toBeNull();
   });
 
   // The answered state stays a state OF the card: same frame, same hearts, and
@@ -128,7 +218,7 @@ describe('DailyCardScreen', () => {
 
     const frame = await screen.findByTestId('daily-card-card');
     expect(within(frame).getByTestId('daily-card-question')).toBeOnTheScreen();
-    expect(screen.queryByTestId('daily-card-input')).toBeNull();
+    expect(screen.queryByTestId('daily-card-answer-a')).toBeNull();
     expect(screen.queryByTestId('daily-card-submit')).toBeNull();
 
     fireEvent.press(screen.getByTestId('daily-card-answered-link'));

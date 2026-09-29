@@ -22,7 +22,7 @@ const answerResponseSchema = z.object({
 export type AnswerDailyCardInput = {
   questionUlid: string;
   answerA: string;
-  // P4 mobile always sends null; the second player's answer lands in P10.
+  // The partner's answer; optional, null when the field was left empty.
   answerB?: string | null;
 };
 

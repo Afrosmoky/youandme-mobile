@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  TextStyle,
   View,
   ViewStyle,
 } from 'react-native';
@@ -29,6 +30,9 @@ type Props = {
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
   keyboardType?: KeyboardTypeOptions;
   style?: StyleProp<ViewStyle>;
+  // Applied to the input box itself, after the defaults — e.g. a shorter
+  // multiline box where two of them have to share a card with the keyboard.
+  inputStyle?: StyleProp<TextStyle>;
   testID?: string;
 };
 
@@ -46,6 +50,7 @@ export function TextField({
   autoCapitalize,
   keyboardType,
   style,
+  inputStyle,
   testID,
 }: Props) {
   const theme = useTheme();
@@ -56,7 +61,7 @@ export function TextField({
       {editable ? (
         <TextInput
           testID={testID}
-          style={[styles.input, multiline && styles.multiline]}
+          style={[styles.input, multiline && styles.multiline, inputStyle]}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}

@@ -564,6 +564,13 @@ export const pl = {
         ? `Pytanie dnia · ${streakDays(streakCurrent)} serii`
         : 'Pytanie dnia',
     placeholder: 'Wpisz odpowiedź...',
+    // Etykieta pierwszego pola, zanim /me poda nick. Etykiety z imionami to
+    // memoryCard.answerLabel / partnerAnswerLabel — te same co we wspomnieniu,
+    // w które ta odpowiedź się zamienia.
+    ownAnswerFallback: 'Twoja odpowiedź',
+    // Pod polem partnera: konto jest wspólne, ale jedna odpowiedź wystarczy.
+    // Robocze, do potwierdzenia przez Wiktorię.
+    partnerHint: 'Nieobowiązkowe — jedna odpowiedź też wystarczy.',
     submitButton: 'Zapisz odpowiedź',
     answeredTitle: 'Odpowiedziane dziś',
     answeredLink: 'Odpowiedziane — zobacz we wspomnieniach',

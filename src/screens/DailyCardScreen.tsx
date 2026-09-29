@@ -4,7 +4,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -18,6 +17,7 @@ import { useLikeQuestion } from '../queries/useLikeQuestion';
 import { useMilestoneCelebration } from '../queries/useMilestoneCelebration';
 import { queryKeys } from '../queries/queryKeys';
 import { parseApiError } from '../api/errors';
+import { useAuth } from '../auth/AuthContext';
 import { isStreakMilestone } from '../domain/streak';
 import { notifyStreakMilestone } from '../notifications/notifee';
 import { ScreenTitle } from '../components/ScreenTitle';
@@ -26,6 +26,7 @@ import { ScreenContainer } from '../components/ScreenContainer';
 import { GameCard } from '../components/GameCard';
 import { GoldButton } from '../components/GoldButton';
 import { SectionLabel } from '../components/SectionLabel';
+import { TextField } from '../components/TextField';
 import { Celebration } from '../components/Celebration';
 import { Theme, useTheme } from '../theme';
 import { pl } from '../i18n/pl';
@@ -39,9 +40,18 @@ export function DailyCardScreen({ navigation }: Props) {
   const { data: daily, isLoading } = useDailyCard();
   const answer = useAnswerDailyCard();
   const like = useLikeQuestion();
+  const { user, couple } = useAuth();
 
-  const [text, setText] = useState('');
+  // Two answers, as on a memory of the game: the account is the couple's, so
+  // the card is answered by both of them. Only the first is required — the
+  // backend's answer_a — and the second is sent as null when left empty.
+  const [answerA, setAnswerA] = useState('');
+  const [answerB, setAnswerB] = useState('');
+  // Banner for what belongs to no field (409, network, server); the inline
+  // errors under each field for what does (P2 canon).
   const [error, setError] = useState<string | null>(null);
+  const [answerAError, setAnswerAError] = useState<string | null>(null);
+  const [answerBError, setAnswerBError] = useState<string | null>(null);
   // Streak that triggered a celebration (null = no modal). The modal covers the
   // foreground case; notifyStreakMilestone self-guards so it never doubles up.
   const [celebrateStreak, setCelebrateStreak] = useState<number | null>(null);
@@ -82,21 +92,27 @@ export function DailyCardScreen({ navigation }: Props) {
     if (!daily) {
       return;
     }
-    if (text.trim().length === 0) {
-      setError(pl.dailyCard.emptyAnswer);
+    // Refused here even when the partner's field is filled: moving that text
+    // into the first answer would put it under the wrong name.
+    if (answerA.trim().length === 0) {
+      setAnswerAError(pl.dailyCard.emptyAnswer);
       return;
     }
     setError(null);
+    setAnswerAError(null);
+    setAnswerBError(null);
+    const trimmedB = answerB.trim();
     answer.mutate(
       {
         questionUlid: daily.question.ulid,
-        answerA: text.trim(),
-        answerB: null,
+        answerA: answerA.trim(),
+        answerB: trimmedB.length > 0 ? trimmedB : null,
       },
       {
-        onSuccess: ({ couple }) => {
-          setText('');
-          const newStreak = couple.streakCurrent;
+        onSuccess: ({ couple: updated }) => {
+          setAnswerA('');
+          setAnswerB('');
+          const newStreak = updated.streakCurrent;
           if (isStreakMilestone(newStreak)) {
             setCelebrateStreak(newStreak);
             notifyStreakMilestone(newStreak);
@@ -111,7 +127,14 @@ export function DailyCardScreen({ navigation }: Props) {
             setError(pl.dailyCard.staleRefreshing);
             return;
           }
-          setError(parseApiError(err, pl.dailyCard.saveError).topLevel);
+          const parsed = parseApiError(err, pl.dailyCard.saveError);
+          const fieldA = parsed.fields.answer_a ?? null;
+          const fieldB = parsed.fields.answer_b ?? null;
+          setAnswerAError(fieldA);
+          setAnswerBError(fieldB);
+          if (!fieldA && !fieldB) {
+            setError(parsed.topLevel);
+          }
         },
       },
     );
@@ -217,17 +240,46 @@ export function DailyCardScreen({ navigation }: Props) {
               </TouchableOpacity>
             </View>
           ) : (
-            <TextInput
-              testID="daily-card-input"
-              style={styles.input}
-              placeholder={pl.dailyCard.placeholder}
-              placeholderTextColor={theme.colors.text.muted}
-              multiline
-              textAlignVertical="top"
-              editable={!answer.isPending}
-              value={text}
-              onChangeText={setText}
-            />
+            // The same labels the memory will carry once this is saved: the
+            // backend writes the nickname and partner_name_local onto it.
+            <View>
+              <TextField
+                testID="daily-card-answer-a"
+                label={
+                  user?.nickname
+                    ? pl.memoryCard.answerLabel(user.nickname)
+                    : pl.dailyCard.ownAnswerFallback
+                }
+                placeholder={pl.dailyCard.placeholder}
+                value={answerA}
+                onChangeText={value => {
+                  setAnswerA(value);
+                  setAnswerAError(null);
+                }}
+                error={answerAError ?? undefined}
+                multiline
+                inputStyle={styles.input}
+              />
+              <TextField
+                testID="daily-card-answer-b"
+                label={
+                  couple?.partnerNameLocal
+                    ? pl.memoryCard.answerLabel(couple.partnerNameLocal)
+                    : pl.memoryCard.partnerAnswerLabel
+                }
+                placeholder={pl.dailyCard.placeholder}
+                value={answerB}
+                onChangeText={value => {
+                  setAnswerB(value);
+                  setAnswerBError(null);
+                }}
+                error={answerBError ?? undefined}
+                hint={pl.dailyCard.partnerHint}
+                multiline
+                inputStyle={styles.input}
+                style={styles.lastField}
+              />
+            </View>
           )}
         </ScrollView>
       </GameCard>
@@ -260,7 +312,7 @@ export function DailyCardScreen({ navigation }: Props) {
 }
 
 const createStyles = (theme: Theme) => {
-  const { colors, typography, spacing, radius } = theme;
+  const { colors, typography, spacing } = theme;
   return StyleSheet.create({
     // Pulled up behind the card rather than centred on the screen: the wash
     // belongs over the heading, which is where the web puts it.
@@ -323,14 +375,15 @@ const createStyles = (theme: Theme) => {
       color: colors.burgundy.accent,
       marginBottom: spacing.md,
     },
+    // Shorter than TextField's default paragraph box: two of them share the
+    // card, and on Android the keyboard takes the bottom half of it.
     input: {
-      backgroundColor: colors.bg.elevated,
-      borderRadius: radius.md,
-      padding: spacing.lg,
-      minHeight: 120,
-      fontFamily: typography.family.body,
-      fontSize: typography.size.body,
-      color: colors.text.primary,
+      minHeight: 90,
+    },
+    // The card's own padding closes the body; the field's bottom margin would
+    // only add a gap above the frame.
+    lastField: {
+      marginBottom: 0,
     },
     answeredTitle: {
       fontFamily: typography.family.heading,

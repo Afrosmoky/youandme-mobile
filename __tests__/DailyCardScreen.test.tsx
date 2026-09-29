@@ -28,6 +28,10 @@ jest.mock('../src/api/likes', () => ({
 }));
 // The daily card counts towards the progress map (P8), so the screen reads it.
 jest.mock('../src/api/progress', () => ({getProgress: jest.fn()}));
+// The answer labels carry the nickname and the partner's name.
+jest.mock('../src/auth/AuthContext', () => ({
+  useAuth: () => ({user: {nickname: 'ola'}, couple: {partnerNameLocal: 'Tomek'}}),
+}));
 
 type Props = NativeStackScreenProps<RootStackParamList, 'DailyCard'>;
 
@@ -180,7 +184,7 @@ describe('DailyCardScreen', () => {
 
     renderWithQueryClient(<DailyCardScreen {...makeProps()} />);
     fireEvent.changeText(
-      await screen.findByTestId('daily-card-input'),
+      await screen.findByTestId('daily-card-answer-a'),
       'Nasza odpowiedź',
     );
     fireEvent.press(screen.getByTestId('daily-card-submit'));
@@ -205,7 +209,7 @@ describe('DailyCardScreen', () => {
 
     renderWithQueryClient(<DailyCardScreen {...makeProps()} />);
     fireEvent.changeText(
-      await screen.findByTestId('daily-card-input'),
+      await screen.findByTestId('daily-card-answer-a'),
       'odpowiedź',
     );
     fireEvent.press(screen.getByTestId('daily-card-submit'));
@@ -216,6 +220,33 @@ describe('DailyCardScreen', () => {
     expect(screen.queryByText(pl.dailyCard.saveError)).toBeNull();
   });
 
+  // A backend field error lands under its field, not in the banner (P2 canon).
+  test('a 422 on the partner answer shows under that field', async () => {
+    jest.mocked(answerDailyCard).mockRejectedValueOnce({
+      response: {
+        status: 422,
+        data: {
+          message: 'Odpowiedź jest za długa.',
+          errors: {answer_b: ['Odpowiedź jest za długa.']},
+        },
+      },
+    });
+    jest.mocked(axios.isAxiosError).mockReturnValue(true);
+
+    renderWithQueryClient(<DailyCardScreen {...makeProps()} />);
+    fireEvent.changeText(
+      await screen.findByTestId('daily-card-answer-a'),
+      'odpowiedź',
+    );
+    fireEvent.changeText(screen.getByTestId('daily-card-answer-b'), 'długa');
+    fireEvent.press(screen.getByTestId('daily-card-submit'));
+
+    expect(
+      await screen.findByTestId('daily-card-answer-b-error'),
+    ).toHaveTextContent('Odpowiedź jest za długa.');
+    expect(screen.queryByTestId('daily-card-error')).toBeNull();
+  });
+
   test('an already-answered card shows the closed state with no input', async () => {
     jest.mocked(getDailyCard).mockResolvedValue({...card, answeredToday: true});
 
@@ -224,7 +255,7 @@ describe('DailyCardScreen', () => {
     expect(
       await screen.findByTestId('daily-card-answered-link'),
     ).toBeOnTheScreen();
-    expect(screen.queryByTestId('daily-card-input')).toBeNull();
+    expect(screen.queryByTestId('daily-card-answer-a')).toBeNull();
     expect(screen.queryByTestId('daily-card-submit')).toBeNull();
   });
 
@@ -233,7 +264,7 @@ describe('DailyCardScreen', () => {
 
     renderWithQueryClient(<DailyCardScreen {...makeProps()} />);
     fireEvent.changeText(
-      await screen.findByTestId('daily-card-input'),
+      await screen.findByTestId('daily-card-answer-a'),
       'odpowiedź',
     );
     fireEvent.press(screen.getByTestId('daily-card-submit'));
@@ -249,7 +280,7 @@ describe('DailyCardScreen', () => {
 
     renderWithQueryClient(<DailyCardScreen {...makeProps()} />);
     fireEvent.changeText(
-      await screen.findByTestId('daily-card-input'),
+      await screen.findByTestId('daily-card-answer-a'),
       'odpowiedź',
     );
     fireEvent.press(screen.getByTestId('daily-card-submit'));
@@ -269,7 +300,7 @@ describe('DailyCardScreen', () => {
 
     renderWithQueryClient(<DailyCardScreen {...makeProps()} />);
     fireEvent.changeText(
-      await screen.findByTestId('daily-card-input'),
+      await screen.findByTestId('daily-card-answer-a'),
       'odpowiedź',
     );
     fireEvent.press(screen.getByTestId('daily-card-submit'));
@@ -286,7 +317,7 @@ describe('DailyCardScreen', () => {
 
     renderWithQueryClient(<DailyCardScreen {...makeProps()} />);
 
-    await screen.findByTestId('daily-card-input');
+    await screen.findByTestId('daily-card-answer-a');
     await waitFor(() => expect(getProgress).toHaveBeenCalled());
     await act(async () => {
       await new Promise(resolve => setTimeout(resolve, 0));
@@ -305,7 +336,7 @@ describe('DailyCardScreen', () => {
 
     renderWithQueryClient(<DailyCardScreen {...makeProps()} />);
     fireEvent.changeText(
-      await screen.findByTestId('daily-card-input'),
+      await screen.findByTestId('daily-card-answer-a'),
       'odpowiedź',
     );
     fireEvent.press(screen.getByTestId('daily-card-submit'));
