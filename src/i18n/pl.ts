@@ -348,6 +348,10 @@ export const pl = {
     overwriteMessage: 'Zaczynając nową, stracisz ją. Kontynuować?',
     overwriteCancel: 'Anuluj',
     overwriteConfirm: 'Zacznij nową',
+    // Nowa gra nie nadpisze odłożonej, dopóki nie wyślemy jej zagranych kart —
+    // inaczej zniknęłyby z mapy postępów bez słowa.
+    owedReportError:
+      'Nie udało się zapisać ostatnich zagranych kart. Sprawdźcie internet i spróbujcie ponownie.',
     // Fallback na pustą pulę BEZ powodu — starszy backend albo powód, którego ta
     // wersja nie zna (patrz .catch(null) w src/api/localGame.ts). Neutralny,
     // dlatego nie mówi „z tej kategorii": przy mixie żadnej kategorii nie było.

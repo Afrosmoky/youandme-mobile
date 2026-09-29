@@ -243,6 +243,35 @@ export function LocalGameSetupScreen({ navigation }: Props) {
   );
 
   /**
+   * Sends what the paused game still owes before anything replaces it.
+   *
+   * Usually nothing: the mount effect has already flushed the buffer. What is
+   * left is what that flush could not send, and a new deal written over the
+   * session would drop those cards for the map without a word. So the deal waits
+   * for them, and if they still cannot be sent the paused game stays — the
+   * couple can resume it, or try again with a connection.
+   *
+   * Read off disk rather than from `stored`: the disk is what the deal is about
+   * to overwrite.
+   */
+  const settleOwedCards = useCallback(async (): Promise<boolean> => {
+    const onDisk = await loadLocalGameState();
+    if (onDisk === null || onDisk.pendingReport.length === 0) {
+      return true;
+    }
+    try {
+      await flush.mutateAsync(onDisk.pendingReport);
+    } catch {
+      setDeckError(pl.localGame.owedReportError);
+      return false;
+    }
+    await saveLocalGameState(confirmReported(onDisk, onDisk.pendingReport));
+    return true;
+    // The mutation is stable for the life of the screen.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /**
    * Starting, and the three things it can mean.
    *
    * The setup in the form is the one already paused on this phone: that session
@@ -300,10 +329,12 @@ export function LocalGameSetupScreen({ navigation }: Props) {
           {
             text: pl.localGame.overwriteConfirm,
             style: 'destructive',
-            // Not awaited, and it cannot reject: dealFresh answers every
+            // Not awaited, and it cannot reject: both steps answer every
             // failure with a message on the screen.
-            onPress: () => {
-              dealFresh(name, null, null);
+            onPress: async () => {
+              if (await settleOwedCards()) {
+                await dealFresh(name, null, null);
+              }
             },
           },
         ]);
@@ -314,7 +345,7 @@ export function LocalGameSetupScreen({ navigation }: Props) {
       // meant here, and it is now the only thing dealt.
       await dealFresh(name, null, null);
     },
-    [dealFresh, navigation, player1, player2, stored],
+    [dealFresh, navigation, player1, player2, settleOwedCards, stored],
   );
 
   const discard = useCallback(async () => {

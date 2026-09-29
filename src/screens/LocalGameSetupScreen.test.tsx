@@ -623,6 +623,63 @@ describe('LocalGameSetupScreen — a paused game', () => {
     expect((await loadLocalGameState())?.categorySlug).toBeNull();
   });
 
+  // Abandoning a paused game must not drop what it still owes the map. The mount
+  // flush failed (offline, say), so the cards are still on disk when the couple
+  // confirms: they go out first, and only then does the new deal replace them.
+  test('confirming sends the paused game\'s owed cards before dealing', async () => {
+    await saveLocalGameState({
+      ...paused(),
+      playedUlids: ['Q1'],
+      pendingReport: ['Q1'],
+    });
+    jest
+      .mocked(reportPlayedCards)
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValue({ playedTotal: 1, newlyPlayed: 1 });
+    renderScreen();
+
+    fireEvent.changeText(
+      await screen.findByTestId('local-game-player2'),
+      'Ala',
+    );
+    fireEvent.press(screen.getByTestId('local-game-start'));
+    await waitFor(() => expect(alert).toHaveBeenCalled());
+    await confirmOverwrite();
+
+    await waitFor(() => expect(fetchGameDeck).toHaveBeenCalledWith(null));
+    expect(reportPlayedCards).toHaveBeenCalledTimes(2);
+    expect(
+      jest.mocked(reportPlayedCards).mock.invocationCallOrder[1],
+    ).toBeLessThan(jest.mocked(fetchGameDeck).mock.invocationCallOrder[0]);
+    expect((await loadLocalGameState())?.player2).toBe('Ala');
+  });
+
+  test('owed cards that still cannot be sent keep the paused game', async () => {
+    await saveLocalGameState({
+      ...paused(),
+      playedUlids: ['Q1'],
+      pendingReport: ['Q1'],
+    });
+    jest.mocked(reportPlayedCards).mockRejectedValue(new Error('offline'));
+    renderScreen();
+
+    fireEvent.changeText(
+      await screen.findByTestId('local-game-player2'),
+      'Ala',
+    );
+    fireEvent.press(screen.getByTestId('local-game-start'));
+    await waitFor(() => expect(alert).toHaveBeenCalled());
+    await confirmOverwrite();
+
+    expect(
+      await screen.findByTestId('local-game-setup-error'),
+    ).toHaveTextContent(pl.localGame.owedReportError);
+    expect(fetchGameDeck).not.toHaveBeenCalled();
+    const kept = await loadLocalGameState();
+    expect(kept?.player2).toBe('Wiktoria');
+    expect(kept?.pendingReport).toEqual(['Q1']);
+  });
+
   test('a different partner deals a fresh deck', async () => {
     await saveLocalGameState(paused());
     renderScreen();
