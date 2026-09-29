@@ -16,9 +16,15 @@ import { queryKeys } from './queryKeys';
 // Invalidates progress, and only progress. Since P10 this is THE path by which
 // the map moves; the memories a couple may also have saved travel their own way
 // (useSaveLocalMemory) and touch nothing here.
+// Shared by every report, live or resent, so a deck reset can wait for the ones
+// still in flight: a report landing AFTER the reset would mark its cards as
+// played in the new deck (see useResetDeck).
+export const reportPlayedCardsKey = ['report-played-cards'] as const;
+
 export function useReportPlayedCards() {
   const queryClient = useQueryClient();
   return useMutation({
+    mutationKey: reportPlayedCardsKey,
     mutationFn: async (playedUlids: string[]) => {
       for (const batch of reportBatches(playedUlids)) {
         await reportPlayedCards(batch);

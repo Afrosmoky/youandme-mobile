@@ -101,6 +101,19 @@ export async function fetchGameDeck(
   };
 }
 
+// POST /questions/deck/reset — puts every card back into the couple's deck.
+//
+// Nothing is deleted server-side: the couple gets a deck_reset_at mark, the deal
+// skips only cards seen after it, and the progress map never reads the mark — so
+// the map keeps what it has and does not grow on replayed cards. 204 on success,
+// 429 past ten a minute. Couple-wide, so it covers every phone signed in to it.
+//
+// The call alone is not a safe reset; useResetDeck is. What the phone still owes
+// has to be reported BEFORE this, or those cards land as played in the new deck.
+export async function resetDeck(): Promise<void> {
+  await apiClient.post('/questions/deck/reset');
+}
+
 // POST /game/local/report — the cards this phone dealt, sent in one batch after
 // the session (P10 backend slice a).
 //

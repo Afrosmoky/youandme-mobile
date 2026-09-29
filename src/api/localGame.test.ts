@@ -1,5 +1,5 @@
 import type { AxiosResponse } from 'axios';
-import { fetchGameDeck, reportPlayedCards } from './localGame';
+import { fetchGameDeck, reportPlayedCards, resetDeck } from './localGame';
 import { apiClient } from './client';
 
 jest.mock('./client', () => ({
@@ -163,5 +163,18 @@ describe('reportPlayedCards', () => {
       question_ulids: ['Q1', 'Q2', 'Q3'],
     });
     expect(result).toEqual({ playedTotal: 12, newlyPlayed: 3 });
+  });
+});
+
+describe('resetDeck', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  // No body: the reset is couple-wide and the token says which couple.
+  test('POSTs the reset with no body', async () => {
+    jest.mocked(apiClient.post).mockResolvedValue({ status: 204, data: '' });
+
+    await resetDeck();
+
+    expect(apiClient.post).toHaveBeenCalledWith('/questions/deck/reset');
   });
 });
