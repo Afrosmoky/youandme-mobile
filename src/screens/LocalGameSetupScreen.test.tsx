@@ -1,4 +1,5 @@
 import React from 'react';
+import axios from 'axios';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Alert, Share, type AlertButton } from 'react-native';
 import * as StoreReview from 'react-native-store-review';
@@ -10,6 +11,7 @@ import {
   type DeckExhaustion,
   fetchGameDeck,
   reportPlayedCards,
+  resetDeck,
 } from '../api/localGame';
 import { useAuth } from '../auth/AuthContext';
 import { startLocalGame } from '../domain/localGame';
@@ -20,6 +22,7 @@ import {
 } from '../storage/localGameState';
 import { loadPartnerName, savePartnerName } from '../storage/partnerName';
 import type { RootStackParamList } from '../navigation/types';
+import { BACK_TO_SETUP } from '../navigation/backToSetup';
 import type { Couple, Question, User } from '../domain/types';
 import { pl } from '../i18n/pl';
 
@@ -27,6 +30,7 @@ jest.mock('../api/categories', () => ({ listCategories: jest.fn() }));
 jest.mock('../api/localGame', () => ({
   fetchGameDeck: jest.fn(),
   reportPlayedCards: jest.fn(),
+  resetDeck: jest.fn(),
 }));
 jest.mock('../auth/AuthContext', () => ({ useAuth: jest.fn() }));
 
@@ -63,10 +67,23 @@ const deck = (questions: Question[], exhaustion: DeckExhaustion | null = null) =
   ({ questions, exhaustion });
 
 const navigate = jest.fn();
+const reset = jest.fn();
+
+// The reset's confirmation, answered: the last Alert on screen is the one the
+// tap just raised.
+const pressResetConfirm = async (alert: jest.SpyInstance) => {
+  const buttons = alert.mock.calls.at(-1)?.[2] as AlertButton[] | undefined;
+  const confirm = buttons?.find(
+    button => button.text === pl.localGame.reset.confirm,
+  );
+  await act(async () => {
+    confirm?.onPress?.();
+  });
+};
 
 function makeProps(): Props {
   return {
-    navigation: { navigate, setOptions: jest.fn(), replace: jest.fn() },
+    navigation: { navigate, reset, setOptions: jest.fn(), replace: jest.fn() },
     route: { key: 'LocalGameSetup', name: 'LocalGameSetup', params: undefined },
   } as unknown as Props;
 }
@@ -394,6 +411,45 @@ describe('LocalGameSetupScreen — an exhausted deck', () => {
     expect(screen.queryByTestId('local-game-setup-error')).toBeNull();
   });
 
+  // A deck played to the end has one thing left to offer: the same "od nowa" as
+  // the summary, behind the same confirmation.
+  test('a finished deck offers to play it again from the start', async () => {
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    jest.mocked(resetDeck).mockResolvedValue(undefined);
+    exhausted('complete');
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('local-game-start'));
+    fireEvent.press(await screen.findByTestId('local-game-exhaustion-reset'));
+
+    expect(alert).toHaveBeenCalledWith(
+      pl.localGame.reset.confirmTitle,
+      pl.localGame.reset.confirmMessage,
+      expect.any(Array),
+    );
+    expect(resetDeck).not.toHaveBeenCalled();
+
+    await pressResetConfirm(alert);
+
+    await waitFor(() => expect(reset).toHaveBeenCalledWith(BACK_TO_SETUP));
+    expect(resetDeck).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('toast')).toHaveTextContent(
+      pl.localGame.reset.done,
+    );
+  });
+
+  // Closed cards are the paid content; the free ones coming back right beside
+  // "unlock" would undercut it.
+  test('a paywall offers no reset', async () => {
+    exhausted('locked_available', 12);
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('local-game-start'));
+
+    await screen.findByTestId('local-game-exhaustion');
+    expect(screen.queryByTestId('local-game-exhaustion-reset')).toBeNull();
+  });
+
   // Otherwise the answer to the previous tap would stand over the next one.
   test('the panel is cleared by the next attempt', async () => {
     exhausted('complete');
@@ -467,6 +523,8 @@ describe('LocalGameSetupScreen — a paused game', () => {
     alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     jest.mocked(listCategories).mockResolvedValue(categories);
     jest.mocked(fetchGameDeck).mockResolvedValue(deck([question(1)]));
+    jest.mocked(resetDeck).mockResolvedValue(undefined);
+    jest.mocked(axios.isAxiosError).mockReturnValue(false);
     jest
       .mocked(reportPlayedCards)
       .mockResolvedValue({ playedTotal: 0, newlyPlayed: 0 });
@@ -520,16 +578,71 @@ describe('LocalGameSetupScreen — a paused game', () => {
     expect(fetchGameDeck).not.toHaveBeenCalled();
   });
 
-  test('starting over drops the stored session', async () => {
+  // "Od nowa" is the full deck here too, so it asks first — a couple who only
+  // meant to drop the paused game learns from the confirmation that it does more.
+  test('starting over asks before it does anything', async () => {
     await saveLocalGameState(paused());
     renderScreen();
 
-    fireEvent.press(await screen.findByTestId('local-game-discard'));
+    fireEvent.press(await screen.findByTestId('local-game-restart'));
 
-    await waitFor(() =>
-      expect(screen.queryByTestId('local-game-resume')).toBeNull(),
+    expect(alert).toHaveBeenCalledWith(
+      pl.localGame.reset.confirmTitle,
+      pl.localGame.reset.confirmMessage,
+      expect.any(Array),
     );
+    expect(resetDeck).not.toHaveBeenCalled();
+    expect(await loadLocalGameState()).not.toBeNull();
+  });
+
+  test('cancelling the reset leaves the paused game where it was', async () => {
+    await saveLocalGameState(paused());
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('local-game-restart'));
+
+    const buttons = alert.mock.calls.at(-1)?.[2] as AlertButton[];
+    const cancel = buttons.find(b => b.text === pl.localGame.reset.cancel);
+    expect(cancel?.style).toBe('cancel');
+    expect(cancel?.onPress).toBeUndefined();
+    expect(screen.getByTestId('local-game-resume')).toBeOnTheScreen();
+  });
+
+  // The class of bug that has twice eaten a couple's progress: a paused game
+  // outliving the deck it was dealt from, and resuming with that old queue.
+  test('after a reset the old game does not come back', async () => {
+    await saveLocalGameState(paused());
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('local-game-restart'));
+    await pressResetConfirm(alert);
+
+    await waitFor(() => expect(reset).toHaveBeenCalledWith(BACK_TO_SETUP));
     expect(await loadLocalGameState()).toBeNull();
+
+    // What the navigator does next: a freshly mounted setup screen.
+    renderScreen();
+    await screen.findByTestId('local-game-start');
+    expect(screen.queryByTestId('local-game-resume')).toBeNull();
+  });
+
+  test('a 429 says so and keeps the paused game', async () => {
+    jest
+      .mocked(resetDeck)
+      .mockRejectedValue({ isAxiosError: true, response: { status: 429 } });
+    jest.mocked(axios.isAxiosError).mockReturnValue(true);
+    await saveLocalGameState(paused());
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('local-game-restart'));
+    await pressResetConfirm(alert);
+
+    expect(
+      await screen.findByTestId('local-game-setup-error'),
+    ).toHaveTextContent(pl.localGame.reset.tooManyAttempts);
+    expect(reset).not.toHaveBeenCalled();
+    expect(await loadLocalGameState()).not.toBeNull();
+    expect(screen.getByTestId('local-game-resume')).toBeOnTheScreen();
   });
 
   // The demo's guard, and the reason it matters: dealing a fresh deck here would

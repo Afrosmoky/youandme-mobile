@@ -341,6 +341,7 @@ export const pl = {
     // Nazwa kategorii na karcie „wznów" dla gry na wymieszanej talii.
     resumeMix: 'mix',
     resumeButton: 'Wznów grę',
+    // „Od nowa" znaczy wszędzie to samo: pełna talia, po potwierdzeniu (reset).
     restartButton: 'Zacznij od nowa',
     // Jeden slot na grę lokalną: nowa gra o innej konfiguracji nadpisuje tę
     // odłożoną, więc pytamy, zanim to zrobimy.
@@ -417,7 +418,29 @@ export const pl = {
     summaryQuestions: (count: number) => `Zagrane karty: ${count}`,
     summaryChallenges: (count: number) => `Wyzwania: ${count}`,
     summaryMemories: (count: number) => `Zapisane wspomnienia: ${count}`,
-    playAgainButton: 'Zagrajcie znów',
+    // Zagrane karty nie wracają (rejestr antypowtórkowy), więc para dowiaduje
+    // się o tym tutaj, zanim zobaczy krótszą talię w następnej grze.
+    summarySpentCards: 'Zagrane karty nie wracają — kolejna gra to nowe pytania.',
+    // Reset talii, jak restartButton — to samo „od nowa".
+    playAgainButton: 'Zagrajcie od nowa',
+
+    // Reset talii: jedna czynność pod trzema przyciskami „od nowa" (podsumowanie,
+    // karta wznowienia, lejek przy ukończonej talii). W treści „odnowić talię",
+    // żeby nazwa czynności różniła się od nazw przycisków. Robocze, do
+    // potwierdzenia przez Wiktorię.
+    reset: {
+      confirmTitle: 'Odnowić talię?',
+      confirmMessage:
+        'Wszystkie karty wrócą do gry od początku. Mapa postępów, polubienia i wspomnienia zostają — ale karty zagrane po raz drugi nie zwiększą już postępu. Dotyczy to obu Waszych telefonów.',
+      cancel: 'Anuluj',
+      confirm: 'Odnówcie',
+      done: 'Talia odnowiona — wszystkie karty czekają od początku.',
+      tooManyAttempts:
+        'Chwilę za szybko. Odczekajcie moment i spróbujcie ponownie.',
+      owedReportError:
+        'Nie udało się zapisać ostatnich zagranych kart, więc talii nie odnowiliśmy. Sprawdźcie internet i spróbujcie ponownie.',
+      error: 'Nie udało się odnowić talii.',
+    },
     backHome: 'Wróć do początku',
   },
 

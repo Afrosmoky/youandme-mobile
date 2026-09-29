@@ -36,6 +36,8 @@ import {
 import { loadPartnerName, savePartnerName } from '../storage/partnerName';
 import { Card } from '../components/Card';
 import { EarnCreditsActions } from '../components/EarnCreditsActions';
+import { useDeckResetAction } from '../queries/useDeckResetAction';
+import { BACK_TO_SETUP } from '../navigation/backToSetup';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { GoldButton } from '../components/GoldButton';
 import { OutlineButton } from '../components/OutlineButton';
@@ -348,10 +350,17 @@ export function LocalGameSetupScreen({ navigation }: Props) {
     [dealFresh, navigation, player1, player2, settleOwedCards, stored],
   );
 
-  const discard = useCallback(async () => {
-    await clearLocalGameState();
-    setStored(null);
-  }, []);
+  // "Od nowa" on this screen resets the whole deck, as it does on the summary.
+  // Afterwards the couple lands on a freshly mounted setup — the same way back
+  // the game uses — so nothing this instance holds (the paused game, the
+  // exhaustion panel) can outlive the reset.
+  const onResetDone = useCallback(() => {
+    navigation.reset(BACK_TO_SETUP);
+  }, [navigation]);
+  const { request: requestReset, resetting } = useDeckResetAction({
+    onDone: onResetDone,
+    onError: setDeckError,
+  });
 
   if (loadingStored) {
     return (
@@ -388,6 +397,7 @@ export function LocalGameSetupScreen({ navigation }: Props) {
           other_categories: {
             gold: false,
             earn: false,
+            reset: false,
             title: pl.localGame.exhaustion.otherCategoriesTitle,
             body: pl.localGame.exhaustion.otherCategoriesBody,
             remaining: null,
@@ -398,6 +408,11 @@ export function LocalGameSetupScreen({ navigation }: Props) {
             // The one reason with something to earn: they have run out of FREE
             // cards while closed ones remain, so a credit is worth something.
             earn: true,
+            // No reset here, on purpose: closed cards are the paid content, and
+            // bringing the free ones back right beside "unlock" would undercut
+            // it at the one moment it is meant to work. The summary still
+            // offers the reset to anyone who wants it.
+            reset: false,
             title: pl.localGame.exhaustion.lockedTitle,
             body: pl.localGame.exhaustion.lockedBody,
             // Zero locked cards left with this reason would contradict itself,
@@ -416,6 +431,8 @@ export function LocalGameSetupScreen({ navigation }: Props) {
             // the two ways here would be selling a couple something that does
             // not exist — the same reason this branch has no CTA either.
             earn: false,
+            // The one thing left to do with a deck played to the end.
+            reset: true,
             title: pl.localGame.exhaustion.completeTitle,
             body: pl.localGame.exhaustion.completeBody,
             remaining: null,
@@ -453,6 +470,15 @@ export function LocalGameSetupScreen({ navigation }: Props) {
                   testID="local-game-exhaustion-cta"
                   title={exhaustionPanel.cta}
                   onPress={() => navigation.navigate('Deck')}
+                  style={styles.exhaustionCta}
+                />
+              )}
+              {exhaustionPanel.reset && (
+                <GoldButton
+                  testID="local-game-exhaustion-reset"
+                  title={pl.localGame.playAgainButton}
+                  onPress={requestReset}
+                  loading={resetting}
                   style={styles.exhaustionCta}
                 />
               )}
@@ -499,9 +525,11 @@ export function LocalGameSetupScreen({ navigation }: Props) {
                 style={styles.resumeButton}
               />
               <OutlineButton
-                testID="local-game-discard"
+                testID="local-game-restart"
                 title={pl.localGame.restartButton}
-                onPress={discard}
+                onPress={requestReset}
+                loading={resetting}
+                disabled={resetting}
               />
             </Card>
           )}
