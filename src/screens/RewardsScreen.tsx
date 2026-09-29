@@ -165,12 +165,6 @@ export function RewardsScreen({ navigation }: Props) {
         <EarnCreditsActions testID="rewards-earn" style={styles.earnActions} />
       </View>
 
-      {rewards && (
-        <Text testID="rewards-ads-today" style={styles.adsToday}>
-          {pl.rewards.adsToday(rewards.ads.remainingToday, rewards.ads.dailyCap)}
-        </Text>
-      )}
-
       {/*
         Hidden entirely until SSV is live (see AD_REWARD_ENABLED). With no
         public callback URL the server never learns the ad was watched, so the
@@ -180,6 +174,18 @@ export function RewardsScreen({ navigation }: Props) {
       {AD_REWARD_ENABLED && (
         <View testID="rewards-ad-section" style={styles.section}>
           <Text style={styles.sectionTitle}>{pl.ads.sectionTitle}</Text>
+
+          {/* The daily cap belongs to the ad path and nothing else. It used to
+              sit outside this gate, so with ads off a couple was shown the limit
+              of something they had no way to do. */}
+          {rewards && (
+            <Text testID="rewards-ads-today" style={styles.adsToday}>
+              {pl.rewards.adsToday(
+                rewards.ads.remainingToday,
+                rewards.ads.dailyCap,
+              )}
+            </Text>
+          )}
 
           {creditPending && (
             <Text testID="rewards-credit-pending" style={styles.pending}>
@@ -276,6 +282,7 @@ const createStyles = (theme: Theme) => {
       fontFamily: typography.family.body,
       fontSize: typography.size.bodySm,
       color: colors.text.muted,
+      marginBottom: spacing.md,
     },
     earnActions: {
       marginTop: spacing.lg,

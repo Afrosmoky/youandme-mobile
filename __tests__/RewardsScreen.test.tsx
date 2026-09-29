@@ -58,12 +58,22 @@ describe('RewardsScreen', () => {
     expect(await screen.findByTestId('rewards-credits')).toHaveTextContent('3');
   });
 
-  test('shows how many ads are left today', async () => {
+  test('shows how many ads are left today when ads are on', async () => {
+    mockAdRewardEnabled = true;
     renderWithQueryClient(<RewardsScreen {...makeProps()} />);
 
     expect(await screen.findByTestId('rewards-ads-today')).toHaveTextContent(
       pl.rewards.adsToday(4, 5),
     );
+  });
+
+  // The counter is part of the ad path: with ads off there is nothing for it to
+  // count, and showing "5 z 5" read as a limit on something that does not exist.
+  test('hides the ad counter while ads are off', async () => {
+    renderWithQueryClient(<RewardsScreen {...makeProps()} />);
+
+    await screen.findByTestId('rewards-credits');
+    expect(screen.queryByTestId('rewards-ads-today')).toBeNull();
   });
 
   // A zero balance is a real state, not a missing one — it must read as 0
