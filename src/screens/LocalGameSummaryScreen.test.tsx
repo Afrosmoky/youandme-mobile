@@ -123,6 +123,19 @@ describe('LocalGameSummaryScreen', () => {
     );
   });
 
+  // Every summary, not only a spent deck: the screen cannot tell which it is.
+  test('offers the ways to earn more cards under the two buttons', async () => {
+    await saveLocalGameState(playedOut());
+    renderScreen();
+
+    expect(await screen.findByTestId('local-game-summary-earn')).toBeOnTheScreen();
+    expect(screen.getByText(pl.earn.sectionTitle)).toBeOnTheScreen();
+    expect(
+      screen.getByTestId('local-game-summary-earn-share'),
+    ).toBeOnTheScreen();
+    expect(screen.getByTestId('local-game-summary-earn-rate')).toBeOnTheScreen();
+  });
+
   test('reports nothing — the cards went out as they were played', async () => {
     await saveLocalGameState(playedOut());
     renderScreen();

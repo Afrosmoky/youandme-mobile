@@ -9,6 +9,7 @@ import { useMilestoneCelebration } from '../queries/useMilestoneCelebration';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { Card } from '../components/Card';
 import { Celebration } from '../components/Celebration';
+import { EarnCreditsActions } from '../components/EarnCreditsActions';
 import { GoldButton } from '../components/GoldButton';
 import { OutlineButton } from '../components/OutlineButton';
 import { SectionLabel } from '../components/SectionLabel';
@@ -112,6 +113,24 @@ export function LocalGameSummaryScreen({ navigation, route }: Props) {
         onPress={() => navigation.popTo('Home')}
       />
 
+      {/* The way to more cards, at the moment a couple has just run through
+          theirs. Shown every time rather than only on a spent deck: this screen
+          does not know whether the deck is spent (only the next deal does), and
+          asking the server here would race the report of the last card, which is
+          fired rather than awaited. A genuinely empty deck still gets the full
+          funnel on the setup screen, one tap away.
+
+          Under the two buttons, because playing on is what most couples want;
+          this is the answer for when they cannot. */}
+      <View testID="local-game-summary-earn" style={styles.earn}>
+        <SectionLabel>{pl.earn.sectionTitle}</SectionLabel>
+        <Text style={styles.earnBody}>{pl.earn.sectionBody}</Text>
+        <EarnCreditsActions
+          testID="local-game-summary-earn"
+          style={styles.earnActions}
+        />
+      </View>
+
       {/* Over the summary, exactly as it sits over the game: the counters stay
           where they are, and the couple dismisses the modal onto them. */}
       <Celebration
@@ -151,6 +170,18 @@ const createStyles = (theme: Theme) => {
     },
     playAgain: {
       marginBottom: spacing.md,
+    },
+    earn: {
+      marginTop: spacing.xxl,
+    },
+    earnBody: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.bodySm,
+      color: colors.text.secondary,
+      marginTop: spacing.sm,
+    },
+    earnActions: {
+      marginTop: spacing.lg,
     },
   });
 };
