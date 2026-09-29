@@ -91,6 +91,22 @@ describe('MemoryCardScreen', () => {
     expect(getMemory).toHaveBeenCalledWith('m_01');
   });
 
+  // player_b_name is null on a daily card until the couple names the partner in
+  // the profile; the partner's answer is shown regardless.
+  test('shows answer B under a generic label when the partner has no name', async () => {
+    jest.mocked(getMemory).mockResolvedValue({...memory, playerBName: null});
+    const {props} = makeProps();
+
+    renderWithQueryClient(<MemoryCardScreen {...props} />);
+
+    expect(await screen.findByTestId('memory-card-answer-b')).toHaveTextContent(
+      'Mój też był niezły.',
+    );
+    expect(
+      screen.getByText(pl.memoryCard.partnerAnswerLabel),
+    ).toBeOnTheScreen();
+  });
+
   test('the heart hearts an unhearted memory', async () => {
     const {props} = makeProps();
     jest

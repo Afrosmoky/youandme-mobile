@@ -289,10 +289,14 @@ export function MemoryCardScreen({ navigation, route }: Props) {
               {memory.answerA}
             </Text>
 
-            {memory.answerB !== null && memory.playerBName && (
+            {/* Keyed on the answer alone, as in the list: a daily card with no
+                partner name set still carries the partner's answer. */}
+            {memory.answerB !== null && (
               <>
                 <Text style={styles.playerLabel}>
-                  {pl.memories.player(memory.playerBName)}
+                  {memory.playerBName
+                    ? pl.memories.player(memory.playerBName)
+                    : pl.memoryCard.partnerAnswerLabel}
                 </Text>
                 <Text testID="memory-card-answer-b" style={styles.answer}>
                   {memory.answerB}

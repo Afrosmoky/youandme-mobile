@@ -250,7 +250,8 @@ export const pl = {
     save: 'Zapisz zmiany',
     saveError: 'Nie udało się zapisać zmian.',
     emptyAnswer: 'Odpowiedź nie może być pusta.',
-    // Etykiety pól w trybie edycji: nick gracza, gdy jest znany.
+    // Etykiety pól w trybie edycji: nick gracza, gdy jest znany. Etykieta
+    // partnera służy też podglądowi i liście, gdy imienia partnera brak.
     answerLabel: (name: string) => `Odpowiedź ${name}`,
     partnerAnswerLabel: 'Odpowiedź partnera',
     // Pole partnera można wyczyścić — backend przyjmuje pustą odpowiedź jako brak.

@@ -131,6 +131,29 @@ describe('MemoriesScreen', () => {
     expect(screen.getByText(pl.memories.player('Tomek'))).toBeOnTheScreen();
   });
 
+  // A daily card takes player_b_name from the couple's partner name, which is
+  // null until it is set in the profile. The answer must not vanish with it.
+  test('shows answer B under a generic label when the partner has no name', async () => {
+    const nameless: Memory = {
+      ...memory,
+      ulid: 'm_03',
+      answerB: 'Druga odpowiedź.',
+      playerBName: null,
+    };
+    jest
+      .mocked(listMemories)
+      .mockResolvedValue({memories: [nameless], nextCursor: null, prevCursor: null});
+
+    renderWithQueryClient(<MemoriesScreen {...makeProps()} />);
+
+    expect(await screen.findByTestId('memory-player-b-m_03')).toHaveTextContent(
+      'Druga odpowiedź.',
+    );
+    expect(
+      screen.getByText(pl.memoryCard.partnerAnswerLabel),
+    ).toBeOnTheScreen();
+  });
+
   test('renders the Polish label for each origin', async () => {
     const memories: Memory[] = [
       {...memory, ulid: 'm_s', origin: 'session'},

@@ -235,10 +235,15 @@ export function MemoriesScreen({ navigation }: Props) {
             {item.answerA}
           </Text>
 
-          {item.answerB !== null && item.playerBName && (
+          {/* Keyed on the answer alone. A daily card takes player_b_name from the
+              couple's partner name, which is null until they set one in the
+              profile — and the answer is still theirs to see. */}
+          {item.answerB !== null && (
             <>
               <Text style={styles.playerLabel}>
-                {pl.memories.player(item.playerBName)}
+                {item.playerBName
+                  ? pl.memories.player(item.playerBName)
+                  : pl.memoryCard.partnerAnswerLabel}
               </Text>
               <Text
                 testID={`memory-player-b-${item.ulid}`}
