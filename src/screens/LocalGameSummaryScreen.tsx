@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
@@ -6,6 +6,7 @@ import { BACK_TO_SETUP } from '../navigation/backToSetup';
 import { LocalGameSummary, summarise } from '../domain/localGame';
 import { loadLocalGameState } from '../storage/localGameState';
 import { useMilestoneCelebration } from '../queries/useMilestoneCelebration';
+import { useDeckResetAction } from '../queries/useDeckResetAction';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { Card } from '../components/Card';
 import { Celebration } from '../components/Celebration';
@@ -51,6 +52,19 @@ export function LocalGameSummaryScreen({ navigation, route }: Props) {
   const { milestone, dismiss } = useMilestoneCelebration(
     route.params?.seenMilestones,
   );
+
+  // "Zagrajcie od nowa" is the full deck again, not the next deal of unseen
+  // cards. The reset waits for the last card's report before it is sent — see
+  // useResetDeck — and then the couple goes through Home to a fresh setup,
+  // exactly as this button always took them.
+  const [resetError, setResetError] = useState<string | null>(null);
+  const onResetDone = useCallback(() => {
+    navigation.reset(BACK_TO_SETUP);
+  }, [navigation]);
+  const { request: requestReset, resetting } = useDeckResetAction({
+    onDone: onResetDone,
+    onError: setResetError,
+  });
 
   // Read ONCE, on mount. The session outlives this screen now, but the rule
   // stands for the same reason it did in P10: "nothing stored" is only ever an
@@ -101,17 +115,34 @@ export function LocalGameSummaryScreen({ navigation, route }: Props) {
         </Text>
       </Card>
 
+      {/* Why the next game can be shorter than this one. The card counter on
+          the next deal ("Karta 1 z 26") otherwise reads as a bug. */}
+      <Text testID="local-game-summary-spent" style={styles.spent}>
+        {pl.localGame.summarySpentCards}
+      </Text>
+
       <GoldButton
         testID="local-game-play-again"
         title={pl.localGame.playAgainButton}
-        onPress={() => navigation.reset(BACK_TO_SETUP)}
+        onPress={() => {
+          setResetError(null);
+          requestReset();
+        }}
+        loading={resetting}
         style={styles.playAgain}
       />
       <OutlineButton
         testID="local-game-summary-home"
         title={pl.localGame.backHome}
         onPress={() => navigation.popTo('Home')}
+        disabled={resetting}
       />
+
+      {resetError && (
+        <Text testID="local-game-summary-error" style={styles.error}>
+          {resetError}
+        </Text>
+      )}
 
       {/* The way to more cards, at the moment a couple has just run through
           theirs. Shown every time rather than only on a spent deck: this screen
@@ -168,8 +199,20 @@ const createStyles = (theme: Theme) => {
       color: colors.text.primary,
       marginTop: spacing.md,
     },
+    spent: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.bodySm,
+      color: colors.text.secondary,
+      marginBottom: spacing.lg,
+    },
     playAgain: {
       marginBottom: spacing.md,
+    },
+    error: {
+      fontFamily: typography.family.body,
+      fontSize: typography.size.bodySm,
+      color: colors.burgundy.accent,
+      marginTop: spacing.md,
     },
     earn: {
       marginTop: spacing.xxl,

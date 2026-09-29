@@ -1,9 +1,11 @@
 import React from 'react';
+import { Alert, type AlertButton } from 'react-native';
+import axios from 'axios';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
 import { renderWithQueryClient } from '../test/renderWithQueryClient';
 import { LocalGameSummaryScreen } from './LocalGameSummaryScreen';
-import { reportPlayedCards } from '../api/localGame';
+import { reportPlayedCards, resetDeck } from '../api/localGame';
 import { getProgress } from '../api/progress';
 import {
   advance,
@@ -22,7 +24,10 @@ import { BACK_TO_SETUP } from '../navigation/backToSetup';
 import type { Progress, Question } from '../domain/types';
 import { pl } from '../i18n/pl';
 
-jest.mock('../api/localGame', () => ({ reportPlayedCards: jest.fn() }));
+jest.mock('../api/localGame', () => ({
+  reportPlayedCards: jest.fn(),
+  resetDeck: jest.fn(),
+}));
 jest.mock('../api/progress', () => ({ getProgress: jest.fn() }));
 
 type Props = NativeStackScreenProps<RootStackParamList, 'LocalGameSummary'>;
@@ -177,18 +182,136 @@ describe('LocalGameSummaryScreen', () => {
     await waitFor(() => expect(reset).toHaveBeenCalledWith(BACK_TO_SETUP));
   });
 
-  // The same guard as on the game screen, and the more travelled path of the
-  // two: a couple reaches the end of a deck more often than it walks out of a
-  // game. Same caveat — it pins the call shape that causes the setup screen to
-  // mount, and cannot see the flush that mount performs.
-  test('playing again resets to a NEW setup screen, not back onto the old one', async () => {
+  test('says that played cards do not come back, above the buttons', async () => {
+    await saveLocalGameState(playedOut());
+    renderScreen();
+
+    expect(
+      await screen.findByTestId('local-game-summary-spent'),
+    ).toHaveTextContent(pl.localGame.summarySpentCards);
+  });
+});
+
+// "Zagrajcie od nowa" resets the whole deck, behind the same confirmation as
+// every other "od nowa".
+describe('LocalGameSummaryScreen — playing again from the start', () => {
+  let alert: jest.SpyInstance;
+
+  const confirmReset = async () => {
+    const buttons = alert.mock.calls.at(-1)?.[2] as AlertButton[] | undefined;
+    const confirm = buttons?.find(
+      button => button.text === pl.localGame.reset.confirm,
+    );
+    await act(async () => {
+      confirm?.onPress?.();
+    });
+  };
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    await clearLocalGameState();
+    alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    jest.mocked(axios.isAxiosError).mockReturnValue(false);
+    jest
+      .mocked(reportPlayedCards)
+      .mockResolvedValue({ playedTotal: 3, newlyPlayed: 3 });
+    jest.mocked(resetDeck).mockResolvedValue(undefined);
+    jest.mocked(getProgress).mockResolvedValue(progressWith(false));
+  });
+
+  // clearAllMocks keeps implementations; the next suite must not inherit a 429.
+  afterEach(() => {
+    jest.mocked(axios.isAxiosError).mockReturnValue(false);
+  });
+
+  test('asks first, and a tap alone resets nothing', async () => {
     await saveLocalGameState(playedOut());
     renderScreen();
 
     fireEvent.press(await screen.findByTestId('local-game-play-again'));
 
-    expect(reset).toHaveBeenCalledWith(BACK_TO_SETUP);
+    expect(alert).toHaveBeenCalledWith(
+      pl.localGame.reset.confirmTitle,
+      pl.localGame.reset.confirmMessage,
+      expect.any(Array),
+    );
+    expect(resetDeck).not.toHaveBeenCalled();
+    expect(reset).not.toHaveBeenCalled();
+  });
+
+  // The same guard as on the game screen: a reset through Home, never a pop or
+  // a replace, so exactly one setup screen mounts — freshly.
+  test('confirming resets the deck and opens a NEW setup screen', async () => {
+    await saveLocalGameState(playedOut());
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('local-game-play-again'));
+    await confirmReset();
+
+    await waitFor(() => expect(reset).toHaveBeenCalledWith(BACK_TO_SETUP));
+    expect(resetDeck).toHaveBeenCalledTimes(1);
     expect(replace).not.toHaveBeenCalled();
+    expect(await loadLocalGameState()).toBeNull();
+  });
+
+  // The last card's report answered after the game screen was gone, so it is
+  // still owed on disk. It has to land BEFORE the reset, or it counts that card
+  // as played in the new deck.
+  test('the last card is reported before the deck is reset', async () => {
+    const owing = { ...playedOut(), pendingReport: ['Q3'] };
+    await saveLocalGameState(owing);
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('local-game-play-again'));
+    await confirmReset();
+
+    await waitFor(() => expect(resetDeck).toHaveBeenCalled());
+    expect(reportPlayedCards).toHaveBeenCalledWith(['Q3']);
+    expect(
+      jest.mocked(reportPlayedCards).mock.invocationCallOrder[0],
+    ).toBeLessThan(jest.mocked(resetDeck).mock.invocationCallOrder[0]);
+  });
+
+  test('a report that cannot be sent stops the reset and says why', async () => {
+    const owing = { ...playedOut(), pendingReport: ['Q3'] };
+    await saveLocalGameState(owing);
+    jest.mocked(reportPlayedCards).mockRejectedValue(new Error('offline'));
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('local-game-play-again'));
+    await confirmReset();
+
+    expect(
+      await screen.findByTestId('local-game-summary-error'),
+    ).toHaveTextContent(pl.localGame.reset.owedReportError);
+    expect(resetDeck).not.toHaveBeenCalled();
+    expect(reset).not.toHaveBeenCalled();
+    expect(await loadLocalGameState()).toEqual(owing);
+  });
+
+  test('a 429 says so, clears nothing and can be tried again', async () => {
+    const state = playedOut();
+    await saveLocalGameState(state);
+    jest
+      .mocked(resetDeck)
+      .mockRejectedValueOnce({ isAxiosError: true, response: { status: 429 } });
+    jest.mocked(axios.isAxiosError).mockReturnValue(true);
+    renderScreen();
+
+    fireEvent.press(await screen.findByTestId('local-game-play-again'));
+    await confirmReset();
+
+    expect(
+      await screen.findByTestId('local-game-summary-error'),
+    ).toHaveTextContent(pl.localGame.reset.tooManyAttempts);
+    expect(reset).not.toHaveBeenCalled();
+    expect(await loadLocalGameState()).toEqual(state);
+
+    fireEvent.press(screen.getByTestId('local-game-play-again'));
+    await confirmReset();
+
+    await waitFor(() => expect(reset).toHaveBeenCalledWith(BACK_TO_SETUP));
+    expect(resetDeck).toHaveBeenCalledTimes(2);
   });
 });
 
