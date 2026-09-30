@@ -18,7 +18,9 @@ export type RootStackParamList = {
   // Local two-player game (P10). The session itself lives in AsyncStorage, so
   // the screens read it rather than being handed it — which is also what makes
   // resuming after a cold start work at all.
-  LocalGameSetup: undefined;
+  // autoStart: straight into the game once the setup has loaded (after a deck
+  // reset), through the same handler as the start button.
+  LocalGameSetup: { autoStart?: boolean } | undefined;
   LocalGame: undefined;
   // The one thing the summary cannot read off disk (S3d): which milestones the
   // game screen had already accounted for when it sent the couple here. The

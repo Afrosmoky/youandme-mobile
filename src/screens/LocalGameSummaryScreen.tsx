@@ -2,7 +2,10 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { BACK_TO_SETUP } from '../navigation/backToSetup';
+import {
+  BACK_TO_SETUP,
+  BACK_TO_SETUP_AND_START,
+} from '../navigation/backToSetup';
 import { LocalGameSummary, summarise } from '../domain/localGame';
 import { loadLocalGameState } from '../storage/localGameState';
 import { useMilestoneCelebration } from '../queries/useMilestoneCelebration';
@@ -56,10 +59,11 @@ export function LocalGameSummaryScreen({ navigation, route }: Props) {
   // "Zagrajcie od nowa" is the full deck again, not the next deal of unseen
   // cards. The reset waits for the last card's report before it is sent — see
   // useResetDeck — and then the couple goes through Home to a fresh setup,
-  // exactly as this button always took them.
+  // exactly as this button always took them, which deals the full deck and
+  // opens the game by itself.
   const [resetError, setResetError] = useState<string | null>(null);
   const onResetDone = useCallback(() => {
-    navigation.reset(BACK_TO_SETUP);
+    navigation.reset(BACK_TO_SETUP_AND_START);
   }, [navigation]);
   const { request: requestReset, resetting } = useDeckResetAction({
     onDone: onResetDone,

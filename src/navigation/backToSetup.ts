@@ -29,3 +29,16 @@ export const BACK_TO_SETUP = {
   index: 1,
   routes: [{ name: 'Home' as const }, { name: 'LocalGameSetup' as const }],
 };
+
+/**
+ * The same way back, after a deck reset: a fresh setup that starts the game by
+ * itself once it has loaded — through the start button's own handler, so the
+ * names are validated and the deck is dealt exactly as a tap would.
+ */
+export const BACK_TO_SETUP_AND_START = {
+  index: 1,
+  routes: [
+    { name: 'Home' as const },
+    { name: 'LocalGameSetup' as const, params: { autoStart: true } },
+  ],
+};

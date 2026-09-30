@@ -3,6 +3,7 @@ import React, {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import {
@@ -37,7 +38,8 @@ import { loadPartnerName, savePartnerName } from '../storage/partnerName';
 import { Card } from '../components/Card';
 import { EarnCreditsActions } from '../components/EarnCreditsActions';
 import { useDeckResetAction } from '../queries/useDeckResetAction';
-import { BACK_TO_SETUP } from '../navigation/backToSetup';
+import { BACK_TO_SETUP_AND_START } from '../navigation/backToSetup';
+import { useToast } from '../components/Toast';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { GoldButton } from '../components/GoldButton';
 import { OutlineButton } from '../components/OutlineButton';
@@ -64,7 +66,7 @@ const PLAYER_NAME_MAX = 60;
 // than in BootstrapScreen on purpose: Bootstrap decides about the SERVER
 // session, and folding two independent loops into one decision point is how
 // "where does the user land" stops being answerable.
-export function LocalGameSetupScreen({ navigation }: Props) {
+export function LocalGameSetupScreen({ navigation, route }: Props) {
   const theme = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
   const { user, couple } = useAuth();
@@ -177,7 +179,7 @@ export function LocalGameSetupScreen({ navigation }: Props) {
       player2Name: string,
       categorySlug: string | null,
       categoryName: string | null,
-    ) => {
+    ): Promise<boolean> => {
       setDeckError(null);
       // Cleared on the way IN, so a second tap does not leave the panel from the
       // category before it standing over a different answer.
@@ -199,7 +201,7 @@ export function LocalGameSetupScreen({ navigation }: Props) {
           } else {
             setExhaustion(why);
           }
-          return;
+          return false;
         }
 
         const fresh = startLocalGame({
@@ -235,8 +237,10 @@ export function LocalGameSetupScreen({ navigation }: Props) {
         // that was just dealt.
         setStored(fresh);
         navigation.navigate('LocalGame');
+        return true;
       } catch (err) {
         setDeckError(parseApiError(err, pl.localGame.deckError).topLevel);
+        return false;
       } finally {
         setBusy(false);
       }
@@ -287,9 +291,13 @@ export function LocalGameSetupScreen({ navigation }: Props) {
    * fix.
    *
    * Nothing paused: deal.
+   *
+   * Answers whether the game opened, for the one caller that is not a tap: the
+   * start after a deck reset, which has to know whether it stayed on this
+   * screen.
    */
   const start = useCallback(
-    async () => {
+    async (): Promise<boolean> => {
       const name = player2.trim();
       const invalid =
         name.length === 0
@@ -300,7 +308,7 @@ export function LocalGameSetupScreen({ navigation }: Props) {
 
       setNameError(invalid);
       if (invalid) {
-        return;
+        return false;
       }
 
       if (
@@ -320,7 +328,7 @@ export function LocalGameSetupScreen({ navigation }: Props) {
       ) {
         setDeckError(null);
         navigation.navigate('LocalGame');
-        return;
+        return true;
       }
 
       if (stored) {
@@ -340,12 +348,12 @@ export function LocalGameSetupScreen({ navigation }: Props) {
             },
           },
         ]);
-        return;
+        return false;
       }
 
       // Null on both: the whole deck. The mix was always what "no category"
       // meant here, and it is now the only thing dealt.
-      await dealFresh(name, null, null);
+      return dealFresh(name, null, null);
     },
     [dealFresh, navigation, player1, player2, settleOwedCards, stored],
   );
@@ -353,10 +361,36 @@ export function LocalGameSetupScreen({ navigation }: Props) {
   // "Od nowa" on this screen resets the whole deck, as it does on the summary.
   // Afterwards the couple lands on a freshly mounted setup — the same way back
   // the game uses — so nothing this instance holds (the paused game, the
-  // exhaustion panel) can outlive the reset.
+  // exhaustion panel) can outlive the reset. That setup starts the game itself.
   const onResetDone = useCallback(() => {
-    navigation.reset(BACK_TO_SETUP);
+    navigation.reset(BACK_TO_SETUP_AND_START);
   }, [navigation]);
+
+  // After a reset: into the game without another tap, through `start` — the
+  // start button's own handler, so there is one way to deal a deck, not two.
+  // Waits for the mount effect, which is what fills in the remembered name and
+  // settles the disk. Once per mount: the ref keeps a re-render from dealing
+  // twice.
+  //
+  // "Talia odnowiona" only when the couple stays here (a name that does not
+  // pass, a deck that did not come): then it is the one sign the reset worked.
+  // In the game, the full card count on the first card says it instead.
+  const toast = useToast();
+  const autoStarted = useRef(false);
+  useEffect(() => {
+    if (!route.params?.autoStart || loadingStored || autoStarted.current) {
+      return;
+    }
+    autoStarted.current = true;
+    start().then(opened => {
+      if (!opened) {
+        toast.show(pl.localGame.reset.done);
+      }
+    });
+    // Keyed on loading alone: `start` changes as the couple types, and this
+    // must fire once, when the loaded state first lands.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadingStored]);
   const { request: requestReset, resetting } = useDeckResetAction({
     onDone: onResetDone,
     onError: setDeckError,

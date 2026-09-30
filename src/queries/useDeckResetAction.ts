@@ -3,12 +3,12 @@ import { Alert } from 'react-native';
 import axios from 'axios';
 import { OwedReportError, useResetDeck } from './useResetDeck';
 import { parseApiError } from '../api/errors';
-import { useToast } from '../components/Toast';
 import { pl } from '../i18n/pl';
 
 type Options = {
   // After a reset that went through. Every call site sends the couple to a
-  // fresh setup screen, where the next deal is the full deck.
+  // fresh setup screen that deals the full deck by itself; that screen says
+  // "talia odnowiona" only when it could not start the game.
   onDone: () => void;
   // A sentence for the couple; where it goes is the screen's call.
   onError: (message: string) => void;
@@ -37,7 +37,6 @@ function resetErrorMessage(err: unknown): string {
  */
 export function useDeckResetAction({ onDone, onError }: Options) {
   const reset = useResetDeck();
-  const toast = useToast();
 
   const request = useCallback(() => {
     Alert.alert(
@@ -51,17 +50,14 @@ export function useDeckResetAction({ onDone, onError }: Options) {
           style: 'destructive',
           onPress: () => {
             reset.mutate(undefined, {
-              onSuccess: () => {
-                toast.show(pl.localGame.reset.done);
-                onDone();
-              },
+              onSuccess: onDone,
               onError: err => onError(resetErrorMessage(err)),
             });
           },
         },
       ],
     );
-  }, [onDone, onError, reset, toast]);
+  }, [onDone, onError, reset]);
 
   return { request, resetting: reset.isPending };
 }

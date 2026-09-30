@@ -20,7 +20,10 @@ import {
 } from '../storage/localGameState';
 import { queryKeys } from '../queries/queryKeys';
 import type { RootStackParamList } from '../navigation/types';
-import { BACK_TO_SETUP } from '../navigation/backToSetup';
+import {
+  BACK_TO_SETUP,
+  BACK_TO_SETUP_AND_START,
+} from '../navigation/backToSetup';
 import type { Progress, Question } from '../domain/types';
 import { pl } from '../i18n/pl';
 
@@ -240,15 +243,18 @@ describe('LocalGameSummaryScreen — playing again from the start', () => {
   });
 
   // The same guard as on the game screen: a reset through Home, never a pop or
-  // a replace, so exactly one setup screen mounts — freshly.
-  test('confirming resets the deck and opens a NEW setup screen', async () => {
+  // a replace, so exactly one setup screen mounts — freshly, and told to start
+  // the game by itself (its own tests cover the deal).
+  test('confirming resets the deck and opens a NEW setup that starts the game', async () => {
     await saveLocalGameState(playedOut());
     renderScreen();
 
     fireEvent.press(await screen.findByTestId('local-game-play-again'));
     await confirmReset();
 
-    await waitFor(() => expect(reset).toHaveBeenCalledWith(BACK_TO_SETUP));
+    await waitFor(() =>
+      expect(reset).toHaveBeenCalledWith(BACK_TO_SETUP_AND_START),
+    );
     expect(resetDeck).toHaveBeenCalledTimes(1);
     expect(replace).not.toHaveBeenCalled();
     expect(await loadLocalGameState()).toBeNull();
@@ -310,7 +316,9 @@ describe('LocalGameSummaryScreen — playing again from the start', () => {
     fireEvent.press(screen.getByTestId('local-game-play-again'));
     await confirmReset();
 
-    await waitFor(() => expect(reset).toHaveBeenCalledWith(BACK_TO_SETUP));
+    await waitFor(() =>
+      expect(reset).toHaveBeenCalledWith(BACK_TO_SETUP_AND_START),
+    );
     expect(resetDeck).toHaveBeenCalledTimes(2);
   });
 });
