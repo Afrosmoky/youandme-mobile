@@ -3,7 +3,6 @@ import React, {
   useEffect,
   useLayoutEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import {
@@ -38,7 +37,6 @@ import { loadPartnerName, savePartnerName } from '../storage/partnerName';
 import { Card } from '../components/Card';
 import { EarnCreditsActions } from '../components/EarnCreditsActions';
 import { useDeckResetAction } from '../queries/useDeckResetAction';
-import { BACK_TO_SETUP_AND_START } from '../navigation/backToSetup';
 import { useToast } from '../components/Toast';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { GoldButton } from '../components/GoldButton';
@@ -94,6 +92,14 @@ export function LocalGameSetupScreen({ navigation, route }: Props) {
   const [loadingStored, setLoadingStored] = useState(true);
   // Sends whatever a previous session left owing — see the mount effect.
   const flush = useReportPlayedCards();
+  // Sent here by a reset on the summary, to start the game without a tap.
+  const enteredToStart = route.params?.autoStart === true;
+  // A start the couple did not tap: after a reset, from either screen. Runs in
+  // the effect below, once the state it needs has committed.
+  const [startPending, setStartPending] = useState(enteredToStart);
+  // Covers the screen while that start runs, when it came with the route: the
+  // couple should see the game arrive, not a form flash up under it.
+  const [autoStarting, setAutoStarting] = useState(enteredToStart);
 
   useEffect(() => {
     let active = true;
@@ -236,7 +242,14 @@ export function LocalGameSetupScreen({ navigation, route }: Props) {
         // the same category would warn about — and then redeal over — the game
         // that was just dealt.
         setStored(fresh);
-        navigation.navigate('LocalGame');
+        // Entered to start by itself (a reset on the summary), this screen has
+        // no job left under the game, so it gives its place to it: one
+        // transition on screen, and no stale setup for a back press to land on.
+        if (enteredToStart) {
+          navigation.replace('LocalGame');
+        } else {
+          navigation.navigate('LocalGame');
+        }
         return true;
       } catch (err) {
         setDeckError(parseApiError(err, pl.localGame.deckError).topLevel);
@@ -245,7 +258,7 @@ export function LocalGameSetupScreen({ navigation, route }: Props) {
         setBusy(false);
       }
     },
-    [navigation, player1],
+    [enteredToStart, navigation, player1],
   );
 
   /**
@@ -358,45 +371,47 @@ export function LocalGameSetupScreen({ navigation, route }: Props) {
     [dealFresh, navigation, player1, player2, settleOwedCards, stored],
   );
 
-  // "Od nowa" on this screen resets the whole deck, as it does on the summary.
-  // Afterwards the couple lands on a freshly mounted setup — the same way back
-  // the game uses — so nothing this instance holds (the paused game, the
-  // exhaustion panel) can outlive the reset. That setup starts the game itself.
+  // "Od nowa" on this screen resets the whole deck, as it does on the summary —
+  // and then stays put. The reset has already cleared the disk; what this
+  // instance still holds (the paused game, the exhaustion panel) goes here, and
+  // the game starts in place, on the names the couple has in the form.
   const onResetDone = useCallback(() => {
-    navigation.reset(BACK_TO_SETUP_AND_START);
-  }, [navigation]);
+    setStored(null);
+    setExhaustion(null);
+    setStartPending(true);
+  }, []);
 
   // After a reset: into the game without another tap, through `start` — the
   // start button's own handler, so there is one way to deal a deck, not two.
-  // Waits for the mount effect, which is what fills in the remembered name and
-  // settles the disk. Once per mount: the ref keeps a re-render from dealing
-  // twice.
+  //
+  // An effect rather than a call in onResetDone, because `start` reads `stored`:
+  // called straight away it would still see the paused game and resume it. Here
+  // it runs on the render where the cleared state has landed. When the start
+  // came with the route it also waits for the mount effect, which fills in the
+  // remembered name and settles the disk.
   //
   // "Talia odnowiona" only when the couple stays here (a name that does not
   // pass, a deck that did not come): then it is the one sign the reset worked.
   // In the game, the full card count on the first card says it instead.
   const toast = useToast();
-  const autoStarted = useRef(false);
   useEffect(() => {
-    if (!route.params?.autoStart || loadingStored || autoStarted.current) {
+    if (!startPending || loadingStored) {
       return;
     }
-    autoStarted.current = true;
+    setStartPending(false);
     start().then(opened => {
       if (!opened) {
+        setAutoStarting(false);
         toast.show(pl.localGame.reset.done);
       }
     });
-    // Keyed on loading alone: `start` changes as the couple types, and this
-    // must fire once, when the loaded state first lands.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadingStored]);
+  }, [loadingStored, start, startPending, toast]);
   const { request: requestReset, resetting } = useDeckResetAction({
     onDone: onResetDone,
     onError: setDeckError,
   });
 
-  if (loadingStored) {
+  if (loadingStored || autoStarting) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator color={theme.colors.gold.primary} />

@@ -99,7 +99,14 @@ export function RootNavigator() {
           <Stack.Screen
             name="LocalGameSetup"
             component={LocalGameSetupScreen}
-            options={{ title: pl.localGame.setupHeaderTitle }}
+            options={({ route }) => ({
+              title: pl.localGame.setupHeaderTitle,
+              // Sent here only to deal the game after a reset on the summary: it
+              // covers itself with a spinner and hands its place to the game, so
+              // animating it in would be a second transition the couple sees for
+              // one tap. It appears in place, and only the game slides in.
+              animation: route.params?.autoStart ? 'none' : 'default',
+            })}
           />
           <Stack.Screen
             name="LocalGame"

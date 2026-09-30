@@ -31,9 +31,16 @@ export const BACK_TO_SETUP = {
 };
 
 /**
- * The same way back, after a deck reset: a fresh setup that starts the game by
- * itself once it has loaded — through the start button's own handler, so the
- * names are validated and the deck is dealt exactly as a tap would.
+ * The way from the summary into a new game after a deck reset: a fresh setup
+ * that starts the game by itself once it has loaded — through the start
+ * button's own handler, so the names are validated and the deck is dealt
+ * exactly as a tap would — and then gives its place to the game (replace).
+ *
+ * Home stays underneath for the same reason as above: it is the bottom of the
+ * stack, never a screen on the way. A reset renders only the top route, so it
+ * costs nothing on screen, and without it a back press from the game would have
+ * nowhere to go. The setup enters without animation (RootNavigator), which
+ * leaves the game's arrival as the one transition.
  */
 export const BACK_TO_SETUP_AND_START = {
   index: 1,

@@ -22,7 +22,6 @@ import {
 } from '../storage/localGameState';
 import { loadPartnerName, savePartnerName } from '../storage/partnerName';
 import type { RootStackParamList } from '../navigation/types';
-import { BACK_TO_SETUP_AND_START } from '../navigation/backToSetup';
 import type { Couple, Question, User } from '../domain/types';
 import { pl } from '../i18n/pl';
 
@@ -68,6 +67,7 @@ const deck = (questions: Question[], exhaustion: DeckExhaustion | null = null) =
 
 const navigate = jest.fn();
 const reset = jest.fn();
+const replace = jest.fn();
 
 // The reset's confirmation, answered: the last Alert on screen is the one the
 // tap just raised.
@@ -83,7 +83,7 @@ const pressResetConfirm = async (alert: jest.SpyInstance) => {
 
 function makeProps(params?: { autoStart?: boolean }): Props {
   return {
-    navigation: { navigate, reset, setOptions: jest.fn(), replace: jest.fn() },
+    navigation: { navigate, reset, replace, setOptions: jest.fn() },
     route: { key: 'LocalGameSetup', name: 'LocalGameSetup', params },
   } as unknown as Props;
 }
@@ -429,12 +429,15 @@ describe('LocalGameSetupScreen — an exhausted deck', () => {
     );
     expect(resetDeck).not.toHaveBeenCalled();
 
+    jest.mocked(fetchGameDeck).mockResolvedValue(deck([question(1)]));
     await pressResetConfirm(alert);
 
-    await waitFor(() =>
-      expect(reset).toHaveBeenCalledWith(BACK_TO_SETUP_AND_START),
-    );
+    // Straight into the game from here: no trip through another screen.
+    await waitFor(() => expect(navigate).toHaveBeenCalledWith('LocalGame'));
     expect(resetDeck).toHaveBeenCalledTimes(1);
+    expect(navigate).toHaveBeenCalledTimes(1);
+    expect(reset).not.toHaveBeenCalled();
+    expect(replace).not.toHaveBeenCalled();
   });
 
   // Closed cards are the paid content; the free ones coming back right beside
@@ -609,32 +612,30 @@ describe('LocalGameSetupScreen — a paused game', () => {
 
   // The class of bug that has twice eaten a couple's progress: a paused game
   // outliving the deck it was dealt from, and resuming with that old queue.
-  // After the reset the couple goes straight into a game — dealt fresh from the
-  // full deck, never the old queue picked back up.
-  test('after a reset the game opens on the full deck, not the old one', async () => {
+  // After a reset here the game starts in place — dealt fresh from the full deck
+  // on the names in the form, never the old queue picked back up — and the only
+  // navigation is into the game.
+  test('after a reset the game opens in place on the full deck', async () => {
     const full = [question(1), question(2), question(3), question(4)];
     jest.mocked(fetchGameDeck).mockResolvedValue(deck(full));
-    await savePartnerName('Wiktoria');
     await saveLocalGameState(paused());
-    const first = renderScreen();
+    renderScreen();
 
-    fireEvent.press(await screen.findByTestId('local-game-restart'));
+    // What the couple has in the field wins — not the remembered name.
+    fireEvent.changeText(
+      await screen.findByTestId('local-game-player2'),
+      'Ala',
+    );
+    fireEvent.press(screen.getByTestId('local-game-restart'));
     await pressResetConfirm(alert);
 
-    await waitFor(() =>
-      expect(reset).toHaveBeenCalledWith(BACK_TO_SETUP_AND_START),
-    );
-    expect(await loadLocalGameState()).toBeNull();
-    expect(fetchGameDeck).not.toHaveBeenCalled();
-
-    // What the navigator does next: a freshly mounted setup that starts itself.
-    first.unmount();
-    renderScreen({ autoStart: true });
-
     await waitFor(() => expect(navigate).toHaveBeenCalledWith('LocalGame'));
+    expect(navigate).toHaveBeenCalledTimes(1);
+    expect(reset).not.toHaveBeenCalled();
+    expect(replace).not.toHaveBeenCalled();
     expect(fetchGameDeck).toHaveBeenCalledTimes(1);
     const dealt = await loadLocalGameState();
-    expect(dealt?.player2).toBe('Wiktoria');
+    expect(dealt?.player2).toBe('Ala');
     expect(dealt?.cursor).toBe(0);
     expect(
       dealt?.queue.filter(item => item.kind === 'question'),
@@ -646,23 +647,74 @@ describe('LocalGameSetupScreen — a paused game', () => {
   // The same validation as a tap: a name that does not pass keeps the couple
   // here, with the field's own message and a word that the reset did happen.
   test('after a reset with no usable name it stays on the setup', async () => {
+    await saveLocalGameState(paused());
+    renderScreen();
+
+    fireEvent.changeText(await screen.findByTestId('local-game-player2'), '');
+    fireEvent.press(screen.getByTestId('local-game-restart'));
+    await pressResetConfirm(alert);
+
+    expect(
+      await screen.findByTestId('local-game-player2-error'),
+    ).toHaveTextContent(pl.localGame.player2Required);
+    expect(fetchGameDeck).not.toHaveBeenCalled();
+    expect(navigate).not.toHaveBeenCalled();
+    expect(screen.getByTestId('toast')).toHaveTextContent(
+      pl.localGame.reset.done,
+    );
+    // The old game is gone either way: the reset went through.
+    expect(screen.queryByTestId('local-game-resume')).toBeNull();
+    expect(await loadLocalGameState()).toBeNull();
+  });
+
+  // From the summary the couple arrives here only to be dealt a game. The setup
+  // hands its place to the game, so it does not stay on the stack beneath it.
+  test('entered to start after a reset, it replaces itself with the game', async () => {
+    const full = [question(1), question(2), question(3)];
+    jest.mocked(fetchGameDeck).mockResolvedValue(deck(full));
+    await savePartnerName('Wiktoria');
+    renderScreen({ autoStart: true });
+
+    await waitFor(() => expect(replace).toHaveBeenCalledWith('LocalGame'));
+    expect(navigate).not.toHaveBeenCalled();
+    expect(reset).not.toHaveBeenCalled();
+    expect(fetchGameDeck).toHaveBeenCalledTimes(1);
+    expect(
+      (await loadLocalGameState())?.queue.filter(i => i.kind === 'question'),
+    ).toHaveLength(full.length);
+    expect(screen.queryByTestId('toast')).toBeNull();
+  });
+
+  // Nothing of the form shows while that start runs: the couple sees the game
+  // arrive, not the setup flash up under it.
+  test('entered to start, it shows no form while the game is dealt', async () => {
+    jest.mocked(fetchGameDeck).mockReturnValue(new Promise(() => {}));
+    await savePartnerName('Wiktoria');
+    renderScreen({ autoStart: true });
+
+    await waitFor(() => expect(fetchGameDeck).toHaveBeenCalled());
+    expect(screen.queryByTestId('local-game-start')).toBeNull();
+  });
+
+  test('entered to start with no usable name, it shows the form and stays', async () => {
     jest.mocked(useAuth).mockReturnValue({
       user,
       couple: { partnerNameLocal: null },
     } as ReturnType<typeof useAuth>);
     renderScreen({ autoStart: true });
 
-    expect(await screen.findByTestId('local-game-player2-error')).toHaveTextContent(
-      pl.localGame.player2Required,
-    );
+    expect(
+      await screen.findByTestId('local-game-player2-error'),
+    ).toHaveTextContent(pl.localGame.player2Required);
     expect(fetchGameDeck).not.toHaveBeenCalled();
-    expect(navigate).not.toHaveBeenCalled();
+    expect(replace).not.toHaveBeenCalled();
+    expect(screen.getByTestId('local-game-start')).toBeOnTheScreen();
     expect(screen.getByTestId('toast')).toHaveTextContent(
       pl.localGame.reset.done,
     );
   });
 
-  test('after a reset a deck that does not come keeps them on the setup', async () => {
+  test('entered to start, a deck that does not come keeps them on the setup', async () => {
     jest.mocked(fetchGameDeck).mockRejectedValue(new Error('offline'));
     await savePartnerName('Wiktoria');
     renderScreen({ autoStart: true });
@@ -670,7 +722,7 @@ describe('LocalGameSetupScreen — a paused game', () => {
     expect(
       await screen.findByTestId('local-game-setup-error'),
     ).toHaveTextContent(pl.localGame.deckError);
-    expect(navigate).not.toHaveBeenCalled();
+    expect(replace).not.toHaveBeenCalled();
     expect(screen.getByTestId('toast')).toHaveTextContent(
       pl.localGame.reset.done,
     );
