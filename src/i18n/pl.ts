@@ -431,7 +431,7 @@ export const pl = {
     reset: {
       confirmTitle: 'Odnowić talię?',
       confirmMessage:
-        'Wszystkie karty wrócą do gry od początku. Mapa postępów, polubienia i wspomnienia zostają — ale karty zagrane po raz drugi nie zwiększą już postępu. Dotyczy to obu Waszych telefonów.',
+        'Wszystkie karty wrócą do gry od początku. Mapa postępów, polubienia i wspomnienia zostają — ale karty zagrane po raz drugi nie zwiększą już postępu.',
       cancel: 'Anuluj',
       confirm: 'Odnówcie',
       done: 'Talia odnowiona — wszystkie karty czekają od początku.',
