@@ -1,9 +1,11 @@
 import { useCallback } from 'react';
 import { Alert, Share } from 'react-native';
+import { useQueryClient } from '@tanstack/react-query';
 import * as StoreReview from 'react-native-store-review';
 import { claimShareReward } from '../api/share';
 import { claimRatingReward } from '../api/rating';
 import { pl } from '../i18n/pl';
+import { queryKeys } from './queryKeys';
 
 // P5 share target. Landing page placeholder until store links exist (P12). The
 // URL is embedded in the message rather than passed as Share's separate `url`:
@@ -22,6 +24,7 @@ const SHARE_URL = 'https://jaity.app';
  * that moment. Two call sites means it stops being a screen's private function.
  */
 export function useShareApp() {
+  const queryClient = useQueryClient();
   // Opens the native share sheet. Claims the reward only when the user actually
   // picks a target (sharedAction) — dismissing withdraws the gesture. The claim
   // is best-effort and idempotent server-side, so any failure stays silent (the
@@ -33,13 +36,17 @@ export function useShareApp() {
       });
       if (result.action === Share.sharedAction) {
         await claimShareReward();
+        // The balance moved server-side. Without this a couple standing on the
+        // rewards screen is thanked and sees the same number: nothing else
+        // refetches it on iOS, where the share sheet never leaves the app.
+        queryClient.invalidateQueries({ queryKey: queryKeys.rewards });
         Alert.alert(pl.appTitle, pl.share.thanksToast);
       }
     } catch {
       // Share sheet failed to open, or the claim call failed — nothing to
       // recover here; the reward is idempotent and server-owned.
     }
-  }, []);
+  }, [queryClient]);
 }
 
 /**
@@ -48,6 +55,7 @@ export function useShareApp() {
  * Also lifted unchanged, for the same reason.
  */
 export function useRateApp() {
+  const queryClient = useQueryClient();
   // Unlike the share above, the claim is unconditional: In-App Review has no
   // callback, so there is no signal saying whether the prompt appeared or
   // whether the user rated. We reward the gesture of asking, which is why the
@@ -65,9 +73,11 @@ export function useRateApp() {
     }
     try {
       await claimRatingReward();
+      // As above: the review prompt never leaves the app, so nothing else would.
+      queryClient.invalidateQueries({ queryKey: queryKeys.rewards });
       Alert.alert(pl.appTitle, pl.rating.thanksToast);
     } catch {
       // Best-effort and idempotent server-side; nothing local to correct.
     }
-  }, []);
+  }, [queryClient]);
 }
