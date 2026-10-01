@@ -200,13 +200,15 @@ describe('LocalGameSummaryScreen', () => {
     );
   });
 
-  test('says that played cards do not come back, above the buttons', async () => {
+  // The line "Zagrane karty nie wracają" predated the deck reset, and stood
+  // right above the button that brings them back. It is gone; the button's name
+  // and the reset's confirmation say what happens.
+  test('makes no claim about played cards above the buttons', async () => {
     await saveLocalGameState(playedOut());
     renderScreen();
 
-    expect(
-      await screen.findByTestId('local-game-summary-spent'),
-    ).toHaveTextContent(pl.localGame.summarySpentCards);
+    await screen.findByTestId('local-game-play-again');
+    expect(screen.queryByTestId('local-game-summary-spent')).toBeNull();
   });
 });
 

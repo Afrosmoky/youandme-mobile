@@ -141,12 +141,6 @@ export function LocalGameSummaryScreen({ navigation, route }: Props) {
         </Text>
       </Card>
 
-      {/* Why the next game can be shorter than this one. The card counter on
-          the next deal ("Karta 1 z 26") otherwise reads as a bug. */}
-      <Text testID="local-game-summary-spent" style={styles.spent}>
-        {pl.localGame.summarySpentCards}
-      </Text>
-
       <GoldButton
         testID="local-game-play-again"
         title={pl.localGame.playAgainButton}
@@ -224,12 +218,6 @@ const createStyles = (theme: Theme) => {
       fontSize: typography.size.body,
       color: colors.text.primary,
       marginTop: spacing.md,
-    },
-    spent: {
-      fontFamily: typography.family.body,
-      fontSize: typography.size.bodySm,
-      color: colors.text.secondary,
-      marginBottom: spacing.lg,
     },
     playAgain: {
       marginBottom: spacing.md,

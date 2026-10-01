@@ -418,9 +418,6 @@ export const pl = {
     summaryQuestions: (count: number) => `Zagrane karty: ${count}`,
     summaryChallenges: (count: number) => `Wyzwania: ${count}`,
     summaryMemories: (count: number) => `Zapisane wspomnienia: ${count}`,
-    // Zagrane karty nie wracają (rejestr antypowtórkowy), więc para dowiaduje
-    // się o tym tutaj, zanim zobaczy krótszą talię w następnej grze.
-    summarySpentCards: 'Zagrane karty nie wracają — kolejna gra to nowe pytania.',
     // Reset talii, jak restartButton — to samo „od nowa".
     playAgainButton: 'Zagrajcie od nowa',
 
