@@ -95,12 +95,16 @@ export function EarnCreditsActions({ testID, style, unlockLink = true }: Props) 
       />
       {gainLine(offer?.rating, `${testID}-rate-gain`)}
 
-      {/* popTo, not navigate: on the rewards screen the deck is already right
-          underneath, and navigate would stack a second one on top of it. */}
+      {/* navigate with `pop`: back to the deck where one is already on the
+          stack (the rewards screen sits on top of it), pushed on top where
+          there is none. Not popTo — with no deck on the stack popTo REPLACES the
+          current screen, so "back" from the deck skipped the summary and landed
+          on the stale setup screen under it. Pinned against the real router in
+          the test. */}
       {unlockLink && offer && offer.unlockable > 0 && (
         <TouchableOpacity
           testID={`${testID}-unlock`}
-          onPress={() => navigation.popTo('Deck')}
+          onPress={() => navigation.navigate('Deck', undefined, { pop: true })}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           style={styles.unlock}>
           <Text style={styles.unlockText}>

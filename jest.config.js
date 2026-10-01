@@ -8,6 +8,13 @@ const reactNativePreset = require('@react-native/jest-preset');
 
 module.exports = {
   ...reactNativePreset,
+  // The preset's pattern plus @react-navigation/routers, which ships as ES
+  // modules only. It is the real StackRouter that the earning link's test runs
+  // its navigation through: a mocked navigator once let a link that dropped the
+  // screen it came from pass as working (see EarnCreditsActions.test.tsx).
+  transformIgnorePatterns: [
+    'node_modules/(?!((jest-)?react-native|@react-native(-community)?|@react-navigation/routers)/)',
+  ],
   setupFilesAfterEnv: [
     ...(reactNativePreset.setupFilesAfterEnv || []),
     '<rootDir>/jest.setup.js',

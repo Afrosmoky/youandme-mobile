@@ -1,5 +1,10 @@
 import React from 'react';
 import { act, fireEvent, screen, waitFor } from '@testing-library/react-native';
+import {
+  CommonActions,
+  StackActions,
+  StackRouter,
+} from '@react-navigation/routers';
 import { renderWithQueryClient } from '../test/renderWithQueryClient';
 import { EarnCreditsActions } from './EarnCreditsActions';
 import { getRewards } from '../api/rewards';
@@ -10,10 +15,62 @@ import { pl } from '../i18n/pl';
 jest.mock('../api/rewards', () => ({ getRewards: jest.fn() }));
 jest.mock('../api/deck', () => ({ getDeck: jest.fn(), unlockQuestion: jest.fn() }));
 
-const mockPopTo = jest.fn();
+// The navigation the link uses, recorded as calls — which method, which
+// arguments — so the test can replay them through the REAL stack router below.
+// Recording rather than asserting the call is the point: popTo('Deck') once
+// passed a "calls popTo" test while it replaced the screen it came from.
+type NavigationCall = { method: 'navigate' | 'popTo' | 'push'; args: unknown[] };
+const mockCalls: NavigationCall[] = [];
 jest.mock('@react-navigation/native', () => ({
-  useNavigation: () => ({ popTo: mockPopTo, navigate: jest.fn() }),
+  useNavigation: () => ({
+    navigate: (...args: unknown[]) => mockCalls.push({ method: 'navigate', args }),
+    popTo: (...args: unknown[]) => mockCalls.push({ method: 'popTo', args }),
+    push: (...args: unknown[]) => mockCalls.push({ method: 'push', args }),
+  }),
 }));
+
+const ROUTE_NAMES = [
+  'Home',
+  'LocalGameSetup',
+  'LocalGameSummary',
+  'Profile',
+  'Deck',
+  'Rewards',
+];
+const router = StackRouter({});
+const routerOptions = {
+  routeNames: ROUTE_NAMES,
+  routeParamList: {},
+  routeGetIdList: {},
+};
+
+// A stack of these screens, top last, as the navigator would hold it.
+const stackOf = (names: string[]) =>
+  router.getRehydratedState(
+    { index: names.length - 1, routes: names.map(name => ({ name })) },
+    routerOptions,
+  );
+
+// The recorded call, turned into the action React Navigation would dispatch
+// for it, and applied to the stack. Returns the screens left, bottom first.
+const replay = (names: string[], call: NavigationCall): string[] => {
+  const [name, params, options] = call.args as [
+    string,
+    object | undefined,
+    { merge?: boolean; pop?: boolean } | undefined,
+  ];
+  const action =
+    call.method === 'navigate'
+      ? CommonActions.navigate(name, params, options)
+      : call.method === 'popTo'
+      ? StackActions.popTo(name, params)
+      : StackActions.push(name, params);
+  const next = router.getStateForAction(stackOf(names), action, routerOptions);
+  if (next === null) {
+    return names;
+  }
+  return next.routes.map(route => route.name);
+};
 
 const rewards = (overrides: Partial<Rewards> = {}): Rewards => ({
   credits: 0,
@@ -38,6 +95,7 @@ const renderActions = (unlockLink?: boolean) =>
 describe('EarnCreditsActions', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockCalls.length = 0;
     jest.mocked(getRewards).mockResolvedValue(rewards());
     jest.mocked(getDeck).mockResolvedValue(deck());
   });
@@ -106,15 +164,56 @@ describe('EarnCreditsActions', () => {
   });
 
   // The gap this closes: cards earned here open only on the deck screen.
-  test('with a balance, it leads to the deck to unlock them', async () => {
+  test('with a balance, it offers the way to the deck', async () => {
     jest.mocked(getRewards).mockResolvedValue(rewards({ credits: 5 }));
     renderActions();
 
-    const link = await screen.findByTestId('earn-unlock');
-    expect(link).toHaveTextContent(pl.earn.unlockLink(5));
+    expect(await screen.findByTestId('earn-unlock')).toHaveTextContent(
+      pl.earn.unlockLink(5),
+    );
+  });
 
-    fireEvent.press(link);
-    expect(mockPopTo).toHaveBeenCalledWith('Deck');
+  // Where the link leaves the couple, from each screen that shows it — checked
+  // on the stack the real router produces, not on which method was called.
+  describe('where the link leads', () => {
+    const pressLink = async () => {
+      jest.mocked(getRewards).mockResolvedValue(rewards({ credits: 5 }));
+      renderActions();
+      fireEvent.press(await screen.findByTestId('earn-unlock'));
+      expect(mockCalls).toHaveLength(1);
+      return mockCalls[0];
+    };
+
+    // The case popTo got wrong: no deck on the stack, and the summary must
+    // still be there to go back to — not the stale setup screen beneath it.
+    test('from the game summary, the deck opens on top of it', async () => {
+      const call = await pressLink();
+
+      expect(
+        replay(['Home', 'LocalGameSetup', 'LocalGameSummary'], call),
+      ).toEqual(['Home', 'LocalGameSetup', 'LocalGameSummary', 'Deck']);
+    });
+
+    test('from the profile, back from the deck is the profile', async () => {
+      const call = await pressLink();
+
+      expect(replay(['Home', 'Profile'], call)).toEqual([
+        'Home',
+        'Profile',
+        'Deck',
+      ]);
+    });
+
+    // The rewards screen is opened from the deck: go back to that one rather
+    // than stacking a second deck on top.
+    test('from the rewards screen, it returns to the deck beneath', async () => {
+      const call = await pressLink();
+
+      expect(replay(['Home', 'Deck', 'Rewards'], call)).toEqual([
+        'Home',
+        'Deck',
+      ]);
+    });
   });
 
   test('with no balance there is no way to the deck', async () => {
