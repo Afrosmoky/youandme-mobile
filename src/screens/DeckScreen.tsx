@@ -14,6 +14,7 @@ import { useDeck } from '../queries/useDeck';
 import { useRewards } from '../queries/useRewards';
 import { useUnlockQuestion } from '../queries/useUnlockQuestion';
 import { parseApiError } from '../api/errors';
+import { creditsAsCards, earnOffer } from '../domain/rewards';
 import { ScreenTitle } from '../components/ScreenTitle';
 import { Badge } from '../components/Badge';
 import { Card } from '../components/Card';
@@ -82,9 +83,16 @@ export function DeckScreen({ navigation }: Props) {
       onSettled: () => setUnlockingUlid(null),
       onError: err => {
         // 422 covers both "not enough credits" and "question is not locked".
-        // The server's own message is shown rather than matched on — the same
-        // reasoning that keeps the daily card's 409 handling message-agnostic.
-        Alert.alert(pl.appTitle, parseApiError(err, pl.deck.unlockError).topLevel);
+        // The first is told in our words: the server's sentence names a unit
+        // the couple never sees. Told apart by the field the server puts the
+        // error on, not by its wording. Anything else keeps the server's own
+        // message — the same reasoning that keeps the daily card's 409 handling
+        // message-agnostic.
+        const parsed = parseApiError(err, pl.deck.unlockError);
+        Alert.alert(
+          pl.appTitle,
+          parsed.fields.credits ? pl.deck.notEnough : parsed.topLevel,
+        );
       },
     });
   };
@@ -101,7 +109,10 @@ export function DeckScreen({ navigation }: Props) {
   // Credits gate the button, so an unknown balance (rewards not loaded yet)
   // must not look like zero — that would disable every unlock silently.
   const credits = rewards?.credits;
-  const canAfford = credits === undefined || credits > 0;
+  const canAfford = credits === undefined || creditsAsCards(credits) > 0;
+  // What the line above the list says: cards the couple can still open, capped
+  // by the closed cards left. Not shown on a complete deck — `complete` says it.
+  const unlockable = rewards && deck ? earnOffer(rewards, deck).unlockable : null;
 
   return (
     <FlatList
@@ -120,9 +131,9 @@ export function DeckScreen({ navigation }: Props) {
             <Text testID="deck-progress" style={styles.progress}>
               {pl.deck.progress(deck.unlockedCount, deck.lockedTotal)}
             </Text>
-            {credits !== undefined && (
+            {unlockable !== null && !deck.complete && (
               <Text testID="deck-credits" style={styles.credits}>
-                {`${pl.rewards.creditsLabel}: ${credits}`}
+                {pl.deck.balance(unlockable)}
               </Text>
             )}
             {deck.complete && (

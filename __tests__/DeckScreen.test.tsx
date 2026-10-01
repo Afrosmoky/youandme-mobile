@@ -87,11 +87,11 @@ describe('DeckScreen', () => {
     expect(screen.getAllByText(pl.deck.hiddenBody)).toHaveLength(2);
   });
 
-  test('shows the credit balance next to the deck', async () => {
+  test('shows the balance as cards next to the deck', async () => {
     renderWithQueryClient(<DeckScreen {...makeProps()} />);
 
     expect(await screen.findByTestId('deck-credits')).toHaveTextContent(
-      `${pl.rewards.creditsLabel}: 2`,
+      pl.deck.balance(2),
     );
   });
 
@@ -117,7 +117,7 @@ describe('DeckScreen', () => {
       ),
     );
     expect(screen.getByTestId('deck-credits')).toHaveTextContent(
-      `${pl.rewards.creditsLabel}: 1`,
+      pl.deck.balance(1),
     );
     expect(screen.queryByTestId('deck-unlock-q_02')).toBeNull();
     // One initial load each, and no follow-up read after the mutation.
@@ -125,11 +125,37 @@ describe('DeckScreen', () => {
     expect(getRewards).toHaveBeenCalledTimes(1);
   });
 
-  test('a rejected unlock shows the server reason and leaves the deck alone', async () => {
+  // The server says "Za mało kredytów" — a unit the couple never sees. Told by
+  // the field it lands on (InsufficientCreditsException puts it on `credits`),
+  // the answer is ours.
+  test('a balance too low to unlock says so in cards', async () => {
     jest.mocked(unlockQuestion).mockRejectedValueOnce({
       response: {
         status: 422,
-        data: {message: 'Za mało kredytów.'},
+        data: {
+          message: 'Za mało kredytów.',
+          errors: {credits: ['Za mało kredytów, aby odblokować tę kartę.']},
+        },
+      },
+    });
+    jest.mocked(axios.isAxiosError).mockReturnValue(true);
+
+    renderWithQueryClient(<DeckScreen {...makeProps()} />);
+    fireEvent.press(await screen.findByTestId('deck-unlock-q_02'));
+
+    await waitFor(() =>
+      expect(Alert.alert).toHaveBeenCalledWith(pl.appTitle, pl.deck.notEnough),
+    );
+    expect(screen.getByTestId('deck-state-q_02')).toHaveTextContent(
+      pl.deck.lockedBadge,
+    );
+  });
+
+  test('any other rejected unlock keeps the server reason', async () => {
+    jest.mocked(unlockQuestion).mockRejectedValueOnce({
+      response: {
+        status: 422,
+        data: {message: 'To pytanie nie jest zamknięte.'},
       },
     });
     jest.mocked(axios.isAxiosError).mockReturnValue(true);
@@ -140,11 +166,8 @@ describe('DeckScreen', () => {
     await waitFor(() =>
       expect(Alert.alert).toHaveBeenCalledWith(
         pl.appTitle,
-        'Za mało kredytów.',
+        'To pytanie nie jest zamknięte.',
       ),
-    );
-    expect(screen.getByTestId('deck-state-q_02')).toHaveTextContent(
-      pl.deck.lockedBadge,
     );
   });
 
@@ -155,7 +178,7 @@ describe('DeckScreen', () => {
 
     await waitFor(() =>
       expect(screen.getByTestId('deck-credits')).toHaveTextContent(
-        `${pl.rewards.creditsLabel}: 0`,
+        pl.deck.balance(0),
       ),
     );
     expect(screen.getByTestId('deck-unlock-q_02')).toBeDisabled();
@@ -173,6 +196,20 @@ describe('DeckScreen', () => {
 
     expect(await screen.findByTestId('deck-complete')).toHaveTextContent(
       pl.deck.complete,
+    );
+    // A balance with nothing left to open is not "Do odblokowania: 2 karty".
+    expect(screen.queryByTestId('deck-credits')).toBeNull();
+  });
+
+  // The balance line never promises more than the closed cards still left.
+  test('the balance is capped by the closed cards left', async () => {
+    jest.mocked(getRewards).mockResolvedValue({...rewards, credits: 10});
+    jest.mocked(getDeck).mockResolvedValue({...deck, lockedTotal: 3});
+
+    renderWithQueryClient(<DeckScreen {...makeProps()} />);
+
+    expect(await screen.findByTestId('deck-credits')).toHaveTextContent(
+      pl.deck.balance(2),
     );
   });
 

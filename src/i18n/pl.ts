@@ -61,8 +61,8 @@ export const pl = {
     referrerSelf: 'To Twój własny nick',
     // Symetryczna nagroda za polecenie. Liczba jest z backendu (REFERRAL_BONUS
     // = 5 w AuthController i AwardPendingReferrerAction) — nie zmieniać tu bez
-    // zmiany tam. Kredyt odblokowuje jedno zamknięte pytanie, więc „kart" mówi
-    // to samo co „kredytów", tylko językiem gry.
+    // zmiany tam. Jednostka po stronie serwera odblokowuje jedno zamknięte
+    // pytanie, więc dla pary to po prostu karty (src/domain/rewards.ts).
     referrerReward: 'Wpiszcie nick — oboje dostaniecie +5 kart',
     forgotPassword: 'Zapomniałem hasła',
     googleSignIn: 'Zaloguj przez Google',
@@ -140,7 +140,7 @@ export const pl = {
     deleteAccount: 'Usuń konto',
     deleteAccountTitle: 'Usunąć konto?',
     deleteAccountMessage:
-      'Razem z kontem znikną Wasza para i imię partnera, wszystkie wspomnienia, postęp na mapie, polubione pytania i zebrane kredyty. Tego nie da się cofnąć.',
+      'Razem z kontem znikną Wasza para i imię partnera, wszystkie wspomnienia, postęp na mapie, polubione pytania i karty do odblokowania. Tego nie da się cofnąć.',
     deleteAccountCancel: 'Anuluj',
     deleteAccountConfirm: 'Usuń konto',
     accountDeleted: 'Konto zostało usunięte. Dziękujemy, że byliście z nami.',
@@ -387,11 +387,11 @@ export const pl = {
       // „Zostało 12 zamkniętych kart" — pomijane, gdy backend nie podał liczby.
       lockedRemaining: (count: number) => `Zostało ${count} zamkniętych kart`,
       lockedCta: 'Odblokujcie więcej →',
-      // 3D: dwie drogi, które realnie dają kredyty, pokazane w chwili, w której
-      // para ich potrzebuje. Neutralnie, bez obietnicy liczby kart — ile daje
-      // polecenie i ocena, rozstrzyga serwer, nie ten ekran.
-      earnTitle: 'Albo zdobądźcie kredyty',
-      earnBody: 'Polecenie aplikacji i ocena dokładają kredyty na odblokowanie kart.',
+      // 3D: dwie drogi, które realnie dają karty do odblokowania, pokazane
+      // w chwili, w której para ich potrzebuje. Liczby stoją pod przyciskami
+      // (earn.gain), więc tu ich nie powtarzamy.
+      earnTitle: 'Albo zdobądźcie więcej kart',
+      earnBody: 'Wybierzcie jedną z opcji, żeby odblokować kolejne karty.',
       completeTitle: 'Ukończyliście całą talię!',
       completeBody: 'Zagraliście każdą kartę, jaką mamy. Gratulacje.',
     },
@@ -486,7 +486,16 @@ export const pl = {
     // leak what you would be paying for.
     hiddenBody: 'Treść odsłoni się w sesji',
     noCategory: 'Bez kategorii',
-    unlockButton: 'Odblokuj (1 kredyt)',
+    // Bez ceny w nawiasie: jedno odblokowanie to jedna karta z „Do odblokowania".
+    unlockButton: 'Odblokuj',
+    // Linijka nad listą: ile kart para może jeszcze otworzyć. Ukryta, gdy talia
+    // jest cała odblokowana — wtedy mówi `complete`.
+    balance: (count: number) => `Do odblokowania: ${cardsCount(count)}`,
+    // 422 z braku salda. Serwer odpowiada własnym zdaniem o jednostce, której
+    // para nie zna, więc pokazujemy nasze. Brak salda, nie brak kart w talii —
+    // przy pustej puli przycisku odblokowania po prostu nie ma.
+    notEnough:
+      'Nie możecie już odblokować kolejnej karty. Zdobądźcie więcej w Nagrodach.',
     unlockError: 'Nie udało się odblokować pytania.',
     loadError: 'Nie udało się pobrać talii.',
     empty: 'Talia jest pusta.',
@@ -494,8 +503,14 @@ export const pl = {
 
   rewards: {
     headerTitle: 'Wasze nagrody',
-    creditsLabel: 'Kredyty',
-    creditsHint: 'Za kredyty odblokujecie zamknięte pytania.',
+    // Saldo w kartach: ile zamkniętych kart para może otworzyć. Nie więcej niż
+    // zostało ich w talii (src/domain/rewards.ts).
+    balanceLabel: 'Do odblokowania',
+    balanceValue: (count: number) => cardsCount(count),
+    balanceHint: 'Każdą z nich zamienicie na zamkniętą kartę w talii.',
+    // Saldo jest, ale w talii nie ma już czego otwierać. Bez liczby: „5 kart do
+    // odblokowania" przy pustej puli byłoby nieprawdą.
+    nothingToUnlock: 'Cała talia jest już odblokowana.',
     // "Reklamy dziś: 4 z 5"
     adsToday: (remaining: number, cap: number) =>
       `Reklamy dziś: ${remaining} z ${cap}`,
@@ -539,18 +554,17 @@ export const pl = {
     previewFooter: 'jaity.app',
   },
 
-  // Dwie drogi do kredytu, w jednym miejscu — bo od 3E są jednym komponentem
-  // używanym w profilu, w lejku wyczerpania talii i w nagrodach. Etykiety
+  // Dwie drogi do kolejnych kart, w jednym miejscu — bo od 3E są jednym
+  // komponentem używanym w profilu, w lejku wyczerpania talii, w nagrodach
+  // i na podsumowaniu gry. Etykiety
   // mieszkały wcześniej w `profile`, co przestało być prawdą, gdy przestały być
   // wyłącznie profilowe.
   earn: {
     shareApp: 'Udostępnij aplikację',
     rateApp: 'Oceń aplikację',
-    // Nagłówek stałej sekcji w nagrodach (3E). Bez liczby — ile daje polecenie
-    // i ocena, rozstrzyga serwer i nie wystawia tego w odpowiedzi, więc ekran
-    // nazywający cyfrę zacząłby kłamać w dniu zmiany reguły. Wyjątkiem jest
-    // zachęta przy rejestracji, gdzie „+5" jest przypięte do REFERRAL_BONUS
-    // komentarzem w obu repozytoriach.
+    // Nagłówek stałej sekcji (3E). Liczby, ile daje polecenie i ocena, stoją pod
+    // przyciskami — przypięte testem do stałych serwera (src/domain/rewards.ts),
+    // bo serwer jeszcze ich nie wystawia.
     sectionTitle: 'Zdobądźcie więcej kart',
     // Pod przyciskiem: ile kart ta akcja doda. Tylko gdy wiemy (saldo i talia
     // wczytane) i gdy jest co odblokować — nigdy liczba zastępcza.
@@ -560,8 +574,7 @@ export const pl = {
     // Droga z miejsca zdobycia do miejsca wydania; tylko przy saldzie > 0
     // i zamkniętych kartach w talii.
     unlockLink: (count: number) => `Odblokujcie karty (${count}) →`,
-    sectionBody:
-      'Polecenie aplikacji i ocena dokładają kredyty na odblokowanie pytań.',
+    sectionBody: 'Wybierzcie jedną z opcji, żeby odblokować kolejne karty.',
   },
 
   // P5 share. Copy is a neutral placeholder pending Wiktoria's sign-off (#36) —
@@ -585,11 +598,11 @@ export const pl = {
   // neutral, no card promise. `capReached` deliberately says nothing about how
   // many are left — the cap is a server-side rule, not a promise to the user.
   ads: {
-    sectionTitle: 'Kredyt za reklamę',
-    watchButton: 'Obejrzyj reklamę po kredyt',
+    sectionTitle: 'Karta za reklamę',
+    watchButton: 'Obejrzyjcie reklamę po kartę',
     // From P7 the credit is granted server-side after the ad network confirms
     // the view, so the copy promises it is coming — not that it arrived.
-    pending: 'Kredyt jest w drodze. Chwilę to zajmuje.',
+    pending: 'Karta jest w drodze. Chwilę to zajmuje.',
     refreshButton: 'Odśwież saldo',
     capReached: 'Na dziś to już wszystko. Wróćcie jutro.',
     unavailable: 'Nie udało się wczytać reklamy. Spróbuj później.',

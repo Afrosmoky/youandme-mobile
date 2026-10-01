@@ -3,6 +3,8 @@ import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useRewards } from '../queries/useRewards';
+import { useDeck } from '../queries/useDeck';
+import { earnOffer, lockedRemaining } from '../domain/rewards';
 import { useRedeemCode } from '../queries/useRedeemCode';
 import { useWatchAdForCredit } from '../queries/useWatchAdForCredit';
 import { parseApiError } from '../api/errors';
@@ -38,6 +40,9 @@ export function RewardsScreen({ navigation }: Props) {
     refetch: refetchRewards,
   } = useRewards();
   const { mutate: redeem, isPending: redeeming } = useRedeemCode();
+  // The balance is told in cards, capped by the closed cards still left — so it
+  // needs the deck as well. Until both are in, no number at all.
+  const { data: deck } = useDeck();
   const { mutate: watchAd, isPending: watchingAd } = useWatchAdForCredit();
 
   // The code being typed is client state; only the result of sending it is
@@ -142,14 +147,29 @@ export function RewardsScreen({ navigation }: Props) {
   // already know will not be paid for.
   const adsLeft = rewards ? rewards.ads.remainingToday > 0 : true;
 
+  const deckDone = deck ? lockedRemaining(deck) === 0 : false;
+  const unlockable =
+    rewards && deck ? earnOffer(rewards, deck).unlockable : null;
+
   return (
     <ScreenContainer testID="rewards-screen">
       <Card variant="gold" testID="rewards-balance" style={styles.balanceCard}>
-        <SectionLabel>{pl.rewards.creditsLabel}</SectionLabel>
-        <Text testID="rewards-credits" style={styles.credits}>
-          {rewards ? String(rewards.credits) : '—'}
-        </Text>
-        <Text style={styles.hint}>{pl.rewards.creditsHint}</Text>
+        <SectionLabel>{pl.rewards.balanceLabel}</SectionLabel>
+        {/* Nothing left to open: say that, not "5 kart" the deck cannot take. */}
+        {deckDone ? (
+          <Text testID="rewards-nothing-to-unlock" style={styles.hint}>
+            {pl.rewards.nothingToUnlock}
+          </Text>
+        ) : (
+          <>
+            <Text testID="rewards-credits" style={styles.credits}>
+              {unlockable !== null
+                ? pl.rewards.balanceValue(unlockable)
+                : '—'}
+            </Text>
+            <Text style={styles.hint}>{pl.rewards.balanceHint}</Text>
+          </>
+        )}
       </Card>
 
       {/* Between the balance and everything else, because the balance says how

@@ -89,10 +89,55 @@ describe('RewardsScreen', () => {
     });
   });
 
-  test('shows the credit balance', async () => {
+  test('shows the balance as cards', async () => {
     renderRewards();
 
-    expect(await screen.findByTestId('rewards-credits')).toHaveTextContent('3');
+    await waitFor(() =>
+      expect(screen.getByTestId('rewards-credits')).toHaveTextContent(
+        pl.rewards.balanceValue(3),
+      ),
+    );
+  });
+
+  // Told in cards, capped by the closed cards left: never a number the deck
+  // cannot take.
+  test('the balance never exceeds the closed cards left', async () => {
+    jest.mocked(getDeck).mockResolvedValue({
+      lockedTotal: 40,
+      unlockedCount: 39,
+      complete: false,
+      cards: [],
+    });
+    renderRewards();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('rewards-credits')).toHaveTextContent(
+        pl.rewards.balanceValue(1),
+      ),
+    );
+  });
+
+  test('with the whole deck unlocked it says so instead of a number', async () => {
+    jest.mocked(getDeck).mockResolvedValue({
+      lockedTotal: 40,
+      unlockedCount: 40,
+      complete: true,
+      cards: [],
+    });
+    renderRewards();
+
+    expect(
+      await screen.findByTestId('rewards-nothing-to-unlock'),
+    ).toHaveTextContent(pl.rewards.nothingToUnlock);
+    expect(screen.queryByTestId('rewards-credits')).toBeNull();
+  });
+
+  // No stand-in number while the deck is still on its way.
+  test('without the deck there is no number yet', async () => {
+    jest.mocked(getDeck).mockReturnValue(new Promise(() => {}));
+    renderRewards();
+
+    expect(await screen.findByTestId('rewards-credits')).toHaveTextContent('—');
   });
 
   test('shows how many ads are left today when ads are on', async () => {
@@ -120,7 +165,11 @@ describe('RewardsScreen', () => {
 
     renderRewards();
 
-    expect(await screen.findByTestId('rewards-credits')).toHaveTextContent('0');
+    await waitFor(() =>
+      expect(screen.getByTestId('rewards-credits')).toHaveTextContent(
+        pl.rewards.balanceValue(0),
+      ),
+    );
   });
 
   // P11: the alert used to close and leave a dash where the balance goes, on a
@@ -406,17 +455,19 @@ describe('RewardsScreen', () => {
       });
       renderRewards();
 
-      expect(await screen.findByTestId('rewards-credits')).toHaveTextContent(
-        '12',
+      await waitFor(() =>
+        expect(screen.getByTestId('rewards-credits')).toHaveTextContent(
+          pl.rewards.balanceValue(12),
+        ),
       );
       expect(screen.getByTestId('rewards-earn')).toBeOnTheScreen();
     });
 
-    // Named without a number on purpose: how much a referral or a review is
-    // worth is a server-side rule the API does not expose, so a figure here
-    // would start lying the day the rule changes. The registration screen is the
-    // one exception, where "+5" is pinned to REFERRAL_BONUS in both repos.
-    test('promises no particular number of cards', async () => {
+    // The heading and the line under it carry no number. What each action is
+    // worth stands under its own button (pl.earn.gain), from values pinned to
+    // the server's constants by a test in both repos (src/domain/rewards.ts) —
+    // the one place a number can be kept honest.
+    test('keeps numbers out of the heading and body', async () => {
       renderRewards();
 
       await screen.findByTestId('rewards-earn');
