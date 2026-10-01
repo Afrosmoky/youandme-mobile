@@ -267,14 +267,13 @@ export function DailyCardScreen({ navigation }: Props) {
                     ? pl.memoryCard.answerLabel(couple.partnerNameLocal)
                     : pl.memoryCard.partnerAnswerLabel
                 }
-                placeholder={pl.dailyCard.placeholder}
+                placeholder={pl.dailyCard.partnerPlaceholder}
                 value={answerB}
                 onChangeText={value => {
                   setAnswerB(value);
                   setAnswerBError(null);
                 }}
                 error={answerBError ?? undefined}
-                hint={pl.dailyCard.partnerHint}
                 multiline
                 inputStyle={styles.input}
                 style={styles.lastField}

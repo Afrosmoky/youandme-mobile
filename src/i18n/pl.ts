@@ -592,9 +592,11 @@ export const pl = {
     // memoryCard.answerLabel / partnerAnswerLabel — te same co we wspomnieniu,
     // w które ta odpowiedź się zamienia.
     ownAnswerFallback: 'Twoja odpowiedź',
-    // Pod polem partnera: konto jest wspólne, ale jedna odpowiedź wystarczy.
-    // Robocze, do potwierdzenia przez Wiktorię.
-    partnerHint: 'Nieobowiązkowe — jedna odpowiedź też wystarczy.',
+    // Placeholder pola partnera. W nim, a nie w etykiecie: etykieta to złote
+    // wersaliki z imieniem do 60 znaków i „(OPCJONALNIE)" złamałoby ją na dwie
+    // linie; a nie pod polem, bo przy otwartej klawiaturze liczy się każda
+    // linijka. Znika, gdy pole jest wypełnione — wtedy nie jest już potrzebny.
+    partnerPlaceholder: 'Opcjonalnie',
     submitButton: 'Zapisz odpowiedź',
     answeredTitle: 'Odpowiedziane dziś',
     answeredLink: 'Odpowiedziane — zobacz we wspomnieniach',

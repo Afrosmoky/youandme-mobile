@@ -142,7 +142,15 @@ describe('DailyCardScreen', () => {
     expect(
       screen.getByText(pl.memoryCard.answerLabel('Tomek')),
     ).toBeOnTheScreen();
-    expect(screen.getByText(pl.dailyCard.partnerHint)).toBeOnTheScreen();
+    // Optional is said once, in the field itself — no line under it.
+    expect(screen.getByTestId('daily-card-answer-b')).toHaveProp(
+      'placeholder',
+      pl.dailyCard.partnerPlaceholder,
+    );
+    expect(screen.getByTestId('daily-card-answer-a')).toHaveProp(
+      'placeholder',
+      pl.dailyCard.placeholder,
+    );
   });
 
   test('falls back to generic labels when the names are unknown', async () => {
