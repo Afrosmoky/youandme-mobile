@@ -22,7 +22,8 @@ import {
 } from './src/notifications/pushHandler';
 import { queryClient } from './src/queries/queryClient';
 import { ToastProvider } from './src/components/Toast';
-import { ThemeProvider } from './src/theme';
+import { ThemeProvider, darkTheme } from './src/theme';
+import { navigationTheme } from './src/navigation/navigationTheme';
 
 // RN has no window-focus event; drive TanStack's focus signal from AppState so
 // focus-refetch queries (the daily card) refresh when returning from background.
@@ -84,6 +85,9 @@ function App() {
               <NavigationContainer
                 ref={navigationRef}
                 linking={linking}
+                // darkTheme directly: App renders the ThemeProvider, so it cannot
+                // read it, and dark is the only theme the provider ever returns.
+                theme={navigationTheme(darkTheme)}
                 // P11: the splash goes away here, and only here. `onReady` fires
                 // once a navigator is actually mounted — which cannot happen
                 // while AuthContext is still reading the token from the keychain,

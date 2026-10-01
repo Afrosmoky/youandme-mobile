@@ -3,6 +3,8 @@ import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from './types';
 import { linking } from './linking';
+import { defaultScreenOptions } from './navigationTheme';
+import { useTheme } from '../theme';
 import { useAuth } from '../auth/AuthContext';
 import { usePushRegistration } from '../notifications/usePushRegistration';
 import { AuthScreen } from '../screens/AuthScreen';
@@ -35,6 +37,7 @@ export { linking };
 
 export function RootNavigator() {
   const { token, loading } = useAuth();
+  const theme = useTheme();
 
   // P9: tell the backend where to push, for as long as there is a session to
   // push about. Hooks run before the early return below on purpose.
@@ -49,7 +52,7 @@ export function RootNavigator() {
   }
 
   return (
-    <Stack.Navigator>
+    <Stack.Navigator screenOptions={defaultScreenOptions(theme)}>
       {token == null ? (
         <>
           <Stack.Screen

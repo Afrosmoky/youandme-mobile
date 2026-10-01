@@ -185,6 +185,21 @@ describe('LocalGameSummaryScreen', () => {
     await waitFor(() => expect(reset).toHaveBeenCalledWith(BACK_TO_SETUP));
   });
 
+  // It was the one screen without a header of its own, and it came up white.
+  test('styles its header like the rest of the app', async () => {
+    await saveLocalGameState(playedOut());
+    const props = makeProps();
+    renderWithQueryClient(<LocalGameSummaryScreen {...props} />);
+
+    await screen.findByTestId('local-game-summary-questions');
+    expect(props.navigation.setOptions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        headerStyle: { backgroundColor: expect.any(String) },
+        headerTintColor: expect.any(String),
+      }),
+    );
+  });
+
   test('says that played cards do not come back, above the buttons', async () => {
     await saveLocalGameState(playedOut());
     renderScreen();

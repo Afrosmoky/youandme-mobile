@@ -1,4 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
@@ -17,6 +23,7 @@ import { EarnCreditsActions } from '../components/EarnCreditsActions';
 import { GoldButton } from '../components/GoldButton';
 import { OutlineButton } from '../components/OutlineButton';
 import { SectionLabel } from '../components/SectionLabel';
+import { ScreenTitle } from '../components/ScreenTitle';
 import { Theme, useTheme, withGlowRoom } from '../theme';
 import { pl } from '../i18n/pl';
 
@@ -55,6 +62,21 @@ export function LocalGameSummaryScreen({ navigation, route }: Props) {
   const { milestone, dismiss } = useMilestoneCelebration(
     route.params?.seenMilestones,
   );
+
+  // The same header as every other screen. This was the one screen without it,
+  // and it came up white (see navigationTheme for the floor added under all).
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerStyle: { backgroundColor: theme.colors.bg.base },
+      headerTintColor: theme.colors.gold.primary,
+      headerShadowVisible: false,
+      headerTitleAlign: 'center',
+      // eslint-disable-next-line react/no-unstable-nested-components
+      headerTitle: () => (
+        <ScreenTitle>{pl.localGame.summaryHeaderTitle}</ScreenTitle>
+      ),
+    });
+  }, [navigation, theme]);
 
   // "Zagrajcie od nowa" is the full deck again, not the next deal of unseen
   // cards. The reset waits for the last card's report before it is sent — see

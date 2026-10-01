@@ -110,6 +110,8 @@ jest.mock('@invertase/react-native-apple-authentication', () => {
 // @react-navigation/native: screens under test receive `navigation` via props,
 // but mock the hooks too so anything reaching for them gets a no-op.
 jest.mock('@react-navigation/native', () => ({
+  // navigationTheme spreads it; the shape is enough, the values are overridden.
+  DarkTheme: { dark: true, colors: {}, fonts: {} },
   useNavigation: () => ({ navigate: jest.fn(), setOptions: jest.fn() }),
   useRoute: () => ({ params: {} }),
   // P9: src/navigation/navigationRef.ts creates a container ref at module
