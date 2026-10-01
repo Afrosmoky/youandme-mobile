@@ -550,6 +550,7 @@ export function LocalGameSetupScreen({ navigation, route }: Props) {
                   <EarnCreditsActions
                     testID="local-game-exhaustion"
                     style={styles.earnAction}
+                    unlockLink={false}
                   />
                 </View>
               )}

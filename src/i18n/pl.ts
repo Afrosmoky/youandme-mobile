@@ -12,6 +12,22 @@
 const streakDays = (days: number): string =>
   `${days} ${days === 1 ? 'dzień' : 'dni'}`;
 
+// "1 karta" / "3 karty" / "5 kart" / "22 karty" / "12 kart". Here all three
+// Polish forms are needed: unlike "dni", the nominative plural ("karty") and the
+// genitive plural ("kart") differ, and which one follows a number depends on its
+// last digits.
+const cardsCount = (count: number): string => {
+  const lastDigit = count % 10;
+  const lastTwo = count % 100;
+  const form =
+    count === 1
+      ? 'karta'
+      : lastDigit >= 2 && lastDigit <= 4 && (lastTwo < 12 || lastTwo > 14)
+      ? 'karty'
+      : 'kart';
+  return `${count} ${form}`;
+};
+
 export const pl = {
   appTitle: 'Ja i Ty',
 
@@ -536,6 +552,14 @@ export const pl = {
     // zachęta przy rejestracji, gdzie „+5" jest przypięte do REFERRAL_BONUS
     // komentarzem w obu repozytoriach.
     sectionTitle: 'Zdobądźcie więcej kart',
+    // Pod przyciskiem: ile kart ta akcja doda. Tylko gdy wiemy (saldo i talia
+    // wczytane) i gdy jest co odblokować — nigdy liczba zastępcza.
+    gain: (count: number) => `+${cardsCount(count)}`,
+    // Nagroda już odebrana: serwer drugi raz nic nie da.
+    claimed: 'Odebrane',
+    // Droga z miejsca zdobycia do miejsca wydania; tylko przy saldzie > 0
+    // i zamkniętych kartach w talii.
+    unlockLink: (count: number) => `Odblokujcie karty (${count}) →`,
     sectionBody:
       'Polecenie aplikacji i ocena dokładają kredyty na odblokowanie pytań.',
   },

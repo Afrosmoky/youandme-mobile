@@ -2,10 +2,12 @@ import React from 'react';
 import {Alert} from 'react-native';
 import axios from 'axios';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
-import {fireEvent, screen, waitFor} from '@testing-library/react-native';
+import {act, fireEvent, screen, waitFor} from '@testing-library/react-native';
+import {QueryClient} from '@tanstack/react-query';
 import {renderWithQueryClient} from '../src/test/renderWithQueryClient';
 import {RewardsScreen} from '../src/screens/RewardsScreen';
 import {getRewards} from '../src/api/rewards';
+import {getDeck} from '../src/api/deck';
 import {redeemCode} from '../src/api/premium';
 import {requestAdRewardNonce} from '../src/api/ads';
 import {showRewardedAd} from '../src/ads/rewardedAd';
@@ -14,6 +16,8 @@ import type {Rewards} from '../src/domain/types';
 import {pl} from '../src/i18n/pl';
 
 jest.mock('../src/api/rewards', () => ({getRewards: jest.fn()}));
+// The earning actions on this screen read the closed deck to say what they give.
+jest.mock('../src/api/deck', () => ({getDeck: jest.fn(), unlockQuestion: jest.fn()}));
 jest.mock('../src/api/premium', () => ({redeemCode: jest.fn()}));
 jest.mock('../src/api/ads', () => ({requestAdRewardNonce: jest.fn()}));
 jest.mock('../src/ads/rewardedAd', () => ({showRewardedAd: jest.fn()}));
@@ -44,23 +48,56 @@ function makeProps(): Props {
   } as unknown as Props;
 }
 
+// The balance has two readers here now — the screen and the earning actions
+// under it. With the app's staleTime the second one reuses the first's answer,
+// as it does on a phone; with the test default of 0 it would fetch again on
+// mount and every "re-read once" count below would be off by one for a reason
+// that does not exist in the app.
+const renderRewards = () =>
+  renderWithQueryClient(
+    <RewardsScreen {...makeProps()} />,
+    new QueryClient({
+      defaultOptions: {
+        queries: {retry: false, gcTime: Infinity, staleTime: 30_000},
+        mutations: {retry: false, gcTime: Infinity},
+      },
+    }),
+  );
+
 describe('RewardsScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockAdRewardEnabled = false;
     jest.mocked(getRewards).mockResolvedValue(rewards);
+    jest.mocked(getDeck).mockResolvedValue({
+      lockedTotal: 40,
+      unlockedCount: 0,
+      complete: false,
+      cards: [],
+    });
     jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   });
 
+  // The earning actions read the closed deck once the balance is on screen, a
+  // tick after most of these tests have seen what they check. Let that read
+  // settle inside act before the screen is unmounted.
+  afterEach(async () => {
+    // setTimeout, not setImmediate: TanStack batches its notifications on a
+    // zero timeout, which a setImmediate can run ahead of.
+    await act(async () => {
+      await new Promise(resolve => setTimeout(resolve, 0));
+    });
+  });
+
   test('shows the credit balance', async () => {
-    renderWithQueryClient(<RewardsScreen {...makeProps()} />);
+    renderRewards();
 
     expect(await screen.findByTestId('rewards-credits')).toHaveTextContent('3');
   });
 
   test('shows how many ads are left today when ads are on', async () => {
     mockAdRewardEnabled = true;
-    renderWithQueryClient(<RewardsScreen {...makeProps()} />);
+    renderRewards();
 
     expect(await screen.findByTestId('rewards-ads-today')).toHaveTextContent(
       pl.rewards.adsToday(4, 5),
@@ -70,7 +107,7 @@ describe('RewardsScreen', () => {
   // The counter is part of the ad path: with ads off there is nothing for it to
   // count, and showing "5 z 5" read as a limit on something that does not exist.
   test('hides the ad counter while ads are off', async () => {
-    renderWithQueryClient(<RewardsScreen {...makeProps()} />);
+    renderRewards();
 
     await screen.findByTestId('rewards-credits');
     expect(screen.queryByTestId('rewards-ads-today')).toBeNull();
@@ -81,7 +118,7 @@ describe('RewardsScreen', () => {
   test('renders a zero balance as zero', async () => {
     jest.mocked(getRewards).mockResolvedValue({...rewards, credits: 0});
 
-    renderWithQueryClient(<RewardsScreen {...makeProps()} />);
+    renderRewards();
 
     expect(await screen.findByTestId('rewards-credits')).toHaveTextContent('0');
   });
@@ -92,7 +129,7 @@ describe('RewardsScreen', () => {
   test('replaces the screen with the error state when the balance fails', async () => {
     jest.mocked(getRewards).mockRejectedValue(new Error('network'));
 
-    renderWithQueryClient(<RewardsScreen {...makeProps()} />);
+    renderRewards();
 
     expect(await screen.findByTestId('rewards-error')).toBeOnTheScreen();
     expect(screen.getByText(pl.rewards.loadError)).toBeOnTheScreen();
@@ -104,7 +141,7 @@ describe('RewardsScreen', () => {
     jest.mocked(axios.isAxiosError).mockImplementation(err => err === offline);
     jest.mocked(getRewards).mockRejectedValue(offline);
 
-    renderWithQueryClient(<RewardsScreen {...makeProps()} />);
+    renderRewards();
 
     expect(await screen.findByText(pl.common.networkError)).toBeOnTheScreen();
     expect(screen.queryByText(pl.rewards.loadError)).toBeNull();
@@ -113,7 +150,7 @@ describe('RewardsScreen', () => {
   test('retry re-reads the balance', async () => {
     jest.mocked(getRewards).mockRejectedValueOnce(new Error('network'));
 
-    renderWithQueryClient(<RewardsScreen {...makeProps()} />);
+    renderRewards();
     await screen.findByTestId('rewards-error');
 
     jest.mocked(getRewards).mockResolvedValue(rewards);
@@ -127,7 +164,7 @@ describe('RewardsScreen', () => {
   // build without a public SSV callback URL must not offer it, because the
   // credit it promises would never arrive.
   test('hides the ad section while SSV is not live', async () => {
-    renderWithQueryClient(<RewardsScreen {...makeProps()} />);
+    renderRewards();
     await screen.findByTestId('rewards-credits');
 
     expect(screen.queryByTestId('rewards-ad-section')).toBeNull();
@@ -143,7 +180,7 @@ describe('RewardsScreen', () => {
     test('fetches a nonce and hands it to the ad', async () => {
       jest.mocked(showRewardedAd).mockResolvedValue('earned');
 
-      renderWithQueryClient(<RewardsScreen {...makeProps()} />);
+      renderRewards();
       fireEvent.press(await screen.findByTestId('rewards-watch-ad'));
 
       await waitFor(() => expect(requestAdRewardNonce).toHaveBeenCalled());
@@ -156,7 +193,7 @@ describe('RewardsScreen', () => {
     test('a completed ad promises a credit and refetches the balance', async () => {
       jest.mocked(showRewardedAd).mockResolvedValue('earned');
 
-      renderWithQueryClient(<RewardsScreen {...makeProps()} />);
+      renderRewards();
       fireEvent.press(await screen.findByTestId('rewards-watch-ad'));
 
       expect(
@@ -172,7 +209,7 @@ describe('RewardsScreen', () => {
     test('the refresh button re-reads the balance', async () => {
       jest.mocked(showRewardedAd).mockResolvedValue('earned');
 
-      renderWithQueryClient(<RewardsScreen {...makeProps()} />);
+      renderRewards();
       fireEvent.press(await screen.findByTestId('rewards-watch-ad'));
       fireEvent.press(await screen.findByTestId('rewards-refresh-balance'));
 
@@ -182,7 +219,7 @@ describe('RewardsScreen', () => {
     test('closing the ad early promises nothing and says nothing', async () => {
       jest.mocked(showRewardedAd).mockResolvedValue('dismissed');
 
-      renderWithQueryClient(<RewardsScreen {...makeProps()} />);
+      renderRewards();
       fireEvent.press(await screen.findByTestId('rewards-watch-ad'));
 
       await waitFor(() => expect(showRewardedAd).toHaveBeenCalled());
@@ -194,7 +231,7 @@ describe('RewardsScreen', () => {
     test('an unavailable ad reports it and promises nothing', async () => {
       jest.mocked(showRewardedAd).mockResolvedValue('unavailable');
 
-      renderWithQueryClient(<RewardsScreen {...makeProps()} />);
+      renderRewards();
       fireEvent.press(await screen.findByTestId('rewards-watch-ad'));
 
       await waitFor(() =>
@@ -213,7 +250,7 @@ describe('RewardsScreen', () => {
         .mocked(requestAdRewardNonce)
         .mockRejectedValueOnce(new Error('network'));
 
-      renderWithQueryClient(<RewardsScreen {...makeProps()} />);
+      renderRewards();
       fireEvent.press(await screen.findByTestId('rewards-watch-ad'));
 
       await waitFor(() =>
@@ -231,7 +268,7 @@ describe('RewardsScreen', () => {
         ads: {remainingToday: 0, dailyCap: 5},
       });
 
-      renderWithQueryClient(<RewardsScreen {...makeProps()} />);
+      renderRewards();
 
       expect(await screen.findByTestId('rewards-ads-cap')).toHaveTextContent(
         pl.ads.capReached,
@@ -247,7 +284,7 @@ describe('RewardsScreen', () => {
     test('sends the code and confirms, clearing the field', async () => {
       jest.mocked(redeemCode).mockResolvedValue(undefined);
 
-      renderWithQueryClient(<RewardsScreen {...makeProps()} />);
+      renderRewards();
       await screen.findByTestId('rewards-code');
 
       typeCode('JAITY-TEST');
@@ -266,7 +303,7 @@ describe('RewardsScreen', () => {
     test('trims surrounding whitespace before sending', async () => {
       jest.mocked(redeemCode).mockResolvedValue(undefined);
 
-      renderWithQueryClient(<RewardsScreen {...makeProps()} />);
+      renderRewards();
       await screen.findByTestId('rewards-code');
 
       typeCode('  JAITY-TEST  ');
@@ -276,7 +313,7 @@ describe('RewardsScreen', () => {
     });
 
     test('refuses an empty code without calling the API', async () => {
-      renderWithQueryClient(<RewardsScreen {...makeProps()} />);
+      renderRewards();
       await screen.findByTestId('rewards-code');
 
       fireEvent.press(screen.getByTestId('rewards-code-submit'));
@@ -299,7 +336,7 @@ describe('RewardsScreen', () => {
       });
       jest.mocked(axios.isAxiosError).mockReturnValue(true);
 
-      renderWithQueryClient(<RewardsScreen {...makeProps()} />);
+      renderRewards();
       await screen.findByTestId('rewards-code');
 
       typeCode('WYGASLY');
@@ -322,7 +359,7 @@ describe('RewardsScreen', () => {
       });
       jest.mocked(axios.isAxiosError).mockReturnValue(true);
 
-      renderWithQueryClient(<RewardsScreen {...makeProps()} />);
+      renderRewards();
       await screen.findByTestId('rewards-code');
 
       typeCode('JAITY-TEST');
@@ -334,7 +371,7 @@ describe('RewardsScreen', () => {
     });
 
     test('clears the error as soon as the user edits the code', async () => {
-      renderWithQueryClient(<RewardsScreen {...makeProps()} />);
+      renderRewards();
       await screen.findByTestId('rewards-code');
 
       fireEvent.press(screen.getByTestId('rewards-code-submit'));
@@ -352,7 +389,7 @@ describe('RewardsScreen', () => {
   // a credit, rather than only meeting them at the moment the deck runs dry.
   describe('earning more cards', () => {
     test('offers both ways, always', async () => {
-      renderWithQueryClient(<RewardsScreen {...makeProps()} />);
+      renderRewards();
 
       expect(await screen.findByTestId('rewards-earn-share')).toBeOnTheScreen();
       expect(screen.getByTestId('rewards-earn-rate')).toBeOnTheScreen();
@@ -367,7 +404,7 @@ describe('RewardsScreen', () => {
         ratingRewardClaimed: false,
         ads: {remainingToday: 5, dailyCap: 5},
       });
-      renderWithQueryClient(<RewardsScreen {...makeProps()} />);
+      renderRewards();
 
       expect(await screen.findByTestId('rewards-credits')).toHaveTextContent(
         '12',
@@ -380,7 +417,7 @@ describe('RewardsScreen', () => {
     // would start lying the day the rule changes. The registration screen is the
     // one exception, where "+5" is pinned to REFERRAL_BONUS in both repos.
     test('promises no particular number of cards', async () => {
-      renderWithQueryClient(<RewardsScreen {...makeProps()} />);
+      renderRewards();
 
       await screen.findByTestId('rewards-earn');
       expect(screen.getByText(pl.earn.sectionBody)).toBeOnTheScreen();
